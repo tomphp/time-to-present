@@ -71,6 +71,32 @@ describe("simulate", () => {
     expect(slide.get()).toEqual({ state: 0, live: false });
   });
 
+  it("ignores a seek to no time at all", () => {
+    const { simulator, client } = following();
+    simulator.seek(400);
+
+    simulator.seek(Number.NaN);
+
+    expect(client.clock.get()).toEqual({ state: "paused", scriptTime: 400, speed: 1 });
+  });
+
+  it("keeps sending to every Client when one throws", () => {
+    vi.stubGlobal("reportError", () => {});
+    const simulator = simulate<Events>(script, { clock: "manual" });
+    simulator.open({
+      event: () => {
+        throw new Error("a broken Client");
+      },
+      lost: () => {},
+    });
+    const client = connect<Events>({ source: simulator });
+
+    simulator.play();
+
+    expect(client.clock.get().state).toBe("playing");
+    vi.unstubAllGlobals();
+  });
+
   it("pauses where the clock is", () => {
     const { simulator, client } = following();
     simulator.play();

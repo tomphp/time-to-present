@@ -1,3 +1,4 @@
+import { deliver } from "./channel";
 import { PROTOCOL_VERSION, type EventMap, type Script, type StreamEvent } from "./protocol";
 import type { Source, SourceListener } from "./source";
 import { followKeys } from "./keyboard";
@@ -20,6 +21,7 @@ export interface SimulateOptions {
 export interface Simulator<Events extends EventMap = EventMap> extends Source {
   /** Plays from where the clock is; does nothing while playing or ended. */
   play(): void;
+  /** Stops the clock where it is. */
   pause(): void;
   /** Jumps to `scriptTime` within the Script and sends a Snapshot; `ready` and `ended` become `paused`. */
   seek(scriptTime: number): void;
@@ -36,7 +38,8 @@ export interface Simulator<Events extends EventMap = EventMap> extends Source {
    * Space, PageDown or → to play and pause; PageUp or ← to the Sentence start; ⌥←/⌥→ by
    * Word; ⇧←/⇧→ by Named Event; `[`/`]` by paragraph; ↑/↓ for speed ±0.05; `0` for 1.0×;
    * and Home twice within 2 s back to start. Keys typed into a field, or held with ⌘ or
-   * Ctrl, are left to the page.
+   * Ctrl, are left to the page, as are the display keys (B, `.`, E, M, Esc), which have
+   * nothing to show here. Returns a function that stops following them.
    */
   keyboard(target?: EventTarget): Unsubscribe;
 }
@@ -52,6 +55,7 @@ export function simulate<Events extends EventMap = EventMap>(
   script: SimulatedScript<Events>,
   options: { clock: "manual" },
 ): ManualSimulator<Events>;
+/** Simulates the Performance over a Script, on the page's own clock unless `{ clock: "manual" }`. */
 export function simulate<Events extends EventMap = EventMap>(
   script: SimulatedScript<Events>,
   options?: SimulateOptions,
@@ -65,8 +69,9 @@ export function simulate(script: SimulatedScript, options: SimulateOptions = {})
   const wall = manual ?? realWall(runClock);
   let closed = false;
 
+  const send = (listener: SourceListener, event: StreamEvent) => deliver((value) => listener.event(value), event);
   const broadcast = (events: StreamEvent[]) => {
-    for (const event of events) for (const listener of [...listeners]) listener.event(event);
+    for (const event of events) for (const listener of [...listeners]) send(listener, event);
   };
 
   const run = (command: (now: number) => StreamEvent[]) => {
@@ -80,13 +85,13 @@ export function simulate(script: SimulatedScript, options: SimulateOptions = {})
       if (closed) return () => {};
       run(clock.advance);
       listeners.add(listener);
-      listener.event({ type: "snapshot", ...clock.snapshot(wall.now()) });
+      send(listener, { type: "snapshot", ...clock.snapshot(wall.now()) });
       return () => listeners.delete(listener);
     },
     script: async () => ({
       protocolVersion: PROTOCOL_VERSION,
       scriptVersion: timeline.version,
-      scriptEnd: timeline.end,
+      scriptEnd: timeline.scriptEnd,
       words: timeline.words,
       namedEvents: timeline.events,
     }),
@@ -105,7 +110,7 @@ export function simulate(script: SimulatedScript, options: SimulateOptions = {})
     },
     keyboard(target = window) {
       const controls = { ...simulator, clock: () => clock.view(wall.now()), now: wall.now };
-      return followKeys(target, controls, seekTargets(timeline.words, timeline.events));
+      return followKeys(target, controls, seekTargets(timeline));
     },
   };
   return manual ? { ...simulator, advance: manual.advance } : simulator;

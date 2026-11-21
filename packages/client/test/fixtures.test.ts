@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { describe, expect, it } from "vitest";
-import { simulate, type StreamEvent } from "../src";
-import { scriptOf, type Presentation } from "./presentation";
+import { simulate, type SourceListener, type StreamEvent } from "../src";
+import { scriptOf, type PresentationScript } from "./presentation";
 
 type Step =
   | { action: "advance"; ms: number }
@@ -10,7 +10,7 @@ type Step =
   | { action: "speed"; speed: number };
 
 interface Fixture {
-  script: Presentation;
+  script: PresentationScript;
   steps: Step[];
   stream: object[];
 }
@@ -20,11 +20,15 @@ const fixtures = import.meta.glob<Fixture>("../../../protocol-fixtures/*.json", 
 function run({ script, steps }: Fixture) {
   const simulator = simulate(scriptOf(script), { clock: "manual" });
   const produced: StreamEvent[] = [];
-  let joined = false;
-  simulator.open({ event: (event) => (joined ? produced.push(event) : (joined = true)), lost: () => {} });
+  const record: SourceListener = { event: (event) => produced.push(event), lost: () => {} };
+  const afterItsSnapshot = (listener: SourceListener): SourceListener => {
+    let snapshotted = false;
+    return { ...listener, event: (event) => (snapshotted ? listener.event(event) : (snapshotted = true)) };
+  };
+  simulator.open(afterItsSnapshot(record));
 
   const connect = () => {
-    const stop = simulator.open({ event: (event) => produced.push(event), lost: () => {} });
+    const stop = simulator.open(record);
     stop();
   };
 

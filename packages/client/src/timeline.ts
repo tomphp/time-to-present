@@ -2,9 +2,13 @@ import type { EventMap, NamedEvent, ScriptWord, StreamEvent, Word } from "./prot
 
 /** What `simulate()` plays: the Script in the `/_ttp/v1/script` shape, its versions and end optional. */
 export interface SimulatedScript<Events extends EventMap = EventMap> {
+  /** In Script order, each at its absolute `start`. */
   words: ScriptWord[];
+  /** Each at the Script Time it fires; any before 0 fire at 0. */
   namedEvents: NamedEvent<Events>[];
+  /** Defaults to the end of the last Word or the last Named Event, whichever is later. */
   scriptEnd?: number;
+  /** Defaults to 1. */
   scriptVersion?: number;
 }
 
@@ -19,7 +23,7 @@ export function timelineOf(script: SimulatedScript) {
     .map((event) => ({ ...event, data: event.data ?? null, scriptTime: Math.max(0, event.scriptTime) }))
     .sort(byTime((event) => event.scriptTime));
   const lastWord = words.at(-1);
-  const end = script.scriptEnd ?? Math.max(lastWord ? lastWord.start + lastWord.duration : 0, ...events.map((event) => event.scriptTime));
+  const scriptEnd = script.scriptEnd ?? Math.max(lastWord ? lastWord.start + lastWord.duration : 0, ...events.map((event) => event.scriptTime));
 
   const wordPayload = ({ id, text, start, duration }: Word): Word => ({ id, text, start, duration });
 
@@ -44,7 +48,7 @@ export function timelineOf(script: SimulatedScript) {
     version: script.scriptVersion ?? 1,
     words,
     events,
-    end,
+    scriptEnd,
     crossed,
     /** The Word being spoken at `time`, else the last one started. */
     currentWord(time: number): Word | null {

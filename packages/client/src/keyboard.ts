@@ -1,5 +1,5 @@
 import type { Clock } from "./protocol";
-import type { Direction, seekTargets } from "./seek-targets";
+import type { Direction, SeekTargets } from "./seek-targets";
 import type { Unsubscribe } from "./store";
 
 export interface KeyboardControls {
@@ -26,7 +26,7 @@ const isTyping = (target: EventTarget | null) => {
 export function followKeys(
   target: EventTarget,
   controls: KeyboardControls,
-  targets: ReturnType<typeof seekTargets>,
+  targets: SeekTargets,
 ): Unsubscribe {
   let homePressedAt: number | null = null;
 

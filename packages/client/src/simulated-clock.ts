@@ -54,13 +54,13 @@ export function simulatedClock(timeline: Timeline) {
   const advance = (now: number): StreamEvent[] => {
     if (state.name !== "playing") return [];
     const reached = scriptTime(now);
-    if (reached >= timeline.end) {
-      const events = timeline.crossed(state.emittedUpTo, timeline.end);
-      state = { name: "ended", at: timeline.end };
+    if (reached >= timeline.scriptEnd) {
+      const events = timeline.crossed(state.emittedUpTo, timeline.scriptEnd);
+      state = { name: "ended", at: timeline.scriptEnd };
       return [...events, change("end", now)];
     }
     const events = timeline.crossed(state.emittedUpTo, reached);
-    state.emittedUpTo = reached;
+    state = { ...state, emittedUpTo: reached };
     if (now - lastTick >= TICK_INTERVAL) {
       lastTick = now;
       events.push({ type: "tick", scriptTime: reached });
@@ -91,8 +91,9 @@ export function simulatedClock(timeline: Timeline) {
 
     /** Lands within the Script, keeping the state except that `ready` and `ended` become `paused`. */
     seek(now: number, target: number): StreamEvent[] {
+      if (Number.isNaN(target)) return [];
       const events = advance(now);
-      const at = Math.min(Math.max(Math.round(target), 0), timeline.end);
+      const at = Math.min(Math.max(Math.round(target), 0), timeline.scriptEnd);
       state = state.name === "playing" ? { name: "playing", from: at, since: now, emittedUpTo: at } : { name: "paused", at };
       return [...events, { type: "snapshot", ...snapshot(now) }];
     },
