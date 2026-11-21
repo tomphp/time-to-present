@@ -25,7 +25,7 @@ beforeEach(() => {
 
 function mountPane() {
   const commands = {
-    edit: vi.fn(async () => state([script[2]])),
+    edit: vi.fn(),
     cut: vi.fn(async () => state([script[2]])),
     copy: vi.fn(async () => {}),
     paste: vi.fn(async () => state([word("w4", "pasted"), ...script])),
@@ -84,18 +84,18 @@ describe("the text pane's clipboard", () => {
     clipboardEvent("paste", "pasted");
     await settle();
 
-    expect(commands.paste).toHaveBeenCalledWith(null, "pasted");
-    expect(commands.edit).not.toHaveBeenCalled();
+    expect(commands.paste).toHaveBeenCalledWith(null, [], "pasted");
   });
 
-  it("pastes over a selection by deleting the Words it covers first", async () => {
+  it("pastes over a selection replacing the Words it covers", async () => {
     const commands = mountPane();
+    commands.paste.mockResolvedValue(state([script[0], word("w4", "pasted")]));
     select(["w2", 1], ["w3", 2]);
 
     clipboardEvent("paste", "pasted");
     await settle();
 
-    expect(commands.edit).toHaveBeenCalledWith({ kind: "delete", words: ["w2", "w3"] });
-    expect(commands.paste).toHaveBeenCalledWith("w1", "pasted");
+    expect(commands.paste).toHaveBeenCalledWith("w1", ["w2", "w3"], "pasted");
+    expect(document.getSelection()!.focusNode!.textContent).toBe("pasted");
   });
 });

@@ -95,13 +95,13 @@ impl Script {
 
     /// Puts a passage in after `after`, or at the start. Its first Word takes the Gap of the
     /// Word it goes before, which keeps its own; at the end it gets 500 ms, and into an empty
-    /// Script none.
+    /// Script none. Its first Word's events never sit before the start of that Gap.
     pub fn paste(&mut self, after: Option<&str>, passage: Passage) -> Result<(), EditError> {
-        let index = match after {
-            Some(id) => self.index_of(id)? + 1,
-            None => 0,
-        };
-        let Passage { mut words, events } = passage;
+        let index = self.index_after(after)?;
+        let Passage {
+            mut words,
+            mut events,
+        } = passage;
         let seam_gap = match self.words.get(index) {
             Some(next) => next.gap,
             None if self.words.is_empty() => 0,
@@ -109,6 +109,10 @@ impl Script {
         };
         if let Some(first) = words.first_mut() {
             first.gap = seam_gap;
+            let anchor = Anchor::Word(first.id.clone());
+            for event in events.iter_mut().filter(|event| event.anchor == anchor) {
+                event.offset = event.offset.max(-seam_gap);
+            }
         }
         self.words.splice(index..index, words);
         self.named_events.extend(events);

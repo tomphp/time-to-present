@@ -4,8 +4,13 @@ use crate::script::{Ids, Passage, Script};
 /// none of them is in the Script; every other paste is a copy under new ids.
 #[derive(Debug, Default)]
 pub struct Clipboard {
-    passage: Option<Passage>,
-    moving: bool,
+    held: Option<Held>,
+}
+
+#[derive(Debug)]
+enum Held {
+    Cut(Passage),
+    Copied(Passage),
 }
 
 pub struct Paste {
@@ -14,15 +19,24 @@ pub struct Paste {
 }
 
 impl Clipboard {
-    pub fn hold(&mut self, passage: Passage, moving: bool) {
-        self.passage = Some(passage);
-        self.moving = moving;
+    pub fn hold_cut(&mut self, passage: Passage) {
+        self.held = Some(Held::Cut(passage));
+    }
+
+    pub fn hold_copy(&mut self, passage: Passage) {
+        self.held = Some(Held::Copied(passage));
     }
 
     /// What pasting `text` puts in, or None when the text is not the held passage.
     pub fn paste(&self, text: &str, script: &Script, ids: &mut Ids) -> Option<Paste> {
-        let passage = self.passage.as_ref().filter(|held| held.reads_as(text))?;
-        if self.moving && !passage.ids().any(|id| script.has(id)) {
+        let (passage, cut) = match self.held.as_ref()? {
+            Held::Cut(passage) => (passage, true),
+            Held::Copied(passage) => (passage, false),
+        };
+        if !passage.reads_as(text) {
+            return None;
+        }
+        if cut && !passage.ids().any(|id| script.has(id)) {
             return Some(Paste {
                 moved: passage.event_ids(),
                 passage: passage.clone(),
@@ -34,7 +48,10 @@ impl Clipboard {
         })
     }
 
+    /// After a paste the held passage only ever pastes as a copy.
     pub fn pasted(&mut self) {
-        self.moving = false;
+        self.held = self.held.take().map(|held| match held {
+            Held::Cut(passage) | Held::Copied(passage) => Held::Copied(passage),
+        });
     }
 }

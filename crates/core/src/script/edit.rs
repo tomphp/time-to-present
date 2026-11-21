@@ -103,18 +103,12 @@ impl Script {
                 self.word_mut(&word)?.break_after = break_after;
             }
             Edit::InsertWord { after, text } => {
-                let index = match after {
-                    Some(id) => self.index_of(&id)? + 1,
-                    None => 0,
-                };
+                let index = self.index_after(after.as_deref())?;
                 let typed = self.typed_word(ids.next_word(), one_word(text)?, index);
                 self.words.insert(index, typed);
             }
             Edit::InsertText { after, text } => {
-                let start = match after {
-                    Some(id) => self.index_of(&id)? + 1,
-                    None => 0,
-                };
+                let start = self.index_after(after.as_deref())?;
                 for (index, (text, break_after)) in (start..).zip(plain_text::words(&text)) {
                     let mut typed = self.typed_word(ids.next_word(), text, index);
                     typed.break_after = break_after;
@@ -174,6 +168,11 @@ impl Script {
             confidence: None,
             break_after: None,
         }
+    }
+
+    /// Where a Word going in after `after`, or at the start, goes.
+    pub(super) fn index_after(&self, after: Option<&str>) -> Result<usize, EditError> {
+        after.map_or(Ok(0), |id| Ok(self.index_of(id)? + 1))
     }
 
     pub(super) fn index_of(&self, id: &str) -> Result<usize, EditError> {

@@ -1,5 +1,5 @@
 import { collapsed, endOf, indexOf, isSlot, lastId, resolveCaret, type CaretTarget, type Range, type Slot } from "./caret";
-import { passageText, pasteAfter, selectedWords } from "./clipboard";
+import { caretAfterPaste, passageText, pasteAt, selectedWords } from "./clipboard";
 import { currentCaret, placeCaret, selectedRange } from "./dom-caret";
 import { eventAnchorAt, type EventAt } from "./named-events";
 import { renderScript } from "./pane-render";
@@ -10,7 +10,7 @@ export interface Commands {
   edit(edit: Edit): Promise<SessionState>;
   cut(words: string[]): Promise<SessionState>;
   copy(words: string[]): Promise<void>;
-  paste(after: string | null, text: string): Promise<SessionState>;
+  paste(after: string | null, replacing: string[], text: string): Promise<SessionState>;
   undo(): Promise<SessionState>;
   redo(): Promise<SessionState>;
 }
@@ -123,12 +123,12 @@ export function mountTextPane(root: HTMLElement, commands: Commands, events: Eve
   });
 
   root.addEventListener("copy", (event) => {
-    const ids = clip(event);
+    const ids = putOnClipboard(event);
     if (ids.length) enqueue(() => commands.copy(ids).catch(console.error));
   });
 
   root.addEventListener("cut", (event) => {
-    const ids = clip(event);
+    const ids = putOnClipboard(event);
     if (!ids.length) return;
     enqueue(async () => {
       pending = endOf(words, indexOf(words, ids[0]) - 1);
@@ -136,7 +136,6 @@ export function mountTextPane(root: HTMLElement, commands: Commands, events: Eve
     });
   });
 
-  /** Pastes over the selection, the Words it covers deleted first, leaving the caret after the paste. */
   root.addEventListener("paste", (event) => {
     event.preventDefault();
     const text = event.clipboardData?.getData("text/plain") ?? "";
@@ -145,26 +144,24 @@ export function mountTextPane(root: HTMLElement, commands: Commands, events: Eve
     enqueue(async () => {
       const range = selection();
       if (!range) return;
-      const replaced = selectedWords(words, range);
-      const after = replaced.length ? (words[indexOf(words, replaced[0]) - 1]?.id ?? null) : pasteAfter(words, range.start);
-      try {
-        if (replaced.length) render(await commands.edit({ kind: "delete", words: replaced }));
-        const lengthBefore = words.length;
-        const next = await commands.paste(after, text);
-        pending = endOf(next.words, indexOf(next.words, after) + next.words.length - lengthBefore);
-        render(next);
-      } catch (error) {
-        reportAndDrop(error);
-      }
+      const at = pasteAt(words, range);
+      const previous = words;
+      await commands
+        .paste(at.after, at.replacing, text)
+        .then((next) => {
+          pending = caretAfterPaste(previous, next.words, at);
+          render(next);
+        }, reportAndDrop);
     });
   });
 
-  /** Puts the selected Words on the system clipboard as text, returning their ids. */
-  function clip(event: ClipboardEvent): string[] {
+  /** Puts the selected Words' text on the system clipboard, returning their ids. */
+  function putOnClipboard(event: ClipboardEvent): string[] {
     event.preventDefault();
     const range = selectedRange(root);
     const ids = range ? selectedWords(words, range) : [];
-    if (ids.length) event.clipboardData?.setData("text/plain", passageText(words.filter((w) => ids.includes(w.id))));
+    const taken = new Set(ids);
+    if (ids.length) event.clipboardData?.setData("text/plain", passageText(words.filter((w) => taken.has(w.id))));
     return ids;
   }
 

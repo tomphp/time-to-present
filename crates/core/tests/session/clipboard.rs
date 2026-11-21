@@ -1,4 +1,4 @@
-use ttp_core::script::{Anchor, BreakAfter, EditError};
+use ttp_core::script::{Anchor, BreakAfter, Edit, EditError};
 use ttp_core::session::{Session, SessionState};
 
 use crate::support::{Harness, starts, word_starts};
@@ -8,7 +8,7 @@ fn ids(words: &[&str]) -> Vec<String> {
 }
 
 fn paste(session: &mut Session, after: Option<&str>, text: &str) {
-    session.paste(after.map(str::to_string), text).unwrap();
+    session.paste(after.map(str::to_string), &[], text).unwrap();
 }
 
 fn events(state: &SessionState) -> Vec<(&str, &Anchor, i64, i64)> {
@@ -297,13 +297,73 @@ fn unknown_words_and_empty_selections_are_refused_leaving_the_script_untouched()
     assert_eq!(session.copy(&[]), Err(EditError::NothingSelected));
     session.copy(&ids(&["w1"])).unwrap();
     assert_eq!(
-        session.paste(Some("nope".into()), "Hello,"),
+        session.paste(Some("nope".into()), &[], "Hello,"),
         Err(EditError::UnknownWord("nope".into()))
     );
     assert_eq!(
-        session.paste(Some("nope".into()), "other"),
+        session.paste(Some("nope".into()), &[], "other"),
         Err(EditError::UnknownWord("nope".into()))
     );
 
     assert_eq!(session.state(), original);
+}
+
+#[test]
+fn a_pasted_event_before_its_first_word_never_sits_before_the_seam_gap() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session
+        .edit(Edit::InsertEvent {
+            anchor: Anchor::Word("w1".into()),
+            offset: -400,
+            name: "early".into(),
+            data: None,
+        })
+        .unwrap();
+
+    session.cut(&ids(&["w1", "w2", "w3"])).unwrap();
+    paste(&mut session, None, "Hello, world. Typed");
+
+    let early = session.state().named_events.last().unwrap().clone();
+    assert_eq!((early.event.offset, early.time), (0, 0));
+}
+
+#[test]
+fn pasting_over_words_replaces_them_in_one_undo_step() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    let original = session.state();
+    session.copy(&ids(&["w1"])).unwrap();
+
+    session
+        .paste(Some("w1".into()), &ids(&["w2"]), "Hello,")
+        .unwrap();
+    assert_eq!(
+        starts(&session.state()),
+        [("Hello,", 400), ("Hello,", 850), ("Typed", 1300)]
+    );
+    assert!(session.state().moved_events.is_empty());
+
+    session.paste(None, &ids(&["w3"]), "Fresh").unwrap();
+    assert_eq!(session.state().words[0].word.text, "Fresh");
+    assert_eq!(session.state().moved_events, ["e2"]);
+
+    session.undo();
+    session.undo();
+    assert_eq!(session.state(), original);
+}
+
+#[test]
+fn the_clipboard_pastes_its_passage_as_often_as_asked() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.cut(&ids(&["w3"])).unwrap();
+
+    for _ in 0..3 {
+        paste(&mut session, None, "Typed");
+    }
+
+    let state = session.state();
+    assert_eq!(state.words.len(), 5);
+    assert_eq!(state.named_events.len(), 4);
 }

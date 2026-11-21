@@ -188,10 +188,11 @@ fn copy(state: State<'_, App>, words: Vec<String>) -> CommandResult<()> {
 fn paste(
     state: State<'_, App>,
     after: Option<String>,
+    replacing: Vec<String>,
     text: String,
 ) -> CommandResult<SessionState> {
     with_session(&state, |session| {
-        session.paste(after, &text)?;
+        session.paste(after, &replacing, &text)?;
         Ok::<_, EditError>(session.state())
     })
 }

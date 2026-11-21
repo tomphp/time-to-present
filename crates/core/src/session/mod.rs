@@ -95,29 +95,49 @@ impl Session {
     /// Takes the Words out onto the clipboard with their Named Events, as one undo step.
     pub fn cut(&mut self, words: &[String]) -> Result<(), EditError> {
         let passage = self.change(|script, _| Ok((script.cut(words)?, Vec::new())))?;
-        self.clipboard.hold(passage, true);
+        self.clipboard.hold_cut(passage);
         Ok(())
     }
 
     pub fn copy(&mut self, words: &[String]) -> Result<(), EditError> {
         let passage = self.presentation.script.copy(words)?;
-        self.clipboard.hold(passage, false);
+        self.clipboard.hold_copy(passage);
         Ok(())
     }
 
     /// Pastes the clipboard's passage when `text` reads as it, and otherwise `text` as typed
-    /// Words. A cut passage moving back in gives its Named Events a Moved badge.
-    pub fn paste(&mut self, after: Option<String>, text: &str) -> Result<(), EditError> {
+    /// Words, deleting the Words it replaces first, as one undo step. A cut passage moving back
+    /// in gives its Named Events a Moved badge.
+    pub fn paste(
+        &mut self,
+        after: Option<String>,
+        replacing: &[String],
+        text: &str,
+    ) -> Result<(), EditError> {
         let script = &self.presentation.script;
-        let Some(paste) = self.clipboard.paste(text, script, &mut self.ids) else {
-            let text = text.to_string();
-            return self.edit(Edit::InsertText { after, text });
-        };
-        self.change(|script, _| {
-            script.paste(after.as_deref(), paste.passage)?;
-            Ok(((), paste.moved))
+        let held = self.clipboard.paste(text, script, &mut self.ids);
+        let pastes_held = held.is_some();
+        self.change(|script, ids| {
+            let mut reanchored = Vec::new();
+            if !replacing.is_empty() {
+                let words = replacing.to_vec();
+                reanchored = script.apply(Edit::Delete { words }, ids)?;
+            }
+            match held {
+                Some(paste) => {
+                    script.paste(after.as_deref(), paste.passage)?;
+                    reanchored.extend(paste.moved);
+                }
+                None => {
+                    let text = text.to_string();
+                    reanchored.extend(script.apply(Edit::InsertText { after, text }, ids)?);
+                }
+            }
+            Ok(((), reanchored))
         })?;
-        self.clipboard.pasted();
+        if pastes_held {
+            self.clipboard.pasted();
+        }
         Ok(())
     }
 

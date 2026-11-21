@@ -18,8 +18,9 @@ enum Step {
     InsertEvent(Option<usize>, i64),
     Cut(Vec<usize>),
     Copy(Vec<usize>),
-    /// Pastes the clipboard's passage, or plain text when it holds none or this is false.
-    Paste(Option<usize>, bool, String),
+    /// Pastes over some Words the clipboard's passage, or plain text when it holds none or
+    /// this is false.
+    Paste(Option<usize>, Vec<usize>, bool, String),
     Undo,
     Redo,
 }
@@ -49,10 +50,11 @@ fn step() -> impl Strategy<Value = Step> {
         prop::collection::vec(any::<usize>(), 1..4).prop_map(Step::Copy),
         (
             prop::option::of(any::<usize>()),
+            prop::collection::vec(any::<usize>(), 0..3),
             any::<bool>(),
             "[a-z]{1,8}( [a-z]{1,8}){0,2}"
         )
-            .prop_map(|(w, internal, text)| Step::Paste(w, internal, text)),
+            .prop_map(|(w, replacing, internal, text)| Step::Paste(w, replacing, internal, text)),
         Just(Step::Undo),
         Just(Step::Redo),
     ]
@@ -184,14 +186,20 @@ fn run(
             return (Outcome::Events(-taken), none);
         }
         Step::Cut(_) | Step::Copy(_) => return (Outcome::Events(0), none),
-        Step::Paste(w, internal, text) => {
+        Step::Paste(w, replacing, internal, text) => {
             let after = w
                 .as_ref()
                 .filter(|_| !state.words.is_empty())
                 .map(|n| state.words[n % state.words.len()].word.id.clone());
+            let mut replacing = if state.words.is_empty() {
+                Vec::new()
+            } else {
+                pick_words(replacing, &state)
+            };
+            replacing.retain(|id| Some(id) != after.as_ref());
             let passage = clipboard.text.clone().filter(|_| *internal);
             let text = passage.clone().unwrap_or_else(|| text.clone());
-            session.paste(after, &text).unwrap();
+            session.paste(after, &replacing, &text).unwrap();
             if passage.is_none() {
                 return (Outcome::Events(0), none);
             }

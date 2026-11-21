@@ -19,7 +19,8 @@ export const renamePresentation = (title: string) => invoke<void>("rename_presen
 export const edit = (edit: Edit) => invoke<SessionState>("edit", { edit });
 export const cut = (words: string[]) => invoke<SessionState>("cut", { words });
 export const copy = (words: string[]) => invoke<void>("copy", { words });
-export const paste = (after: string | null, text: string) => invoke<SessionState>("paste", { after, text });
+export const paste = (after: string | null, replacing: string[], text: string) =>
+  invoke<SessionState>("paste", { after, replacing, text });
 export const undo = () => invoke<SessionState>("undo");
 export const redo = () => invoke<SessionState>("redo");
 export const selectEvent = (event: string) => invoke<SessionState>("select_event", { event });

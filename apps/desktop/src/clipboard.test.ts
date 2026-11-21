@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Caret, Range } from "./caret";
-import { passageText, pasteAfter, selectedWords } from "./clipboard";
+import { caretAfterPaste, passageText, pasteAt, selectedWords } from "./clipboard";
 import type { ScriptWord } from "./session";
 
 const word = (id: string, text: string, breakAfter?: ScriptWord["breakAfter"]): ScriptWord => ({
@@ -44,17 +44,38 @@ describe("a passage's plain text", () => {
 });
 
 describe("where a paste goes", () => {
+  const after = (caret: Caret) => pasteAt(words, range(caret, caret));
+
   it("is after the slot's Word", () => {
-    expect(pasteAfter(words, { slotAfter: "w2" })).toBe("w2");
+    expect(after({ slotAfter: "w2" })).toEqual({ after: "w2", replacing: [] });
   });
 
   it("is before a Word the caret is at the start of", () => {
-    expect(pasteAfter(words, { word: "w2", offset: 0 })).toBe("w1");
-    expect(pasteAfter(words, { word: "w1", offset: 0 })).toBeNull();
+    expect(after({ word: "w2", offset: 0 }).after).toBe("w1");
+    expect(after({ word: "w1", offset: 0 }).after).toBeNull();
   });
 
   it("is after a Word the caret is inside or at the end of", () => {
-    expect(pasteAfter(words, { word: "w2", offset: 3 })).toBe("w2");
-    expect(pasteAfter(words, { word: "w2", offset: 6 })).toBe("w2");
+    expect(after({ word: "w2", offset: 3 }).after).toBe("w2");
+    expect(after({ word: "w2", offset: 6 }).after).toBe("w2");
+  });
+
+  it("over a selection replaces the Words it covers, going after the Word before them", () => {
+    expect(pasteAt(words, range({ word: "w2", offset: 1 }, { word: "w3", offset: 2 }))).toEqual({
+      after: "w1",
+      replacing: ["w2", "w3"],
+    });
+  });
+});
+
+describe("the caret after a paste", () => {
+  it("ends the last pasted Word", () => {
+    const next = [words[0], word("p1", "new"), word("p2", "words"), words[2]];
+    expect(caretAfterPaste(words, next, { after: "w1", replacing: ["w2"] })).toEqual({ word: "p2", offset: 5 });
+  });
+
+  it("ends the last pasted Word at the start of the Script", () => {
+    const next = [word("p1", "new"), ...words];
+    expect(caretAfterPaste(words, next, { after: null, replacing: [] })).toEqual({ word: "p1", offset: 3 });
   });
 });
