@@ -1,5 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { onServerStatus, onSessionState, onStreamEvent, openInBrowser, pause, play, reset, seek, setSpeed } from "./commands";
+import { approachCue, type ApproachCueSettings, type Cue } from "./approach-cue";
+import { onApproachCue, onServerStatus, onSessionState, onStreamEvent, openInBrowser, pause, play, reset, seek, setSpeed } from "./commands";
 import { find } from "./dom";
 import {
   applyAction,
@@ -36,11 +37,15 @@ import { navigation } from "./teleprompter-seek";
 import {
   currentWord,
   followClock,
+  heldFreeScroll,
+  isOver,
   keyCommand,
   scriptTimeAt,
+  scrollFreely,
   scrollTo,
   UNFOLLOWED,
   wordLook,
+  type FreeScroll,
   type Scroll,
 } from "./teleprompter-view";
 
@@ -71,6 +76,10 @@ const bar = {
   notice: find<HTMLParagraphElement>("#bar-notice"),
 };
 
+const end = document.createElement("p");
+end.id = "end";
+end.textContent = "END";
+
 let words: ScriptWord[] = [];
 let scriptEnd = 0;
 let connectedApps = 0;
@@ -84,6 +93,9 @@ let spans: HTMLSpanElement[] = [];
 let followed = UNFOLLOWED;
 let current: number | null = null;
 let scroll: Scroll | null = null;
+let free: FreeScroll | null = null;
+let cueSettings: ApproachCueSettings = { enabled: false, longGap: 0 };
+let cue: Cue | null = null;
 
 function marker({ id, name }: { id: string; name: string }) {
   const element = document.createElement("small");
@@ -118,9 +130,10 @@ function renderScript(next: ScriptWord[], nextEvents: TimedEvent[]) {
     return element;
   });
   paragraphs.at(-1)?.append(...markersBefore(index));
-  column.replaceChildren(...paragraphs);
+  column.replaceChildren(...paragraphs, end);
   spans = [...column.querySelectorAll("span")];
   current = null;
+  cue = null;
   scroll = null;
   highlight(null);
 }
@@ -130,12 +143,24 @@ function highlight(next: number | null) {
   spans.forEach((span, index) => (span.className = wordLook(index, next)));
 }
 
-/** Holds the current Word's line level with the Reading Line's chevron. */
-function follow(target: HTMLSpanElement) {
-  const next = scrollTo(scroll, target.offsetTop, followed.jumps);
+function showCue(next: Cue | null) {
+  const previous = cue && spans[cue.word];
+  previous?.classList.remove("approaching", "long-gap");
+  cue = next;
+  const span = next && spans[next.word];
+  if (!next || !span) return;
+  span.classList.add("approaching");
+  span.classList.toggle("long-gap", next.countdown !== null);
+  span.style.setProperty("--fill", String(next.fill));
+  span.dataset.countdown = String(next.countdown ?? "");
+}
+
+/** Holds the current Word's line level with the Reading Line's chevron, less any free scrolling. */
+function follow(target: HTMLElement) {
+  const next = scrollTo(scroll, target.offsetTop, free?.offset ?? 0, followed.jumps);
   if (next === scroll) return;
   scroll = next;
-  const offset = options.readingLine * innerHeight - (target.offsetTop + target.offsetHeight / 2);
+  const offset = options.readingLine * innerHeight - (target.offsetTop + target.offsetHeight / 2) - next.free;
   column.style.transition = next.animate ? SCROLL_EASE : "none";
   column.style.transform = `translateY(${offset}px)`;
 }
@@ -171,11 +196,16 @@ function renderBar(scriptTime: number) {
 }
 
 function frame() {
-  const scriptTime = scriptTimeAt(followed, performance.now());
+  const at = performance.now();
+  const scriptTime = scriptTimeAt(followed, at);
   renderBar(scriptTime);
-  const next = currentWord(words, followed.state, scriptTime);
+  const over = isOver(followed, at);
+  const next = over ? words.length : currentWord(words, followed.state, scriptTime);
   if (next !== current) highlight(next);
-  const target = spans[current ?? 0];
+  showCue(approachCue(words, followed, scriptTime, cueSettings));
+  end.classList.toggle("over", over);
+  free = heldFreeScroll(free, followed);
+  const target = over ? end : spans[current ?? 0];
   if (target) follow(target);
   requestAnimationFrame(frame);
 }
@@ -189,6 +219,13 @@ function navigate(event: KeyboardEvent) {
   else if (command && command !== "armHome" && "seek" in command) void seek(command.seek).catch(console.error);
   else if (command && command !== "armHome") void setSpeed(command.speed).catch(console.error);
   return command !== null;
+}
+
+/** Scrolling never moves the clock: it only looks ahead or back while the clock stands still. */
+function scrollFreelyBy(delta: number) {
+  const target = spans[current ?? 0];
+  if (!target) return;
+  free = scrollFreely(free, followed, delta, { min: -target.offsetTop, max: column.offsetHeight - target.offsetTop });
 }
 
 document.addEventListener("keydown", (event) => {
@@ -235,6 +272,8 @@ function perform(action: DisplayAction) {
   applyOptions();
 }
 
+document.addEventListener("wheel", (event) => scrollFreelyBy(event.deltaY), { passive: true });
+
 new ResizeObserver(() => (scroll = null)).observe(column);
 
 window.addEventListener("focus", () => (focused = true));
@@ -268,4 +307,5 @@ void onStreamEvent((event) => {
   paused.hidden = followed.state !== "paused";
 });
 applyOptions();
+onApproachCue((settings) => (cueSettings = settings));
 requestAnimationFrame(frame);

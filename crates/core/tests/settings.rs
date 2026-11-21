@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use tempfile::TempDir;
 use ttp_core::capture::InputChoice;
-use ttp_core::settings::Settings;
+use ttp_core::settings::{ApproachCue, Settings};
 
 fn settings_in(dir: &TempDir) -> Settings {
     Settings::load(dir.path().join("settings.json"))
@@ -143,4 +143,37 @@ fn the_server_port_and_bind_address_come_from_this_machines_settings() {
 
     assert_eq!(server.port, 5000);
     assert_eq!(server.address, IpAddr::from(Ipv4Addr::UNSPECIFIED));
+}
+
+#[test]
+fn the_approach_cue_defaults_to_on_with_a_long_gap_of_one_and_a_half_seconds() {
+    let dir = TempDir::new().unwrap();
+
+    assert_eq!(
+        settings_in(&dir).approach_cue(),
+        ApproachCue {
+            enabled: true,
+            long_gap: 1500
+        }
+    );
+}
+
+#[test]
+fn the_approach_cue_switch_and_long_gap_threshold_are_remembered_on_this_machine() {
+    let dir = TempDir::new().unwrap();
+    let cue = ApproachCue {
+        enabled: false,
+        long_gap: 2500,
+    };
+
+    settings_in(&dir).set_approach_cue(cue).unwrap();
+
+    assert_eq!(settings_in(&dir).approach_cue(), cue);
+    let saved: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(dir.path().join("settings.json")).unwrap())
+            .unwrap();
+    assert_eq!(
+        saved["approachCue"],
+        serde_json::json!({"enabled": false, "longGap": 2500})
+    );
 }

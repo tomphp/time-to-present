@@ -8,6 +8,7 @@ use crate::capture::InputChoice;
 
 const RECENT_LIMIT: usize = 10;
 const DEFAULT_PORT: u16 = 4747;
+const DEFAULT_LONG_GAP: u32 = 1500;
 
 #[derive(Debug, thiserror::Error)]
 pub enum SettingsError {
@@ -25,6 +26,8 @@ struct Values {
     port: u16,
     #[serde(rename = "bindAddress")]
     bind_address: IpAddr,
+    #[serde(rename = "approachCue")]
+    approach_cue: ApproachCue,
     #[serde(flatten)]
     other: Map<String, Value>,
 }
@@ -36,6 +39,7 @@ impl Default for Values {
             input: InputChoice::default(),
             port: DEFAULT_PORT,
             bind_address: Ipv4Addr::LOCALHOST.into(),
+            approach_cue: ApproachCue::default(),
             other: Map::new(),
         }
     }
@@ -46,6 +50,23 @@ impl Default for Values {
 pub struct ServerSettings {
     pub address: IpAddr,
     pub port: u16,
+}
+
+/// Whether the Teleprompter shows the Approach Cue, and the Gap in milliseconds from which it counts down.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct ApproachCue {
+    pub enabled: bool,
+    pub long_gap: u32,
+}
+
+impl Default for ApproachCue {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            long_gap: DEFAULT_LONG_GAP,
+        }
+    }
 }
 
 /// Per-machine settings, kept in one JSON file outside any Presentation.
@@ -104,6 +125,15 @@ impl Settings {
             address: self.values.bind_address,
             port: self.values.port,
         }
+    }
+
+    pub fn approach_cue(&self) -> ApproachCue {
+        self.values.approach_cue
+    }
+
+    pub fn set_approach_cue(&mut self, cue: ApproachCue) -> Result<(), SettingsError> {
+        self.values.approach_cue = cue;
+        self.save()
     }
 
     fn save(&self) -> Result<(), SettingsError> {

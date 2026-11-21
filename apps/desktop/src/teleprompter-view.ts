@@ -60,18 +60,51 @@ export function wordLook(index: number, current: number | null): WordLook {
   return index === current ? "current" : "spoken";
 }
 
-/** The top of the line the column holds on the Reading Line, and whether moving to it eases or jumps. */
+const ENDING_DELAY = 1000;
+
+/** A second after the clock ends, when the last Word dims and the END marker moves onto the Reading Line. */
+export const isOver = ({ state, anchor }: Followed, at: number) => state === "ended" && at - anchor.at >= ENDING_DELAY;
+
+/**
+ * The top of the line the column holds on the Reading Line, how far the presenter has scrolled past it,
+ * and whether moving there eases or jumps.
+ */
 export interface Scroll {
   top: number;
+  free: number;
   jumps: number;
   animate: boolean;
 }
 
-/** Eases a line at a time as the Words cross onto a new line, and jumps after a seek or reset. */
-export function scrollTo(previous: Scroll | null, top: number, jumps: number): Scroll {
-  if (previous?.top === top && previous.jumps === jumps) return previous;
-  return { top, jumps, animate: previous?.jumps === jumps };
+/** Eases a line at a time and on snapping back, follows free scrolling at once, and jumps after a seek or reset. */
+export function scrollTo(previous: Scroll | null, top: number, free: number, jumps: number): Scroll {
+  if (previous?.top === top && previous.free === free && previous.jumps === jumps) return previous;
+  const scrolling = previous !== null && free !== 0 && previous.free !== free;
+  return { top, free, jumps, animate: previous?.jumps === jumps && !scrolling };
 }
+
+/** How far the presenter has scrolled from the Reading Line while the clock stands still. */
+export interface FreeScroll {
+  offset: number;
+  jumps: number;
+}
+
+const scrollsFreely = (state: ClockState | null) => state === "ready" || state === "paused";
+
+export function scrollFreely(
+  free: FreeScroll | null,
+  followed: Pick<Followed, "state" | "jumps">,
+  delta: number,
+  range: { min: number; max: number },
+): FreeScroll | null {
+  if (!scrollsFreely(followed.state)) return null;
+  const offset = (heldFreeScroll(free, followed)?.offset ?? 0) + delta;
+  return { offset: Math.min(range.max, Math.max(range.min, offset)), jumps: followed.jumps };
+}
+
+/** Free scrolling lasts until play or a seek. */
+export const heldFreeScroll = (free: FreeScroll | null, { state, jumps }: Pick<Followed, "state" | "jumps">) =>
+  free && free.jumps === jumps && scrollsFreely(state) ? free : null;
 
 const PLAY_PAUSE_KEYS = new Set([" ", "PageDown", "ArrowRight"]);
 

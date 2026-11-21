@@ -470,6 +470,8 @@ pub fn run() {
             clock::seek,
             clock::set_speed,
             clock::reset,
+            perform::approach_cue,
+            perform::set_approach_cue,
             perform::open_teleprompter
         ])
         .build(tauri::generate_context!())

@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import type { ApproachCueSettings } from "./approach-cue";
 import type { Clip } from "./audio-schedule";
 import type { RecordingTarget } from "./recording-target";
 import type {
@@ -110,6 +111,13 @@ export const seek = (scriptTime: number) => invoke<void>("seek", { scriptTime })
 export const setSpeed = (speed: number) => invoke<void>("set_speed", { speed });
 export const reset = () => invoke<void>("reset");
 export const openTeleprompter = () => invoke<void>("open_teleprompter");
+
+export const setApproachCue = (cue: ApproachCueSettings) => invoke<void>("set_approach_cue", { cue });
+
+export function onApproachCue(render: (cue: ApproachCueSettings) => void) {
+  void listen<ApproachCueSettings>("approach-cue", (event) => render(event.payload));
+  void invoke<ApproachCueSettings>("approach_cue").then(render);
+}
 
 export const onStreamEvent = (render: (event: StreamEvent) => void) =>
   connectStream({ listen: (onEvent) => listen<StreamEvent>("session-event", (event) => onEvent(event.payload)), snapshot }, render);

@@ -3,14 +3,18 @@ import { eventsUpTo, rehearsal } from "./recorded-rehearsal";
 import {
   currentWord,
   followClock,
+  heldFreeScroll,
+  isOver,
   isPerformShortcut,
   keyCommand,
   scriptTimeAt,
+  scrollFreely,
   scrollTo,
   UNFOLLOWED,
   wordLook,
   type Scroll,
 } from "./teleprompter-view";
+import type { StreamEvent } from "./session";
 import { scriptWord } from "./test-words";
 
 const followedAt = (at: number) =>
@@ -95,16 +99,16 @@ describe("scrolling", () => {
     for (let at = 0; at <= 6_500; at += 50) {
       const followed = followedAt(at);
       const current = currentWord(words, followed.state, scriptTimeAt(followed, at));
-      const next = scrollTo(scroll, lineOf[current ?? 0], followed.jumps);
+      const next = scrollTo(scroll, lineOf[current ?? 0], 0, followed.jumps);
       if (next !== scroll) moves.push({ at, ...next });
       scroll = next;
     }
 
     expect(moves).toEqual([
-      { at: 0, top: 0, jumps: 1, animate: false },
-      { at: 3_500, top: 2, jumps: 1, animate: true },
-      { at: 4_000, top: 3, jumps: 2, animate: false },
-      { at: 6_200, top: 0, jumps: 3, animate: false },
+      { at: 0, top: 0, free: 0, jumps: 1, animate: false },
+      { at: 3_500, top: 2, free: 0, jumps: 1, animate: true },
+      { at: 4_000, top: 3, free: 0, jumps: 2, animate: false },
+      { at: 6_200, top: 0, free: 0, jumps: 3, animate: false },
     ]);
   });
 
@@ -113,7 +117,73 @@ describe("scrolling", () => {
     const closed = followClock(playing, { type: "closed", reason: "closed" }, 3_600);
     const reopened = followClock(closed, rehearsal.stream[0].event, 3_700);
 
-    expect(scrollTo({ top: 2, jumps: playing.jumps, animate: true }, 0, reopened.jumps).animate).toBe(false);
+    expect(scrollTo({ top: 2, free: 0, jumps: playing.jumps, animate: true }, 0, 0, reopened.jumps).animate).toBe(false);
+  });
+});
+
+describe("free scrolling", () => {
+  const range = { min: -100, max: 500 };
+
+  it("follows the presenter's scrolling at once in ready and paused, within the Script", () => {
+    const paused = followedAt(2_500);
+    const once = scrollFreely(null, paused, 120, range);
+    const twice = scrollFreely(once, paused, 1_000, range);
+
+    expect(once).toEqual({ offset: 120, jumps: paused.jumps });
+    expect(twice?.offset).toBe(500);
+    const ready = followClock(UNFOLLOWED, rehearsal.stream[0].event, 0);
+    expect(scrollFreely(null, ready, -300, range)?.offset).toBe(-100);
+    expect(scrollFreely(null, paused, -300, range)?.offset).toBe(-100);
+
+    const top = scrollTo(null, 2, 0, paused.jumps);
+    expect(scrollTo(top, 2, 120, paused.jumps).animate).toBe(false);
+  });
+
+  it("does nothing while playing or once ended", () => {
+    expect(scrollFreely(null, followedAt(1_000), 120, range)).toBeNull();
+    expect(scrollFreely(null, followedAt(5_500), 120, range)).toBeNull();
+  });
+
+  it("snaps back with an ease on play, and stays snapped when paused again", () => {
+    const free = scrollFreely(null, followedAt(2_500), 120, range);
+    const playing = followedAt(3_000);
+
+    expect(heldFreeScroll(free, followedAt(2_900))).toBe(free);
+    expect(heldFreeScroll(free, playing)).toBeNull();
+    const freely = scrollTo(null, 2, 120, playing.jumps);
+    expect(scrollTo(freely, 2, 0, playing.jumps).animate).toBe(true);
+  });
+
+  it("snaps back on a seek", () => {
+    const paused = followedAt(2_500);
+    const free = scrollFreely(null, paused, 120, range);
+    const snapshot = rehearsal.stream[0].event as Extract<StreamEvent, { type: "snapshot" }>;
+    const sought = followClock(paused, { ...snapshot, clock: { state: "paused", speed: 1, scriptTime: 4_750 } }, 2_600);
+
+    expect(sought.state).toBe("paused");
+    expect(heldFreeScroll(free, sought)).toBeNull();
+  });
+
+  it("never moves the clock", () => {
+    const paused = followedAt(2_500);
+    scrollFreely(null, paused, 120, range);
+
+    expect(scriptTimeAt(paused, 2_900)).toBe(2_000);
+  });
+});
+
+describe("the end of a Performance", () => {
+  it("is over a second after the clock ends, and never before", () => {
+    const ended = followedAt(5_100);
+
+    expect(isOver(ended, 5_100)).toBe(false);
+    expect(isOver(ended, 6_099)).toBe(false);
+    expect(isOver(ended, 6_100)).toBe(true);
+    expect(isOver(followedAt(4_000), 9_000)).toBe(false);
+  });
+
+  it("dims the last Word once over", () => {
+    expect(wordLook(words.length - 1, words.length)).toBe("spoken");
   });
 });
 
