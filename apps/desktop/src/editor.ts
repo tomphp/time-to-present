@@ -6,6 +6,10 @@ import type { SessionState } from "./session";
 import { mountTextPane } from "./text-pane";
 
 const title = document.querySelector<HTMLInputElement>("#title")!;
+let savedTitle = "";
+let current: SessionState | null = null;
+let selected: string | null = null;
+
 const pane = mountTextPane(
   document.querySelector<HTMLElement>("#script")!,
   { edit, undo, redo },
@@ -42,15 +46,11 @@ title.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (!event.metaKey || event.key !== "'" || !current) return;
+  if (!(event.metaKey || event.ctrlKey) || event.key !== "'" || !current) return;
   event.preventDefault();
   const next = nextMoved(current.namedEvents, current.movedEvents, selected);
   if (next) select(next);
 });
-
-let savedTitle = "";
-let current: SessionState | null = null;
-let selected: string | null = null;
 
 /** Selecting a Named Event opens it in the event editor and clears its Moved badge. */
 function select(id: string | null) {

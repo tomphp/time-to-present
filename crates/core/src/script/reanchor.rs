@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::{Anchor, Script, transform};
+use super::{Anchor, Script, Word, transform};
 use crate::time::Ms;
 
 /// Where the events on a deleted Word land.
@@ -36,12 +36,8 @@ impl Script {
         let landings = self.landings(deleted);
         let old_starts = self.starts();
         transform::delete(&mut self.words, |word| deleted.contains(&word.id));
-        let gaps: HashMap<&str, Ms> = self.words.iter().map(|w| (w.id.as_str(), w.gap)).collect();
-        let durations: HashMap<&str, Ms> = self
-            .words
-            .iter()
-            .map(|w| (w.id.as_str(), w.duration))
-            .collect();
+        let survivors: HashMap<&str, &Word> =
+            self.words.iter().map(|w| (w.id.as_str(), w)).collect();
         let mut moved = Vec::new();
         for event in &mut self.named_events {
             let Anchor::Word(id) = &event.anchor else {
@@ -53,12 +49,13 @@ impl Script {
             let time = old_starts[id] + event.offset;
             (event.anchor, event.offset) = match landing {
                 Landing::Before(next) => {
-                    let offset = (time - old_starts[next]).max(-gaps[next.as_str()]);
+                    let offset = (time - old_starts[next]).max(-survivors[next.as_str()].gap);
                     (Anchor::Word(next.clone()), offset)
                 }
-                Landing::EndOf(previous) => {
-                    (Anchor::Word(previous.clone()), durations[previous.as_str()])
-                }
+                Landing::EndOf(previous) => (
+                    Anchor::Word(previous.clone()),
+                    survivors[previous.as_str()].duration,
+                ),
                 Landing::ScriptStart => (Anchor::ScriptStart, 0),
             };
             moved.push(event.id.clone());

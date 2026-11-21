@@ -96,26 +96,26 @@ impl Session {
         if self.presentation.script == before {
             return Ok(());
         }
-        let badged = reanchored
+        let newly_moved = reanchored
             .into_iter()
             .filter(|id| self.moved.insert(id.clone()))
             .collect();
-        self.history.record(before, badged);
+        self.history.record(before, newly_moved);
         self.changed();
         Ok(())
     }
 
     /// Undoes the last step, and with it the Moved badges that step set.
     pub fn undo(&mut self) {
-        if let Some(badged) = self.history.undo(&mut self.presentation.script) {
-            self.moved.retain(|id| !badged.contains(id));
+        if let Some(undone) = self.history.undo(&mut self.presentation.script) {
+            self.moved.retain(|id| !undone.contains(id));
             self.changed();
         }
     }
 
     pub fn redo(&mut self) {
-        if let Some(badged) = self.history.redo(&mut self.presentation.script) {
-            self.moved.extend(badged.iter().cloned());
+        if let Some(redone) = self.history.redo(&mut self.presentation.script) {
+            self.moved.extend(redone.iter().cloned());
             self.changed();
         }
     }

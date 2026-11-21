@@ -1,7 +1,7 @@
 use crate::script::Script;
 
 /// The linear undo/redo stack: a snapshot of the Script before each step, without limit,
-/// with the Named Events the step newly badged as Moved.
+/// with the Named Events the step newly gave a Moved badge.
 #[derive(Debug, Default)]
 pub struct History {
     undo: Vec<Step>,
@@ -11,24 +11,24 @@ pub struct History {
 #[derive(Debug)]
 struct Step {
     script: Script,
-    badged: Vec<String>,
+    moved: Vec<String>,
 }
 
 impl History {
-    pub fn record(&mut self, before: Script, badged: Vec<String>) {
+    pub fn record(&mut self, before: Script, moved: Vec<String>) {
         self.undo.push(Step {
             script: before,
-            badged,
+            moved,
         });
         self.redo.clear();
     }
 
-    /// Steps back, returning the events the undone step badged.
+    /// Steps back, returning the events the undone step gave a Moved badge.
     pub fn undo(&mut self, current: &mut Script) -> Option<&[String]> {
         Self::step(&mut self.undo, &mut self.redo, current)
     }
 
-    /// Steps forward, returning the events the redone step badged.
+    /// Steps forward, returning the events the redone step gave a Moved badge.
     pub fn redo(&mut self, current: &mut Script) -> Option<&[String]> {
         Self::step(&mut self.redo, &mut self.undo, current)
     }
@@ -38,11 +38,11 @@ impl History {
         to: &'a mut Vec<Step>,
         current: &mut Script,
     ) -> Option<&'a [String]> {
-        let Step { script, badged } = from.pop()?;
+        let Step { script, moved } = from.pop()?;
         to.push(Step {
             script: std::mem::replace(current, script),
-            badged,
+            moved,
         });
-        to.last().map(|step| step.badged.as_slice())
+        to.last().map(|step| step.moved.as_slice())
     }
 }

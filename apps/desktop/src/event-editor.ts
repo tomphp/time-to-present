@@ -63,5 +63,5 @@ export function mountEventEditor(form: HTMLFormElement, commands: EventEditorCom
 
   form.querySelector("[data-cancel]")!.addEventListener("click", close);
 
-  return { open, close, isOpenOn: (id: string) => draft?.kind === "existing" && draft.event.id === id };
+  return { open, close };
 }

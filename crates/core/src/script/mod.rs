@@ -105,14 +105,10 @@ impl Script {
     }
 
     pub fn timed_events(&self) -> Vec<TimedEvent> {
-        let starts: Vec<(&Word, Ms)> = self.word_starts().collect();
-        self.named_events
-            .iter()
-            .filter_map(|event| {
-                Some(TimedEvent {
-                    time: event_time(event, &starts)?,
-                    event: event.clone(),
-                })
+        self.event_times()
+            .map(|(event, time)| TimedEvent {
+                event: event.clone(),
+                time,
             })
             .collect()
     }
@@ -122,13 +118,15 @@ impl Script {
             .word_starts()
             .last()
             .map_or(0, |(word, start)| start + word.duration);
-        let last_event = self
-            .timed_events()
-            .iter()
-            .map(|timed| timed.time)
-            .max()
-            .unwrap_or(0);
+        let last_event = self.event_times().map(|(_, time)| time).max().unwrap_or(0);
         last_word_end.max(last_event)
+    }
+
+    fn event_times(&self) -> impl Iterator<Item = (&NamedEvent, Ms)> {
+        let starts: Vec<(&Word, Ms)> = self.word_starts().collect();
+        self.named_events
+            .iter()
+            .filter_map(move |event| Some((event, event_time(event, &starts)?)))
     }
 
     fn word_starts(&self) -> impl Iterator<Item = (&Word, Ms)> {

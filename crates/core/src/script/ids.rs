@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use super::Script;
 
-/// Mints Word and Named Event ids that no Word or Named Event has had: random, so an id deleted in an earlier
+/// Mints ids that no Word or Named Event has had: random, so an id deleted in an earlier
 /// session can't come back, and checked against every id seen in this one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ids {

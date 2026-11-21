@@ -1,4 +1,4 @@
-import { collapsed, isSlot, lastId, resolveCaret, type CaretTarget, type Slot } from "./caret";
+import { collapsed, isSlot, lastId, resolveCaret, type CaretTarget, type Range, type Slot } from "./caret";
 import { currentCaret, placeCaret, selectedRange } from "./dom-caret";
 import { eventAnchorAt, type EventAt } from "./named-events";
 import { renderScript } from "./pane-render";
@@ -72,14 +72,23 @@ export function mountTextPane(root: HTMLElement, commands: Commands, events: Eve
     queue = queue.then(work, work).finally(() => queued--);
   }
 
+  /**
+   * Reads the selection as a keystroke arrives. While earlier keystrokes are still queued the
+   * DOM has not caught up, so the range is where the last of them left the caret.
+   */
+  function selectionAtKeystroke(): () => Range | null {
+    const domRange = selectedRange(root);
+    const domIsStale = queued > 0;
+    return () => (domIsStale && lastCaret ? collapsed(resolveCaret(lastCaret, words)) : domRange);
+  }
+
   root.addEventListener("beforeinput", (event) => {
     event.preventDefault();
     const input = inputFrom(event);
     if (!input) return;
-    const domRange = selectedRange(root);
-    const domIsStale = queued > 0;
+    const selection = selectionAtKeystroke();
     enqueue(async () => {
-      const range = domIsStale && lastCaret ? collapsed(resolveCaret(lastCaret, words)) : domRange;
+      const range = selection();
       if (!range) return;
       const outcome = applyInput(words, range, input);
       lastCaret = outcome?.caret ?? range.start;
@@ -100,10 +109,9 @@ export function mountTextPane(root: HTMLElement, commands: Commands, events: Eve
     }
     if (key === "e") {
       event.preventDefault();
-      const domCaret = selectedRange(root)?.start ?? null;
-      const domIsStale = queued > 0;
+      const selection = selectionAtKeystroke();
       enqueue(async () => {
-        const caret = (domIsStale && lastCaret ? resolveCaret(lastCaret, words) : domCaret) ?? { slotAfter: lastId(words) };
+        const caret = selection()?.start ?? { slotAfter: lastId(words) };
         lastCaret = caret;
         events.insertEventAt(eventAnchorAt(words, caret));
       });
