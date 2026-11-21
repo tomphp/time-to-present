@@ -1,7 +1,7 @@
 import { latestOnly } from "./latest-only";
 import type { Edit, ScriptWord, SessionState, TimedEvent, Waveform } from "./session";
 import { timelineBlock } from "./timeline-block";
-import { dragEdit, flagDragEdit, hitTest, secondTicks, timelineBlocks, xOf, type Block, type Hit } from "./timeline-geometry";
+import { dragEdit, flagDragEdit, hitTest, secondTicks, timelineBlocks, xOf, type Block } from "./timeline-geometry";
 
 export interface TimelineCommands {
   drag(drag: string, edit: Edit): Promise<SessionState>;
