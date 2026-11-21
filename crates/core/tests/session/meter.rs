@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use ttp_core::capture::{InputChoice, Meter};
+use ttp_core::session::InsertionPoint;
 use ttp_core::session::Session;
 
 use crate::support::Harness;
@@ -59,7 +60,7 @@ fn while_recording_the_meter_carries_the_elapsed_recording_time() {
     let mut session = harness.create("Talk");
     let meters = meters(&session);
     session.open_recording_bar(InputChoice::default());
-    session.start_recording().unwrap();
+    session.start_recording(InsertionPoint::default()).unwrap();
 
     harness.audio.play(&[0.1; METER_FRAMES * 3]);
 

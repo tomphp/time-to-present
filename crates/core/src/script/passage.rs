@@ -4,7 +4,7 @@ use super::{Anchor, EditError, Ids, NamedEvent, Script, Word};
 use crate::time::Ms;
 
 /// The Gap a passage gets when it is added after the last Word.
-const APPEND_GAP: Ms = 500;
+pub(super) const APPEND_GAP: Ms = 500;
 
 /// Words taken out of the Script, in Script order, with the Named Events anchored to them.
 #[derive(Debug, Clone, PartialEq)]

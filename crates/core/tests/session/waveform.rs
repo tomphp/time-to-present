@@ -1,4 +1,5 @@
 use ttp_core::capture::InputChoice;
+use ttp_core::session::InsertionPoint;
 use ttp_core::waveform::{self, BUCKET};
 
 use crate::support::Harness;
@@ -11,7 +12,7 @@ fn a_recordings_waveform_is_its_peak_level_in_every_bucket_of_recording_time() {
     let harness = Harness::new();
     let mut session = harness.create("Talk");
     session.open_recording_bar(InputChoice::default());
-    session.start_recording().unwrap();
+    session.start_recording(InsertionPoint::default()).unwrap();
     harness.audio.play(&[0.5; BUCKET_SAMPLES]);
     harness.audio.play(&[0.1, -0.25].repeat(BUCKET_SAMPLES / 2));
     harness.audio.play(&[-1.0; 10]);

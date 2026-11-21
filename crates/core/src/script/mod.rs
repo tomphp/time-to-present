@@ -11,6 +11,7 @@ mod passage;
 mod plain_text;
 mod reanchor;
 mod timing;
+mod transcribed;
 mod transform;
 
 pub use edit::{Edit, EditError};

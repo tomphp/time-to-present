@@ -9,13 +9,17 @@ use crate::platform::Platform;
 use crate::script::{Edit, EditError, Ids, Script, TimedEvent, TimedWord};
 use crate::store::{self, Presentation, StoreError};
 use crate::time::Ms;
+use crate::transcription::Transcriptions;
 
 mod clipboard;
 mod history;
 mod recording;
+mod transcription;
 
 use clipboard::Clipboard;
 use history::History;
+use transcription::Pending;
+pub use transcription::{InsertionPoint, PassageError, PendingPassage, PendingStatus};
 
 type Listener = Box<dyn Fn(&SessionState) + Send>;
 
@@ -33,6 +37,9 @@ pub struct Session {
     platform: Platform,
     bar: Option<RecordingBar>,
     taps: Arc<Taps>,
+    recording_at: Option<InsertionPoint>,
+    transcriptions: Transcriptions,
+    pending: Vec<Pending>,
     unsaved_since: Option<Ms>,
 }
 
@@ -46,6 +53,7 @@ pub struct SessionState {
     pub moved_events: Vec<String>,
     pub script_end: Ms,
     pub recording_bar: Option<RecordingBarState>,
+    pub pending_passages: Vec<PendingPassage>,
 }
 
 impl Session {
@@ -64,10 +72,13 @@ impl Session {
             clipboard: Clipboard::default(),
             moved: HashSet::new(),
             listeners: Vec::new(),
-            platform,
             bar: None,
             taps: Arc::default(),
+            recording_at: None,
+            transcriptions: Transcriptions::new(platform.transcriber.clone()),
+            pending: Vec::new(),
             unsaved_since: None,
+            platform,
         })
     }
 
@@ -215,9 +226,11 @@ impl Session {
         }
     }
 
-    /// Saves the Presentation once the autosave delay has passed since the last change.
-    /// Call it regularly; it does nothing until then.
+    /// Runs the Session's background work: lands what the Transcriptions have reported, and
+    /// saves the Presentation once the autosave delay has passed since the last change.
+    /// Call it regularly.
     pub fn tick(&mut self) -> Result<(), StoreError> {
+        self.land_transcriptions();
         match self.unsaved_since {
             Some(since) if self.platform.time.now() - since >= AUTOSAVE_DELAY => self.flush(),
             _ => Ok(()),
@@ -243,6 +256,7 @@ impl Session {
             moved_events: self.moved_events(),
             script_end: self.presentation.script.end(),
             recording_bar: self.bar.as_ref().map(RecordingBar::state),
+            pending_passages: self.pending.iter().map(Pending::state).collect(),
         }
     }
 

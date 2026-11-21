@@ -1,4 +1,5 @@
 use ttp_core::capture::{Access, CaptureError, InputChoice};
+use ttp_core::session::InsertionPoint;
 
 use crate::support::{BUILT_IN, Harness, INTERFACE};
 
@@ -94,7 +95,7 @@ fn the_input_cannot_change_while_recording() {
     let harness = Harness::new();
     let mut session = harness.create("Talk");
     session.open_recording_bar(InputChoice::default());
-    session.start_recording().unwrap();
+    session.start_recording(InsertionPoint::default()).unwrap();
 
     let error = session
         .select_input(choose(Some(INTERFACE), 1))
@@ -117,7 +118,9 @@ fn when_access_is_denied_the_bar_says_so_and_nothing_can_be_recorded() {
     assert_eq!(bar.input, None);
     assert_eq!(harness.audio.opened(), None);
     assert!(matches!(
-        session.start_recording().unwrap_err(),
+        session
+            .start_recording(InsertionPoint::default())
+            .unwrap_err(),
         CaptureError::NoAccess
     ));
 }
@@ -139,7 +142,7 @@ fn the_bar_cannot_close_while_recording() {
     let harness = Harness::new();
     let mut session = harness.create("Talk");
     session.open_recording_bar(InputChoice::default());
-    session.start_recording().unwrap();
+    session.start_recording(InsertionPoint::default()).unwrap();
 
     assert!(matches!(
         session.close_recording_bar().unwrap_err(),

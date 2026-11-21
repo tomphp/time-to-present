@@ -25,3 +25,4 @@ mod split;
 mod support;
 mod timing;
 mod waveform;
+mod transcription;

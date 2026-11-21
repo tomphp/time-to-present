@@ -3,6 +3,7 @@ use std::path::Path;
 
 use ttp_core::capture::InputChoice;
 use ttp_core::script::Edit;
+use ttp_core::session::InsertionPoint;
 
 use crate::support::Harness;
 
@@ -153,7 +154,7 @@ fn stopping_a_recording_saves_a_pending_edit_with_it_and_leaves_undo_intact() {
         device: None,
         channel: 1,
     });
-    session.start_recording().unwrap();
+    session.start_recording(InsertionPoint::default()).unwrap();
     harness.audio.play(&[0.1; 480]);
 
     session.stop_recording().unwrap();

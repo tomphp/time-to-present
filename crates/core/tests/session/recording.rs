@@ -3,6 +3,7 @@ use std::fs;
 use hound::{SampleFormat, WavReader, WavSpec};
 use serde_json::{Value, json};
 use ttp_core::capture::{CaptureError, InputChoice};
+use ttp_core::session::InsertionPoint;
 use ttp_core::store::Recording;
 
 use crate::support::{Harness, INTERFACE};
@@ -23,7 +24,7 @@ fn a_stopped_recording_is_a_24_bit_mono_wav_of_the_chosen_channel_at_the_native_
     let mut session = harness.create("Talk");
     session.open_recording_bar(interface_channel(2));
 
-    session.start_recording().unwrap();
+    session.start_recording(InsertionPoint::default()).unwrap();
     harness.audio.play(&STEREO);
     let recording = session.stop_recording().unwrap();
 
@@ -47,7 +48,7 @@ fn stop_fixes_up_the_wav_header_to_the_length_recorded() {
     let mut session = harness.create("Talk");
     session.open_recording_bar(interface_channel(1));
 
-    session.start_recording().unwrap();
+    session.start_recording(InsertionPoint::default()).unwrap();
     harness.audio.play(&STEREO);
     harness.audio.play(&STEREO);
     let recording = session.stop_recording().unwrap();
@@ -67,7 +68,7 @@ fn a_stopped_recording_is_registered_in_presentation_json_and_the_script_is_unto
     let before = session.state().words;
     session.open_recording_bar(InputChoice::default());
 
-    session.start_recording().unwrap();
+    session.start_recording(InsertionPoint::default()).unwrap();
     harness.audio.play(&[0.1; 480]);
     let recording = session.stop_recording().unwrap();
 
@@ -100,7 +101,7 @@ fn a_cancelled_recording_leaves_no_trace() {
     let saved = fs::read_to_string(folder.join("presentation.json")).unwrap();
     session.open_recording_bar(InputChoice::default());
 
-    session.start_recording().unwrap();
+    session.start_recording(InsertionPoint::default()).unwrap();
     harness.audio.play(&[0.1; 480]);
     session.cancel_recording().unwrap();
 
@@ -120,7 +121,7 @@ fn a_new_recording_never_takes_the_name_of_a_wav_already_in_recordings() {
     fs::write(folder.join("recordings/r1.wav"), "interrupted recording").unwrap();
     session.open_recording_bar(InputChoice::default());
 
-    session.start_recording().unwrap();
+    session.start_recording(InsertionPoint::default()).unwrap();
     let recording = session.stop_recording().unwrap();
 
     assert_eq!(recording.id, "r2");
@@ -137,12 +138,12 @@ fn app_nap_is_held_off_only_while_recording() {
     session.open_recording_bar(InputChoice::default());
     assert!(!harness.app_nap.held());
 
-    session.start_recording().unwrap();
+    session.start_recording(InsertionPoint::default()).unwrap();
     assert!(harness.app_nap.held());
     session.stop_recording().unwrap();
     assert!(!harness.app_nap.held());
 
-    session.start_recording().unwrap();
+    session.start_recording(InsertionPoint::default()).unwrap();
     session.cancel_recording().unwrap();
     assert!(!harness.app_nap.held());
 }
@@ -153,7 +154,9 @@ fn recording_needs_the_bar_open_and_stopping_needs_a_recording() {
     let mut session = harness.create("Talk");
 
     assert!(matches!(
-        session.start_recording().unwrap_err(),
+        session
+            .start_recording(InsertionPoint::default())
+            .unwrap_err(),
         CaptureError::BarClosed
     ));
     session.open_recording_bar(InputChoice::default());

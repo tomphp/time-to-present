@@ -8,6 +8,9 @@ use ttp_core::platform::{AppNap, Platform};
 use ttp_core::session::{Session, SessionState};
 use ttp_core::store::StoreError;
 use ttp_core::time::{Ms, TimeSource};
+use ttp_core::transcription::{
+    HeardWord, Report, Transcriber, TranscriptionEvent, TranscriptionJob,
+};
 
 pub const BUILT_IN: &str = "MacBook Pro Microphone";
 pub const INTERFACE: &str = "MOTU M2";
@@ -128,11 +131,104 @@ impl AppNap for FakeAppNap {
     }
 }
 
+/// A Transcriber the test drives: it holds each job's reporter so the test can send progress,
+/// Words, silence or a failure whenever it likes.
+#[derive(Default)]
+pub struct FakeTranscriber {
+    jobs: Mutex<Vec<TranscriptionJob>>,
+    running: Arc<Mutex<Option<(usize, Report)>>>,
+}
+
+struct AbandonOnDrop {
+    job: usize,
+    running: Arc<Mutex<Option<(usize, Report)>>>,
+}
+
+impl Drop for AbandonOnDrop {
+    fn drop(&mut self) {
+        let mut running = self.running.lock().unwrap();
+        if running.as_ref().is_some_and(|(job, _)| *job == self.job) {
+            *running = None;
+        }
+    }
+}
+
+impl FakeTranscriber {
+    pub fn jobs(&self) -> Vec<TranscriptionJob> {
+        self.jobs.lock().unwrap().clone()
+    }
+
+    pub fn audio_files(&self) -> Vec<String> {
+        self.jobs()
+            .iter()
+            .map(|job| {
+                job.audio
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .collect()
+    }
+
+    pub fn is_running(&self) -> bool {
+        self.running.lock().unwrap().is_some()
+    }
+
+    pub fn report(&self, event: TranscriptionEvent) {
+        let mut running = self.running.lock().unwrap();
+        let (_, report) = running.as_mut().expect("no Transcription is running");
+        report(event);
+    }
+
+    pub fn progress(&self, percent: u8) {
+        self.report(TranscriptionEvent::Progress(percent));
+    }
+
+    pub fn hear(&self, words: &[(&str, Ms, Ms)]) {
+        self.report(TranscriptionEvent::Heard(heard(words)));
+    }
+
+    pub fn fail(&self, reason: &str) {
+        self.report(TranscriptionEvent::Failed(reason.into()));
+    }
+
+    pub fn no_speech(&self) {
+        self.report(TranscriptionEvent::NoSpeech);
+    }
+}
+
+pub fn heard(words: &[(&str, Ms, Ms)]) -> Vec<HeardWord> {
+    words
+        .iter()
+        .map(|&(text, start, end)| HeardWord {
+            text: text.into(),
+            start,
+            end,
+            confidence: 0.9,
+        })
+        .collect()
+}
+
+impl Transcriber for FakeTranscriber {
+    fn transcribe(&self, job: TranscriptionJob, report: Report) -> Box<dyn Send> {
+        let mut jobs = self.jobs.lock().unwrap();
+        jobs.push(job);
+        let job = jobs.len();
+        *self.running.lock().unwrap() = Some((job, report));
+        Box::new(AbandonOnDrop {
+            job,
+            running: self.running.clone(),
+        })
+    }
+}
+
 pub struct Harness {
     temp: TempDir,
     time: Arc<ManualTime>,
     pub audio: Arc<FakeAudio>,
     pub app_nap: Arc<FakeAppNap>,
+    pub transcriber: Arc<FakeTranscriber>,
 }
 
 impl Harness {
@@ -142,6 +238,7 @@ impl Harness {
             time: Arc::new(ManualTime(AtomicI64::new(0))),
             audio: Arc::new(FakeAudio::new()),
             app_nap: Arc::default(),
+            transcriber: Arc::default(),
         }
     }
 
@@ -172,6 +269,7 @@ impl Harness {
             time: self.time.clone(),
             audio: self.audio.clone(),
             app_nap: self.app_nap.clone(),
+            transcriber: self.transcriber.clone(),
         }
     }
 

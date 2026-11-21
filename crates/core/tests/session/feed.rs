@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use ttp_core::capture::InputChoice;
+use ttp_core::session::InsertionPoint;
 use ttp_core::session::Session;
 
 use crate::support::{Harness, INTERFACE};
@@ -23,7 +24,7 @@ fn while_recording_the_chosen_channel_is_fed_at_16_khz() {
     let mut session = harness.create("Talk");
     let fed = feed(&session);
     session.open_recording_bar(InputChoice::default());
-    session.start_recording().unwrap();
+    session.start_recording(InsertionPoint::default()).unwrap();
 
     let audio = ramp(12);
     harness.audio.play(&audio[..5]);
@@ -40,7 +41,7 @@ fn nothing_is_fed_unless_recording() {
     session.open_recording_bar(InputChoice::default());
 
     harness.audio.play(&ramp(480));
-    session.start_recording().unwrap();
+    session.start_recording(InsertionPoint::default()).unwrap();
     session.stop_recording().unwrap();
     harness.audio.play(&ramp(480));
 
@@ -55,7 +56,7 @@ fn fed_from_interface(chunks: &[&[f32]]) -> Vec<f32> {
         device: Some(INTERFACE.into()),
         channel: 1,
     });
-    session.start_recording().unwrap();
+    session.start_recording(InsertionPoint::default()).unwrap();
     for chunk in chunks {
         harness.audio.play(chunk);
     }
