@@ -5,21 +5,30 @@ use serde::Serialize;
 
 use crate::capture::{RecordingBar, RecordingBarState, Taps};
 use crate::platform::Platform;
-use crate::script::TimedWord;
+use crate::script::{Edit, EditError, Ids, TimedWord};
 use crate::store::{self, Presentation, StoreError};
 use crate::time::Ms;
 
+mod history;
 mod recording;
 
+use history::History;
+
 type Listener = Box<dyn Fn(&SessionState) + Send>;
+
+/// How long after the last edit the Presentation is saved.
+pub const AUTOSAVE_DELAY: Ms = 500;
 
 pub struct Session {
     folder: PathBuf,
     presentation: Presentation,
+    ids: Ids,
+    history: History,
     listeners: Vec<Listener>,
     platform: Platform,
     bar: Option<RecordingBar>,
     taps: Arc<Taps>,
+    unsaved_since: Option<Ms>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -42,11 +51,14 @@ impl Session {
         let presentation = store::open(folder)?;
         Ok(Self {
             folder: folder.to_path_buf(),
+            ids: Ids::after(&presentation.script),
             presentation,
+            history: History::default(),
             listeners: Vec::new(),
             platform,
             bar: None,
             taps: Arc::default(),
+            unsaved_since: None,
         })
     }
 
@@ -65,6 +77,40 @@ impl Session {
         self.save(renamed)
     }
 
+    pub fn edit(&mut self, edit: Edit) -> Result<(), EditError> {
+        let before = self.presentation.script.clone();
+        self.presentation.script.apply(edit, &mut self.ids)?;
+        self.history.record(before);
+        self.changed();
+        Ok(())
+    }
+
+    pub fn undo(&mut self) {
+        if self.history.undo(&mut self.presentation.script) {
+            self.changed();
+        }
+    }
+
+    pub fn redo(&mut self) {
+        if self.history.redo(&mut self.presentation.script) {
+            self.changed();
+        }
+    }
+
+    /// Saves the Presentation once the autosave delay has passed since the last change.
+    /// Call it regularly; it does nothing until then.
+    pub fn tick(&mut self) -> Result<(), StoreError> {
+        let Some(since) = self.unsaved_since else {
+            return Ok(());
+        };
+        if self.platform.time.now() - since < AUTOSAVE_DELAY {
+            return Ok(());
+        }
+        store::save(&self.folder, &self.presentation)?;
+        self.unsaved_since = None;
+        Ok(())
+    }
+
     pub fn state(&self) -> SessionState {
         SessionState {
             folder: self.folder.clone(),
@@ -75,11 +121,18 @@ impl Session {
         }
     }
 
+    /// Saves at once, as renaming and registering a Recording do; any pending autosave goes with it.
     fn save(&mut self, presentation: Presentation) -> Result<(), StoreError> {
         store::save(&self.folder, &presentation)?;
         self.presentation = presentation;
+        self.unsaved_since = None;
         self.publish();
         Ok(())
+    }
+
+    fn changed(&mut self) {
+        self.unsaved_since = Some(self.platform.time.now());
+        self.publish();
     }
 
     fn publish(&self) {

@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use tempfile::TempDir;
@@ -12,11 +12,11 @@ use ttp_core::time::{Ms, TimeSource};
 pub const BUILT_IN: &str = "MacBook Pro Microphone";
 pub const INTERFACE: &str = "MOTU M2";
 
-pub struct ManualTime(Ms);
+pub struct ManualTime(AtomicI64);
 
 impl TimeSource for ManualTime {
     fn now(&self) -> Ms {
-        self.0
+        self.0.load(Ordering::SeqCst)
     }
 }
 
@@ -130,6 +130,7 @@ impl AppNap for FakeAppNap {
 
 pub struct Harness {
     temp: TempDir,
+    time: Arc<ManualTime>,
     pub audio: Arc<FakeAudio>,
     pub app_nap: Arc<FakeAppNap>,
 }
@@ -138,9 +139,14 @@ impl Harness {
     pub fn new() -> Self {
         Self {
             temp: TempDir::new().unwrap(),
+            time: Arc::new(ManualTime(AtomicI64::new(0))),
             audio: Arc::new(FakeAudio::new()),
             app_nap: Arc::default(),
         }
+    }
+
+    pub fn advance(&self, ms: Ms) {
+        self.time.0.fetch_add(ms, Ordering::SeqCst);
     }
 
     pub fn parent(&self) -> &Path {
@@ -163,7 +169,7 @@ impl Harness {
 
     pub fn platform(&self) -> Platform {
         Platform {
-            time: Arc::new(ManualTime(0)),
+            time: self.time.clone(),
             audio: self.audio.clone(),
             app_nap: self.app_nap.clone(),
         }

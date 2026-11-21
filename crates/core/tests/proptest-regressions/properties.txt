@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc c4362715f2c3ddefdb4a0952c7331affe846c4ca876245e4d0839fef58ad4073 # shrinks to fixture = "hello-world", steps = [Correct(879, "dkp!"), Undo]
+cc 796ddbb7460b94a52666fa6f2175c003a0cd2882cdc06e6e327177a2a108b2ee # shrinks to fixture = "spoken-only", steps = [Insert(None, "a"), Undo]
