@@ -36,4 +36,25 @@ describe("the timeline playhead", () => {
 
     expect(playhead().hidden).toBe(true);
   });
+
+  it("scrolls to follow the playhead as it runs out of view", () => {
+    const timeline = mount();
+    Object.defineProperty(root, "clientWidth", { value: 300 });
+    timeline.playhead(1_000);
+
+    timeline.playhead(1_600);
+
+    expect(root.scrollLeft).toBe(220);
+  });
+
+  it("leaves a timeline scrolled away by hand where it is", () => {
+    const timeline = mount();
+    Object.defineProperty(root, "clientWidth", { value: 300 });
+    timeline.playhead(1_000);
+    root.scrollLeft = 1_000;
+
+    timeline.playhead(1_100);
+
+    expect(root.scrollLeft).toBe(1_000);
+  });
 });

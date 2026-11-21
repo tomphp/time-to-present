@@ -24,14 +24,15 @@ fn two_second_recording(harness: &Harness) -> std::path::PathBuf {
 fn levels(wav: Vec<u8>) -> (WavSpec, Vec<f32>) {
     let mut reader = WavReader::new(Cursor::new(wav)).unwrap();
     let spec = reader.spec();
+    let full_scale = (1i32 << (spec.bits_per_sample - 1)) as f32;
     let samples = reader
-        .samples::<i16>()
-        .map(|sample| f32::from(sample.unwrap()) / 32_768.0);
+        .samples::<i32>()
+        .map(|sample| sample.unwrap() as f32 / full_scale);
     (spec, samples.collect())
 }
 
 #[test]
-fn a_clip_is_the_recordings_audio_between_two_recording_times_as_16_bit_wav() {
+fn a_clip_is_the_recordings_audio_between_two_recording_times_in_its_own_format() {
     let harness = Harness::new();
     let file = two_second_recording(&harness);
 
@@ -42,7 +43,7 @@ fn a_clip_is_the_recordings_audio_between_two_recording_times_as_16_bit_wav() {
         WavSpec {
             channels: 1,
             sample_rate: 48_000,
-            bits_per_sample: 16,
+            bits_per_sample: 24,
             sample_format: SampleFormat::Int,
         }
     );

@@ -43,6 +43,7 @@ export function mountTimeline(
   let selected = new Set<string>();
   let movedEvents = new Set<string>();
   let locked = false;
+  let headX: number | null = null;
   let drag: { minPx?: number; startX: number; edit: (dx: number) => Edit; send: (edit: Edit) => void } | null = null;
 
   function render(next: ScriptWord[], nextEvents: TimedEvent[], moved: string[], end: number, ids: string[], lock: boolean) {
@@ -138,13 +139,18 @@ export function mountTimeline(
     return typeof known === "object" ? known : null;
   }
 
-  /** Stands the playhead at the clock's Script Time, scrolling it back into view when it runs out of sight. */
+  const inView = (x: number) => x >= root.scrollLeft && x <= root.scrollLeft + root.clientWidth;
+
+  /**
+   * Stands the playhead at the clock's Script Time, scrolling after it when it runs out of view,
+   * but not when the timeline was scrolled away from it by hand.
+   */
   function playhead(time: number | null) {
     head.hidden = time === null;
-    if (time === null) return;
-    const x = xOf(time);
-    head.style.left = `${x}px`;
-    if (x < root.scrollLeft || x > root.scrollLeft + root.clientWidth) root.scrollLeft = x - root.clientWidth / 3;
+    const x = time === null ? null : xOf(time);
+    if (x !== null && headX !== null && inView(headX) && !inView(x)) root.scrollLeft = x - root.clientWidth / 3;
+    if (x !== null) head.style.left = `${x}px`;
+    headX = x;
   }
 
   const hitAt = (event: PointerEvent) =>

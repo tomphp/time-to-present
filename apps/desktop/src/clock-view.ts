@@ -1,4 +1,4 @@
-import type { ClockState, InsertionPoint, ScriptWord, StreamEvent } from "./session";
+import type { ClockState, StreamEvent } from "./session";
 
 /** What the editor's clock control shows: folded from the Session's event stream. */
 export interface ClockPanel {
@@ -46,8 +46,3 @@ export function clockPosition({ state, scriptTime, speed }: ClockPanel, elapsed:
   return state === "playing" ? Math.min(scriptEnd, scriptTime + elapsed * speed) : scriptTime;
 }
 
-/** Where a Preview starts: the first selected Word, or the Word after the caret, or the start once the caret is at the end. */
-export function previewFrom(words: ScriptWord[], selected: string[], caret: InsertionPoint): number {
-  const id = selected[0] ?? caret.before;
-  return words.find((word) => word.id === id)?.start ?? 0;
-}

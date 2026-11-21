@@ -1,9 +1,10 @@
 import { listenClip } from "./audio-schedule";
-import { clockPosition, DISCONNECTED, previewFrom, type ClockPanel } from "./clock-view";
+import { clockPosition, DISCONNECTED, type ClockPanel } from "./clock-view";
 import { preview, recordingClip } from "./commands";
 import { find } from "./dom";
 import { editorAudio } from "./editor-audio";
 import { act, showError } from "./report-error";
+import { previewFrom } from "./selection";
 import type { InsertionPoint, SessionState, StreamEvent } from "./session";
 
 export interface PreviewTargets {
@@ -43,6 +44,7 @@ export function mountPreview(targets: PreviewTargets) {
   }
 
   document.addEventListener("pointerdown", audio.wake);
+  document.addEventListener("keydown", audio.wake);
 
   previewButton.addEventListener(
     "click",

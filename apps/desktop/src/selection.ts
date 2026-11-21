@@ -1,5 +1,5 @@
 import { chars, indexAfter, indexBefore, indexOf, isSlot, sameCaret, type Range } from "./caret";
-import type { ScriptWord } from "./session";
+import type { InsertionPoint, ScriptWord } from "./session";
 
 /** The one selection the text pane and the timeline share: a run of Words from anchor to focus. */
 export interface WordSelection {
@@ -67,4 +67,10 @@ export function rangeOfSelection(words: ScriptWord[], selection: WordSelection |
   if (ids.length === 0) return null;
   const last = words[indexOf(words, ids[ids.length - 1])];
   return { start: { word: ids[0], offset: 0 }, end: { word: last.id, offset: chars(last.text).length } };
+}
+
+/** Where a Preview starts: the first selected Word, or the Word after the caret, or the start once the caret is at the end. */
+export function previewFrom(words: ScriptWord[], selected: string[], caret: InsertionPoint): number {
+  const id = selected[0] ?? caret.before;
+  return words.find((word) => word.id === id)?.start ?? 0;
 }

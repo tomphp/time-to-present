@@ -84,7 +84,7 @@ Scaling the durations and Gaps of a selection of Words by a percentage.
 Playing one Word's own Recording with a second of audio either side. It never touches the Performance clock.
 
 **Preview**:
-Playing the Script from the cursor on the shared clock, with highlight and sound. It is the only way the editor itself plays audio.
+Playing the Script from the cursor on the shared clock, with highlight and sound. Only a clock the editor started sounds, so a Performance started elsewhere plays silently in the editor.
 
 **Moved badge**:
 A temporary mark on a Named Event that the app re-anchored automatically (after a delete, merge, cut or Re-record), so you can review it. It lasts for the session and is never saved.

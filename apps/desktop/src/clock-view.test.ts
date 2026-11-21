@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { clockAction, clockPosition, DISCONNECTED, foldClock, previewFrom, type ClockPanel } from "./clock-view";
+import { clockAction, clockPosition, DISCONNECTED, foldClock, type ClockPanel } from "./clock-view";
 import type { Snapshot, StreamEvent } from "./session";
-import { scriptWord } from "./test-words";
 
 const snapshot = (overrides: Partial<Snapshot> = {}): StreamEvent => ({
   type: "snapshot",
@@ -72,21 +71,5 @@ describe("clockPosition", () => {
 
   it("stays where the clock was reported when it isn't playing", () => {
     expect(clockPosition({ ...playing, state: "paused" }, 200, 5_000)).toBe(1_000);
-  });
-});
-
-describe("previewFrom", () => {
-  const words = [scriptWord("w1", "Hello,", { start: 400 }), scriptWord("w2", "world.", { start: 850 })];
-
-  it("starts at the first selected Word", () => {
-    expect(previewFrom(words, ["w2"], { before: "w1" })).toBe(850);
-  });
-
-  it("starts at the Word after the caret when nothing is selected", () => {
-    expect(previewFrom(words, [], { before: "w2" })).toBe(850);
-  });
-
-  it("starts at the start when the caret is at the end of the Script", () => {
-    expect(previewFrom(words, [], { before: null })).toBe(0);
   });
 });

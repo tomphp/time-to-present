@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   clickSelection,
+  previewFrom,
   rangeOfSelection,
   sameSelection,
   selectedIds,
@@ -133,5 +134,21 @@ describe("sharedSelection", () => {
     selection.update(words);
 
     expect(selection.ids()).toEqual([]);
+  });
+});
+
+describe("previewFrom", () => {
+  const words = [scriptWord("w1", "Hello,", { start: 400 }), scriptWord("w2", "world.", { start: 850 })];
+
+  it("starts at the first selected Word", () => {
+    expect(previewFrom(words, ["w2"], { before: "w1" })).toBe(850);
+  });
+
+  it("starts at the Word after the caret when nothing is selected", () => {
+    expect(previewFrom(words, [], { before: "w2" })).toBe(850);
+  });
+
+  it("starts at the start when the caret is at the end of the Script", () => {
+    expect(previewFrom(words, [], { before: null })).toBe(0);
   });
 });
