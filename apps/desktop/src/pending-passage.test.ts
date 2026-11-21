@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { currentCaret } from "./dom-caret";
-import { describePending, insertionPointAt, samePending } from "./pending-passage";
+import { describePending, insertionPointAt, onPendingAction, samePending, samePlacement } from "./pending-passage";
 import { renderScript } from "./pane-render";
 import type { PendingPassage } from "./session";
 import { scriptWord } from "./test-words";
@@ -59,6 +59,21 @@ describe("samePending", () => {
   });
 });
 
+describe("samePlacement", () => {
+  const queued = passage("r1", "w3", null, { kind: "queued" });
+
+  it("holds while the same passages sit at the same anchors, whatever their progress", () => {
+    expect(samePlacement([queued], [{ ...queued, status: { kind: "transcribing", percent: 10 } }])).toBe(true);
+  });
+
+  it("breaks when one is added, dropped, reordered or re-anchored", () => {
+    const other = passage("r2", "w3", null, { kind: "queued" });
+    expect(samePlacement([queued], [queued, other])).toBe(false);
+    expect(samePlacement([queued, other], [other, queued])).toBe(false);
+    expect(samePlacement([queued], [{ ...queued, after: "w2" }])).toBe(false);
+  });
+});
+
 describe("rendering Pending Passages", () => {
   let root: HTMLElement;
 
@@ -104,6 +119,20 @@ describe("rendering Pending Passages", () => {
     renderScript(root, [], null, undefined, [passage("r1", null, null, { kind: "queued" })]);
 
     expect(sequence()).toEqual(["r1"]);
+  });
+
+  it("runs Retry and Discard from the buttons on a failed one", () => {
+    renderScript(root, words, null, undefined, [passage("r2", "w3", null, { kind: "failed", reason: "No speech found" })]);
+    const actions = { retry: vi.fn(), discard: vi.fn() };
+    onPendingAction(root, actions);
+
+    root.querySelector<HTMLElement>("[data-retry]")!.click();
+    root.querySelector<HTMLElement>("[data-discard]")!.click();
+    root.querySelector<HTMLElement>('[data-word-id="w1"]')!.click();
+
+    expect(actions.retry).toHaveBeenCalledWith("r2");
+    expect(actions.discard).toHaveBeenCalledWith("r2");
+    expect(actions.retry).toHaveBeenCalledTimes(1);
   });
 
   it("reads a caret inside it as the start of the Word after it", () => {

@@ -7,5 +7,5 @@ pub mod settings;
 pub mod store;
 mod template;
 pub mod time;
-pub mod waveform;
 pub mod transcription;
+pub mod waveform;

@@ -11,8 +11,8 @@ use ttp_core::session::{Session, SessionState};
 use ttp_core::settings::Settings;
 use ttp_core::store::StoreError;
 use ttp_core::time::MonotonicTime;
-use ttp_core::waveform::{self, Waveform};
 use ttp_core::transcription::SidecarTranscriber;
+use ttp_core::waveform::{self, Waveform};
 
 mod audio;
 mod macos;

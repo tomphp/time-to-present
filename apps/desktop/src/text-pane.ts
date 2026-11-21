@@ -3,7 +3,7 @@ import { caretAfterPaste, passageText, pasteAt, selectedWords } from "./clipboar
 import { currentCaret, placeCaret, placeRange, selectedRange } from "./dom-caret";
 import { chipDropEdit, eventAnchorAt, sameChips, type ChipDrop, type EventAt } from "./named-events";
 import { renderScript } from "./pane-render";
-import { insertionPointAt, samePending } from "./pending-passage";
+import { insertionPointAt, refreshPending, samePending, samePlacement } from "./pending-passage";
 import { sameLayout } from "./script-view";
 import type { Edit, ScriptWord, SessionState } from "./session";
 import { applyInput, type Input } from "./text-editing";
@@ -79,14 +79,17 @@ export function mountTextPane(
     return insertionPointAt(words, caret && resolveCaret(caret, words));
   }
 
-  /** Renders new Session state, leaving the DOM and its selection alone when only timing changed. */
+  /**
+   * Renders new Session state, leaving the DOM and its selection alone when only timing or
+   * Transcription progress changed.
+   */
   function render(next: PaneScript) {
-    const timingOnly =
-      !pending && sameLayout(words, next.words) && sameChips(script, next) && samePending(script.pendingPassages, next.pendingPassages);
-    if (timingOnly) {
-      script = next;
-      words = next.words;
-    } else repaint(next);
+    const sameShape =
+      !pending && sameLayout(words, next.words) && sameChips(script, next) && samePlacement(script.pendingPassages, next.pendingPassages);
+    if (!sameShape) return repaint(next);
+    if (!samePending(script.pendingPassages, next.pendingPassages)) refreshPending(root, next.pendingPassages);
+    script = next;
+    words = next.words;
   }
 
   function selectEvent(id: string | null) {

@@ -1,4 +1,3 @@
-use super::passage::APPEND_GAP;
 use super::{Ids, Script, Word};
 use crate::time::Ms;
 use crate::transcription::HeardWord;
@@ -6,33 +5,33 @@ use crate::transcription::HeardWord;
 const LONGEST_LEAD_IN: Ms = 2_000;
 
 impl Script {
-    /// Splices a Transcription's Words in before the Word at `index`, or at the end. Inner Gaps
-    /// come from the audio; the Seam Gap is the next Word's, 500 ms when appending, or the
-    /// measured Lead-in (capped at 2 s) into an empty Script.
-    pub fn insert_passage(
-        &mut self,
+    /// The Words a Transcription becomes going in before the Word at `index`, or at the end.
+    /// Inner Gaps come from the audio; the Seam Gap is the next Word's, 500 ms when appending,
+    /// or the measured Lead-in (capped at 2 s) into an empty Script.
+    pub fn transcribed(
+        &self,
         index: usize,
         recording_id: &str,
         heard: &[HeardWord],
         ids: &mut Ids,
-    ) {
+    ) -> Vec<Word> {
         let Some(first) = heard.first() else {
-            return;
+            return Vec::new();
         };
-        let seam_gap = match self.words.get(index) {
-            Some(next) => next.gap,
-            None if self.words.is_empty() => first.start.min(LONGEST_LEAD_IN),
-            None => APPEND_GAP,
-        };
+        let seam_gap = self.seam_gap(index, first.start.min(LONGEST_LEAD_IN));
         let mut previous_end = first.start - seam_gap;
-        let words: Vec<Word> = heard
+        heard
             .iter()
             .map(|word| {
                 let gap = (word.start - previous_end).max(0);
                 previous_end = word.end;
                 spoken(ids.next_word(), recording_id, word, gap)
             })
-            .collect();
+            .collect()
+    }
+
+    /// Splices transcribed Words in before the Word at `index`, or at the end.
+    pub fn insert_transcribed(&mut self, index: usize, words: Vec<Word>) {
         self.words.splice(index..index, words);
     }
 }

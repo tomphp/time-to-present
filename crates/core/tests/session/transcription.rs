@@ -1,7 +1,11 @@
+use std::sync::{Arc, Mutex};
+
 use ttp_core::capture::InputChoice;
 use ttp_core::models::Progress;
 use ttp_core::script::Edit;
-use ttp_core::session::{InsertionPoint, PassageError, PendingPassage, PendingStatus, Session};
+use ttp_core::session::{
+    InsertionPoint, PendingPassage, PendingPassageError, PendingStatus, Session,
+};
 use ttp_core::transcription::TranscriptionEvent;
 
 use crate::support::{Harness, starts};
@@ -128,6 +132,54 @@ fn heard_words_replace_the_pending_passage_with_inner_gaps_from_the_audio_as_one
 
     session.undo();
     assert_eq!(session.state().words, original.words);
+}
+
+#[test]
+fn a_passage_inserted_before_the_first_word_takes_its_gap_and_that_word_keeps_its_own() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    record(&harness, &mut session, before("w1"));
+
+    harness.transcriber.hear(&[("Oh,", 1000, 1200)]);
+    session.tick().unwrap();
+
+    assert_eq!(
+        starts(&session.state()),
+        [
+            ("Oh,", 400),
+            ("Hello,", 1000),
+            ("world.", 1450),
+            ("Typed", 2000)
+        ]
+    );
+}
+
+#[test]
+fn landing_publishes_the_new_words_with_the_other_passage_at_the_same_spot_already_re_anchored() {
+    let harness = Harness::new();
+    let mut session = harness.create("Talk");
+    record(&harness, &mut session, InsertionPoint::default());
+    record(&harness, &mut session, InsertionPoint::default());
+    harness.transcriber.fail("hiccup");
+    session.tick().unwrap();
+    let published = Arc::new(Mutex::new(Vec::new()));
+    let sink = published.clone();
+    session.subscribe(move |state| sink.lock().unwrap().push(state.clone()));
+
+    harness.transcriber.hear(&[("second", 100, 400)]);
+    session.tick().unwrap();
+
+    let published = published.lock().unwrap();
+    let landed: Vec<_> = published
+        .iter()
+        .filter(|state| !state.words.is_empty())
+        .collect();
+    assert!(!landed.is_empty());
+    for state in landed {
+        let second = state.words[0].word.id.clone();
+        assert_eq!(state.pending_passages.len(), 1);
+        assert_eq!(state.pending_passages[0].before, Some(second));
+    }
 }
 
 #[test]
@@ -288,11 +340,11 @@ fn retry_needs_a_failed_passage_and_discard_a_pending_one() {
 
     assert!(matches!(
         session.retry_transcription("r2").unwrap_err(),
-        PassageError::NotFailed(_)
+        PendingPassageError::NotFailed(_)
     ));
     assert!(matches!(
         session.discard_transcription("r9").unwrap_err(),
-        PassageError::UnknownPassage(_)
+        PendingPassageError::UnknownPassage(_)
     ));
 }
 

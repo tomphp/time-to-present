@@ -14,6 +14,13 @@ pub struct InsertionPoint {
     pub before: Option<String>,
 }
 
+impl InsertionPoint {
+    fn index_in(&self, script: &Script) -> usize {
+        let before = self.before.as_deref().and_then(|id| script.position(id));
+        before.unwrap_or(script.words.len())
+    }
+}
+
 /// A stopped Recording whose Transcription has not landed, anchored to the Words either side.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,7 +41,7 @@ pub enum PendingStatus {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum PassageError {
+pub enum PendingPassageError {
     #[error("no Pending Passage for Recording {0}")]
     UnknownPassage(String),
     #[error("the Transcription of Recording {0} has not failed")]
@@ -104,35 +111,37 @@ impl Session {
     /// keep their order: earlier ones now land before these Words, later ones after them.
     fn land(&mut self, index: usize, heard: &[HeardWord]) {
         let landed = self.pending.remove(index);
-        let (first, last) = self
-            .change(|script, ids| {
-                let at = landed.index_in(script);
-                script.insert_passage(at, &landed.recording.id, heard, ids);
-                let words = &script.words;
-                let ends = (words[at].id.clone(), words[at + heard.len() - 1].id.clone());
-                Ok((ends, Vec::new()))
-            })
-            .expect("splicing heard Words cannot fail");
+        let script = &self.presentation.script;
+        let at = landed.index_in(script);
+        let words = script.transcribed(at, &landed.recording.id, heard, &mut self.ids);
+        let Some((first, last)) = words.first().zip(words.last()) else {
+            return;
+        };
         for (position, pending) in self.pending.iter_mut().enumerate() {
             if !pending.shares_spot_with(&landed) {
                 continue;
             }
             if position < index {
-                pending.passage.before = Some(first.clone());
+                pending.passage.before = Some(first.id.clone());
             } else {
-                pending.passage.after = Some(last.clone());
+                pending.passage.after = Some(last.id.clone());
             }
         }
+        self.change(|script, _| {
+            script.insert_transcribed(at, words);
+            Ok(((), Vec::new()))
+        })
+        .expect("splicing transcribed Words cannot fail");
     }
 
     /// Queues a failed Transcription again.
-    pub fn retry_transcription(&mut self, recording_id: &str) -> Result<(), PassageError> {
+    pub fn retry_transcription(&mut self, recording_id: &str) -> Result<(), PendingPassageError> {
         let index = self.pending_index(recording_id)?;
         if !matches!(
             self.pending[index].passage.status,
             PendingStatus::Failed { .. }
         ) {
-            return Err(PassageError::NotFailed(recording_id.to_string()));
+            return Err(PendingPassageError::NotFailed(recording_id.to_string()));
         }
         let job = self
             .transcriptions
@@ -144,7 +153,7 @@ impl Session {
     }
 
     /// Drops a Pending Passage, with its Transcription, its registration and its WAV.
-    pub fn discard_transcription(&mut self, recording_id: &str) -> Result<(), PassageError> {
+    pub fn discard_transcription(&mut self, recording_id: &str) -> Result<(), PendingPassageError> {
         let index = self.pending_index(recording_id)?;
         let mut unregistered = self.presentation.clone();
         unregistered
@@ -163,11 +172,7 @@ impl Session {
 
     pub(super) fn queue_transcription(&mut self, recording: &Recording, at: InsertionPoint) {
         let script = &self.presentation.script;
-        let index = at
-            .before
-            .as_deref()
-            .and_then(|id| script.position(id))
-            .unwrap_or(script.words.len());
+        let index = at.index_in(script);
         let after = index.checked_sub(1).map(|i| script.words[i].id.clone());
         let before = script.words.get(index).map(|word| word.id.clone());
         let job = self.transcriptions.enqueue(self.job_for(recording));
@@ -190,11 +195,11 @@ impl Session {
         }
     }
 
-    fn pending_index(&self, recording_id: &str) -> Result<usize, PassageError> {
+    fn pending_index(&self, recording_id: &str) -> Result<usize, PendingPassageError> {
         self.pending
             .iter()
             .position(|pending| pending.recording.id == recording_id)
-            .ok_or_else(|| PassageError::UnknownPassage(recording_id.to_string()))
+            .ok_or_else(|| PendingPassageError::UnknownPassage(recording_id.to_string()))
     }
 }
 

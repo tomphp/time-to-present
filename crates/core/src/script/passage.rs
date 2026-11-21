@@ -4,7 +4,7 @@ use super::{Anchor, EditError, Ids, NamedEvent, Script, Word};
 use crate::time::Ms;
 
 /// The Gap a passage gets when it is added after the last Word.
-pub(super) const APPEND_GAP: Ms = 500;
+const APPEND_GAP: Ms = 500;
 
 /// Words taken out of the Script, in Script order, with the Named Events anchored to them.
 #[derive(Debug, Clone, PartialEq)]
@@ -54,6 +54,16 @@ impl Passage {
 }
 
 impl Script {
+    /// The Gap a passage's first Word gets going in before the Word at `index`: that Word's own,
+    /// 500 ms at the end of a non-empty Script, or `when_empty` into an empty one.
+    pub(super) fn seam_gap(&self, index: usize, when_empty: Ms) -> Ms {
+        match self.words.get(index) {
+            Some(next) => next.gap,
+            None if self.words.is_empty() => when_empty,
+            None => APPEND_GAP,
+        }
+    }
+
     /// Whether a Word or Named Event has this id.
     pub fn has(&self, id: &str) -> bool {
         self.words.iter().any(|word| word.id == id)
@@ -102,11 +112,7 @@ impl Script {
             mut words,
             mut events,
         } = passage;
-        let seam_gap = match self.words.get(index) {
-            Some(next) => next.gap,
-            None if self.words.is_empty() => 0,
-            None => APPEND_GAP,
-        };
+        let seam_gap = self.seam_gap(index, 0);
         if let Some(first) = words.first_mut() {
             first.gap = seam_gap;
             let anchor = Anchor::Word(first.id.clone());

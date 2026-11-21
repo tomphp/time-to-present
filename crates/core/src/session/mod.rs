@@ -19,7 +19,7 @@ mod transcription;
 use clipboard::Clipboard;
 use history::History;
 use transcription::Pending;
-pub use transcription::{InsertionPoint, PassageError, PendingPassage, PendingStatus};
+pub use transcription::{InsertionPoint, PendingPassage, PendingPassageError, PendingStatus};
 
 type Listener = Box<dyn Fn(&SessionState) + Send>;
 

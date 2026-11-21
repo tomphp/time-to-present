@@ -16,6 +16,36 @@ export function samePending(a: PendingPassage[], b: PendingPassage[]): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+/** Whether the same Pending Passages sit at the same anchors, in the same order, whatever their progress. */
+export function samePlacement(a: PendingPassage[], b: PendingPassage[]): boolean {
+  const placement = (passages: PendingPassage[]) => passages.map(({ recordingId, after, before }) => [recordingId, after, before]);
+  return JSON.stringify(placement(a)) === JSON.stringify(placement(b));
+}
+
+/** Brings each placeholder under `root` up to its passage's progress, leaving the rest of the DOM alone. */
+export function refreshPending(root: HTMLElement, pending: PendingPassage[]) {
+  for (const passage of pending) {
+    root.querySelector(`[data-recording-id="${passage.recordingId}"]`)?.replaceWith(pendingElement(passage));
+  }
+}
+
+export interface PendingActions {
+  retry(recordingId: string): void;
+  discard(recordingId: string): void;
+}
+
+/** Runs Retry and Discard from the buttons on the failed placeholders under `root`. */
+export function onPendingAction(root: HTMLElement, actions: PendingActions) {
+  root.addEventListener("click", (event) => {
+    const button = (event.target as Element).closest<HTMLElement>("[data-retry], [data-discard]");
+    const recordingId = button?.closest<HTMLElement>("[data-recording-id]")?.dataset.recordingId;
+    if (!button || !recordingId) return;
+    event.preventDefault();
+    if ("retry" in button.dataset) actions.retry(recordingId);
+    else actions.discard(recordingId);
+  });
+}
+
 export function describePending(status: PendingStatus): string {
   switch (status.kind) {
     case "queued":

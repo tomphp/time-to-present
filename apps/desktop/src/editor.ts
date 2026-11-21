@@ -17,6 +17,7 @@ import {
 import { mountEventEditor } from "./event-editor";
 import { mountInspector } from "./inspector";
 import { eventNames, nextMoved } from "./named-events";
+import { onPendingAction } from "./pending-passage";
 import { mountRecordingBar } from "./recording-bar";
 import { sharedSelection } from "./selection";
 import type { SessionState } from "./session";
@@ -77,13 +78,9 @@ function showError(reason: unknown) {
   error.hidden = false;
 }
 
-script.addEventListener("click", (event) => {
-  const button = (event.target as Element).closest<HTMLElement>("[data-retry], [data-discard]");
-  const recording = button?.closest<HTMLElement>("[data-recording-id]")?.dataset.recordingId;
-  if (!button || !recording) return;
-  event.preventDefault();
-  const command = "retry" in button.dataset ? retryTranscription : discardTranscription;
-  command(recording).catch(showError);
+onPendingAction(script, {
+  retry: (recording) => retryTranscription(recording).catch(showError),
+  discard: (recording) => discardTranscription(recording).catch(showError),
 });
 
 title.addEventListener("change", async () => {
