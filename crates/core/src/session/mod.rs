@@ -9,7 +9,7 @@ use crate::platform::Platform;
 use crate::script::{Edit, EditError, Ids, Script, TimedEvent, TimedWord};
 use crate::store::{self, Presentation, StoreError};
 use crate::time::Ms;
-use crate::transcription::Transcriptions;
+use crate::transcription::TranscriptionQueue;
 
 mod clipboard;
 mod history;
@@ -38,7 +38,7 @@ pub struct Session {
     bar: Option<RecordingBar>,
     taps: Arc<Taps>,
     recording_at: Option<InsertionPoint>,
-    transcriptions: Transcriptions,
+    transcriptions: TranscriptionQueue,
     pending: Vec<Pending>,
     unsaved_since: Option<Ms>,
 }
@@ -75,7 +75,7 @@ impl Session {
             bar: None,
             taps: Arc::default(),
             recording_at: None,
-            transcriptions: Transcriptions::new(platform.transcriber.clone()),
+            transcriptions: TranscriptionQueue::new(platform.transcriber.clone()),
             pending: Vec::new(),
             unsaved_since: None,
             platform,

@@ -245,9 +245,7 @@ impl Script {
     }
 
     pub(super) fn index_of(&self, id: &str) -> Result<usize, EditError> {
-        self.words
-            .iter()
-            .position(|word| word.id == id)
+        self.position(id)
             .ok_or_else(|| EditError::UnknownWord(id.to_string()))
     }
 

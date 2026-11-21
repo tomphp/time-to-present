@@ -36,6 +36,14 @@ pub struct Progress {
     pub total: Option<u64>,
 }
 
+impl Progress {
+    /// The share downloaded, once the total is known.
+    pub fn percent(&self) -> Option<u8> {
+        let total = self.total?;
+        Some((self.downloaded * 100 / total.max(1)).min(100) as u8)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct InstalledModel {
     pub name: String,

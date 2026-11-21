@@ -47,8 +47,9 @@ impl Session {
         let at = self.recording_at.take().unwrap_or_default();
         let mut registered = self.presentation.clone();
         registered.recordings.push(recording.clone());
-        self.queue_transcription(&recording, at);
         self.save(registered)?;
+        self.queue_transcription(&recording, at);
+        self.publish();
         Ok(recording)
     }
 

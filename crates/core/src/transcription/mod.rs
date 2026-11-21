@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::models::Progress;
 use crate::time::Ms;
@@ -8,7 +8,7 @@ use crate::time::Ms;
 mod queue;
 mod sidecar;
 
-pub(crate) use queue::{JobId, Transcriptions};
+pub(crate) use queue::{JobId, TranscriptionQueue};
 pub use sidecar::SidecarTranscriber;
 
 /// One Transcription to run: a Recording's WAV, and the text the speaker was expected to say,
@@ -20,7 +20,7 @@ pub struct TranscriptionJob {
 }
 
 /// A Word the Transcription heard, timed in Recording Time.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HeardWord {
     pub text: String,
     pub start: Ms,
@@ -40,9 +40,12 @@ pub enum TranscriptionEvent {
 
 pub type Report = Box<dyn FnMut(TranscriptionEvent) + Send>;
 
-/// Turns a Recording into timed Words. The sidecar implements it; a forced aligner could too.
+/// A job under way: dropping it abandons the job.
+pub type RunningJob = Box<dyn Send>;
+
+/// Turns a Recording into timed Words.
 pub trait Transcriber: Send + Sync {
     /// Starts the job, reporting its events from any thread until a `Heard`, `NoSpeech` or
-    /// `Failed` event ends it. Dropping the returned handle abandons the job.
-    fn transcribe(&self, job: TranscriptionJob, report: Report) -> Box<dyn Send>;
+    /// `Failed` event ends it.
+    fn transcribe(&self, job: TranscriptionJob, report: Report) -> RunningJob;
 }

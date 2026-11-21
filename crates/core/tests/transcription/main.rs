@@ -103,6 +103,8 @@ fn until_done(receiver: &Receiver<TranscriptionEvent>) -> Vec<TranscriptionEvent
 fn the_model_is_fetched_first_then_the_sidecar_transcribes_the_wav_with_progress_and_words() {
     let setup = setup(&[
         r#"{"type":"ready","protocol":1}"#,
+        "",
+        r#"{"type":"warmth","degrees":3}"#,
         r#"{"type":"progress","percent":50}"#,
         r#"{"type":"words","from":0,"stable":1,"words":[{"text":"Hi","start":100,"end":400,"confidence":0.8}]}"#,
         r#"{"type":"done"}"#,
@@ -158,6 +160,19 @@ fn no_speech_and_errors_from_the_sidecar_end_the_job() {
         *until_done(&receiver).last().unwrap(),
         TranscriptionEvent::Failed("could not read the recording".into())
     );
+}
+
+#[test]
+fn a_sidecar_speaking_another_protocol_version_fails_the_job() {
+    let newer = setup(&[
+        r#"{"type":"ready","protocol":2}"#,
+        r#"{"type":"no_speech"}"#,
+    ]);
+    let (_handle, receiver) = start(&newer.transcriber, Path::new("r1.wav"));
+    assert!(matches!(
+        until_done(&receiver).last().unwrap(),
+        TranscriptionEvent::Failed(reason) if reason.contains("protocol")
+    ));
 }
 
 #[test]

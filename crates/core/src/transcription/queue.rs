@@ -2,23 +2,23 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 
-use super::{Transcriber, TranscriptionEvent, TranscriptionJob};
+use super::{RunningJob, Transcriber, TranscriptionEvent, TranscriptionJob};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct JobId(u64);
 
 /// The Transcription queue: one job runs at a time, in the order they were queued. Events are
 /// reported from other threads and collected by `drain`.
-pub struct Transcriptions {
+pub struct TranscriptionQueue {
     transcriber: Arc<dyn Transcriber>,
     next_id: u64,
     waiting: VecDeque<(JobId, TranscriptionJob)>,
-    running: Option<(JobId, Box<dyn Send>)>,
+    running: Option<(JobId, RunningJob)>,
     sender: Sender<(JobId, TranscriptionEvent)>,
     receiver: Receiver<(JobId, TranscriptionEvent)>,
 }
 
-impl Transcriptions {
+impl TranscriptionQueue {
     pub fn new(transcriber: Arc<dyn Transcriber>) -> Self {
         let (sender, receiver) = channel();
         Self {
@@ -42,11 +42,7 @@ impl Transcriptions {
     /// Drops a job, wherever it is in the queue. Events it still reports are ignored.
     pub fn abandon(&mut self, id: JobId) {
         self.waiting.retain(|(waiting, _)| *waiting != id);
-        if self
-            .running
-            .as_ref()
-            .is_some_and(|(running, _)| *running == id)
-        {
+        if self.is_running(id) {
             self.running = None;
             self.start_next();
         }
@@ -57,11 +53,7 @@ impl Transcriptions {
     pub fn drain(&mut self) -> Vec<(JobId, TranscriptionEvent)> {
         let mut events = Vec::new();
         while let Ok((id, event)) = self.receiver.try_recv() {
-            if !self
-                .running
-                .as_ref()
-                .is_some_and(|(running, _)| *running == id)
-            {
+            if !self.is_running(id) {
                 continue;
             }
             if ends(&event) {
@@ -71,6 +63,12 @@ impl Transcriptions {
             events.push((id, event));
         }
         events
+    }
+
+    fn is_running(&self, id: JobId) -> bool {
+        self.running
+            .as_ref()
+            .is_some_and(|(running, _)| *running == id)
     }
 
     fn start_next(&mut self) {

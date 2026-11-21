@@ -307,3 +307,70 @@ fn closing_the_session_abandons_the_running_transcription() {
 
     assert!(!harness.transcriber.is_running());
 }
+
+#[test]
+fn two_recordings_appended_one_after_the_other_land_in_the_order_they_were_made() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    record(&harness, &mut session, InsertionPoint::default());
+    record(&harness, &mut session, InsertionPoint::default());
+
+    harness.transcriber.hear(&[("one", 100, 400)]);
+    session.tick().unwrap();
+    harness.transcriber.hear(&[("two", 100, 400)]);
+    session.tick().unwrap();
+
+    assert_eq!(
+        starts(&session.state())[3..],
+        [("one", 2_200), ("two", 3_000)]
+    );
+}
+
+#[test]
+fn a_retried_earlier_recording_still_lands_before_a_later_one_at_the_same_spot() {
+    let harness = Harness::new();
+    let mut session = harness.create("Talk");
+    record(&harness, &mut session, InsertionPoint::default());
+    record(&harness, &mut session, InsertionPoint::default());
+    harness.transcriber.fail("hiccup");
+    session.tick().unwrap();
+    harness.transcriber.hear(&[("second", 100, 400)]);
+    session.tick().unwrap();
+
+    session.retry_transcription("r1").unwrap();
+    harness.transcriber.hear(&[("first", 300, 600)]);
+    session.tick().unwrap();
+
+    assert_eq!(starts(&session.state()), [("first", 100), ("second", 500)]);
+}
+
+#[test]
+fn a_transcription_with_no_words_counts_as_no_speech_found() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    record(&harness, &mut session, before("w2"));
+
+    harness.transcriber.hear(&[]);
+    session.tick().unwrap();
+
+    assert_eq!(
+        status(&session),
+        PendingStatus::Failed {
+            reason: "No speech found".into()
+        }
+    );
+}
+
+#[test]
+fn discard_unregisters_the_recording_even_when_its_wav_is_already_gone() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    record(&harness, &mut session, before("w2"));
+    std::fs::remove_file(folder.join("recordings/r2.wav")).unwrap();
+
+    session.discard_transcription("r2").unwrap();
+
+    assert!(session.state().pending_passages.is_empty());
+    let saved = std::fs::read_to_string(folder.join("presentation.json")).unwrap();
+    assert!(!saved.contains("r2"), "{saved}");
+}

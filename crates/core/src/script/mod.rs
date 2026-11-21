@@ -100,6 +100,10 @@ pub struct Script {
 }
 
 impl Script {
+    pub fn position(&self, id: &str) -> Option<usize> {
+        self.words.iter().position(|word| word.id == id)
+    }
+
     pub fn timed_words(&self) -> Vec<TimedWord> {
         self.word_starts()
             .map(|(word, start)| TimedWord {

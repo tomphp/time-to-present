@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 use super::Session;
-use crate::models::Progress;
 use crate::script::Script;
 use crate::store::Recording;
 use crate::transcription::{HeardWord, JobId, TranscriptionEvent, TranscriptionJob};
@@ -46,6 +45,8 @@ pub enum PassageError {
     Store(#[from] crate::store::StoreError),
 }
 
+/// A Pending Passage with its Recording and Transcription job, in the order the Recordings
+/// were made.
 pub(super) struct Pending {
     recording: Recording,
     job: JobId,
@@ -60,13 +61,14 @@ impl Pending {
     /// Where the passage lands now: before its next Word, else after its previous one, else at
     /// the end, so edits around it while it was pending leave it in place.
     fn index_in(&self, script: &Script) -> usize {
-        let position = |id: &Option<String>| {
-            let id = id.as_ref()?;
-            script.words.iter().position(|word| &word.id == id)
-        };
+        let position = |id: &Option<String>| script.position(id.as_deref()?);
         position(&self.passage.before)
             .or_else(|| position(&self.passage.after).map(|i| i + 1))
             .unwrap_or(script.words.len())
+    }
+
+    fn shares_spot_with(&self, other: &Pending) -> bool {
+        self.passage.after == other.passage.after && self.passage.before == other.passage.before
     }
 }
 
@@ -82,16 +84,14 @@ impl Session {
             };
             let status = match event {
                 TranscriptionEvent::Model(progress) => PendingStatus::FetchingModel {
-                    percent: percent_of(progress),
+                    percent: progress.percent(),
                 },
                 TranscriptionEvent::Progress(percent) => PendingStatus::Transcribing { percent },
-                TranscriptionEvent::NoSpeech => PendingStatus::Failed {
-                    reason: NO_SPEECH.into(),
-                },
-                TranscriptionEvent::Failed(reason) => PendingStatus::Failed { reason },
+                TranscriptionEvent::Heard(words) if words.is_empty() => failed(NO_SPEECH),
+                TranscriptionEvent::NoSpeech => failed(NO_SPEECH),
+                TranscriptionEvent::Failed(reason) => failed(&reason),
                 TranscriptionEvent::Heard(words) => {
-                    let pending = self.pending.remove(index);
-                    self.land(&pending, &words);
+                    self.land(index, &words);
                     continue;
                 }
             };
@@ -100,13 +100,29 @@ impl Session {
         self.publish();
     }
 
-    fn land(&mut self, pending: &Pending, heard: &[HeardWord]) {
-        self.change(|script, ids| {
-            let index = pending.index_in(script);
-            script.insert_passage(index, &pending.recording.id, heard, ids);
-            Ok(((), Vec::new()))
-        })
-        .expect("splicing heard Words cannot fail");
+    /// Splices the heard Words in as one undo step. Other passages pending at the same spot
+    /// keep their order: earlier ones now land before these Words, later ones after them.
+    fn land(&mut self, index: usize, heard: &[HeardWord]) {
+        let landed = self.pending.remove(index);
+        let (first, last) = self
+            .change(|script, ids| {
+                let at = landed.index_in(script);
+                script.insert_passage(at, &landed.recording.id, heard, ids);
+                let words = &script.words;
+                let ends = (words[at].id.clone(), words[at + heard.len() - 1].id.clone());
+                Ok((ends, Vec::new()))
+            })
+            .expect("splicing heard Words cannot fail");
+        for (position, pending) in self.pending.iter_mut().enumerate() {
+            if !pending.shares_spot_with(&landed) {
+                continue;
+            }
+            if position < index {
+                pending.passage.before = Some(first.clone());
+            } else {
+                pending.passage.after = Some(last.clone());
+            }
+        }
     }
 
     /// Queues a failed Transcription again.
@@ -127,29 +143,33 @@ impl Session {
         Ok(())
     }
 
-    /// Drops a Pending Passage, with its Transcription, its WAV and its registration.
+    /// Drops a Pending Passage, with its Transcription, its registration and its WAV.
     pub fn discard_transcription(&mut self, recording_id: &str) -> Result<(), PassageError> {
         let index = self.pending_index(recording_id)?;
-        let pending = self.pending.remove(index);
-        self.transcriptions.abandon(pending.job);
-        std::fs::remove_file(self.folder.join(&pending.recording.file))?;
         let mut unregistered = self.presentation.clone();
         unregistered
             .recordings
             .retain(|recording| recording.id != recording_id);
         self.save(unregistered)?;
+        let discarded = self.pending.remove(index);
+        self.transcriptions.abandon(discarded.job);
+        match std::fs::remove_file(self.folder.join(&discarded.recording.file)) {
+            Err(error) if error.kind() != std::io::ErrorKind::NotFound => return Err(error.into()),
+            _ => {}
+        }
+        self.publish();
         Ok(())
     }
 
     pub(super) fn queue_transcription(&mut self, recording: &Recording, at: InsertionPoint) {
-        let words = &self.presentation.script.words;
+        let script = &self.presentation.script;
         let index = at
             .before
-            .as_ref()
-            .and_then(|id| words.iter().position(|word| &word.id == id))
-            .unwrap_or(words.len());
-        let after = index.checked_sub(1).map(|i| words[i].id.clone());
-        let before = words.get(index).map(|word| word.id.clone());
+            .as_deref()
+            .and_then(|id| script.position(id))
+            .unwrap_or(script.words.len());
+        let after = index.checked_sub(1).map(|i| script.words[i].id.clone());
+        let before = script.words.get(index).map(|word| word.id.clone());
         let job = self.transcriptions.enqueue(self.job_for(recording));
         self.pending.push(Pending {
             recording: recording.clone(),
@@ -178,7 +198,8 @@ impl Session {
     }
 }
 
-fn percent_of(progress: Progress) -> Option<u8> {
-    let total = progress.total?;
-    Some((progress.downloaded * 100 / total.max(1)).min(100) as u8)
+fn failed(reason: &str) -> PendingStatus {
+    PendingStatus::Failed {
+        reason: reason.to_string(),
+    }
 }

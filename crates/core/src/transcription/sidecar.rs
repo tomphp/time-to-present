@@ -6,11 +6,11 @@ use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 
-use super::{HeardWord, Report, Transcriber, TranscriptionEvent, TranscriptionJob};
+use super::{HeardWord, Report, RunningJob, Transcriber, TranscriptionEvent, TranscriptionJob};
 use crate::models::{ModelManager, TRANSCRIPTION_MODEL};
-use crate::time::Ms;
 
 const LANGUAGE: &str = "en";
+const PROTOCOL: u32 = 1;
 
 /// Transcribes through the STT sidecar binary (see `docs/stt-sidecar-protocol.md`), fetching
 /// the Transcription model first when it is not installed.
@@ -34,20 +34,22 @@ enum Request<'a> {
 #[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 enum Event {
-    Ready {},
-    Progress { percent: u8 },
-    Words { words: Vec<SidecarWord> },
+    Ready {
+        protocol: u32,
+    },
+    Progress {
+        percent: u8,
+    },
+    Words {
+        words: Vec<HeardWord>,
+    },
     NoSpeech,
-    Error { message: String },
+    Error {
+        message: String,
+    },
     Done,
-}
-
-#[derive(Deserialize)]
-struct SidecarWord {
-    text: String,
-    start: Ms,
-    end: Ms,
-    confidence: f64,
+    #[serde(other)]
+    Unknown,
 }
 
 /// One sidecar run: abandoning it kills the process, if it has started.
@@ -75,7 +77,7 @@ impl SidecarTranscriber {
 }
 
 impl Transcriber for SidecarTranscriber {
-    fn transcribe(&self, job: TranscriptionJob, mut report: Report) -> Box<dyn Send> {
+    fn transcribe(&self, job: TranscriptionJob, mut report: Report) -> RunningJob {
         let run = Arc::new(Run::default());
         let (sidecar, models, worker) = (self.sidecar.clone(), self.models.clone(), run.clone());
         std::thread::spawn(move || {
@@ -109,8 +111,7 @@ fn run_job(
         path: &job.audio,
         prompt: job.prompt.as_deref(),
     };
-    send(stdin, &request)?;
-    let outcome = relay(BufReader::new(stdout), report);
+    let outcome = send(stdin, &request).and_then(|()| relay(BufReader::new(stdout), report));
     run.finish();
     outcome
 }
@@ -148,15 +149,21 @@ fn send(mut stdin: impl Write, request: &Request) -> Result<(), String> {
 fn relay(stdout: impl BufRead, report: &mut Report) -> Result<(), String> {
     for line in stdout.lines() {
         let line = line.map_err(|error| format!("could not read the sidecar: {error}"))?;
+        if line.trim().is_empty() {
+            continue;
+        }
         let event: Event = serde_json::from_str(&line)
             .map_err(|error| format!("unexpected sidecar output: {error}"))?;
         match event {
-            Event::Ready {} | Event::Done => {}
+            Event::Ready { protocol } if protocol != PROTOCOL => {
+                return Err(format!(
+                    "the speech sidecar speaks protocol {protocol}, not {PROTOCOL}"
+                ));
+            }
+            Event::Ready { .. } | Event::Done | Event::Unknown => {}
             Event::Progress { percent } => report(TranscriptionEvent::Progress(percent)),
             Event::Words { words } => {
-                report(TranscriptionEvent::Heard(
-                    words.into_iter().map(heard).collect(),
-                ));
+                report(TranscriptionEvent::Heard(words));
                 return Ok(());
             }
             Event::NoSpeech => {
@@ -167,13 +174,4 @@ fn relay(stdout: impl BufRead, report: &mut Report) -> Result<(), String> {
         }
     }
     Err("the speech sidecar ended without a result".into())
-}
-
-fn heard(word: SidecarWord) -> HeardWord {
-    HeardWord {
-        text: word.text,
-        start: word.start,
-        end: word.end,
-        confidence: word.confidence,
-    }
 }

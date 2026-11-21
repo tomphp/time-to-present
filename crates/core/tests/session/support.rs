@@ -9,7 +9,7 @@ use ttp_core::session::{Session, SessionState};
 use ttp_core::store::StoreError;
 use ttp_core::time::{Ms, TimeSource};
 use ttp_core::transcription::{
-    HeardWord, Report, Transcriber, TranscriptionEvent, TranscriptionJob,
+    HeardWord, Report, RunningJob, Transcriber, TranscriptionEvent, TranscriptionJob,
 };
 
 pub const BUILT_IN: &str = "MacBook Pro Microphone";
@@ -211,7 +211,7 @@ pub fn heard(words: &[(&str, Ms, Ms)]) -> Vec<HeardWord> {
 }
 
 impl Transcriber for FakeTranscriber {
-    fn transcribe(&self, job: TranscriptionJob, report: Report) -> Box<dyn Send> {
+    fn transcribe(&self, job: TranscriptionJob, report: Report) -> RunningJob {
         let mut jobs = self.jobs.lock().unwrap();
         jobs.push(job);
         let job = jobs.len();
