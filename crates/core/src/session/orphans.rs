@@ -21,14 +21,14 @@ impl Session {
             }
         }
         self.save(registered)?;
-        let (after, before, replacing) = Landing::default().anchors_in(&self.presentation.script);
+        let (after, before, _) = Landing::default().anchors_in(&self.presentation.script);
         for recording in found {
             self.pending.push(Pending {
                 passage: PendingPassage {
                     recording_id: recording.id.clone(),
                     after: after.clone(),
                     before: before.clone(),
-                    replacing: replacing.clone(),
+                    replacing: Vec::new(),
                     status: PendingStatus::Interrupted,
                 },
                 recording,

@@ -322,3 +322,56 @@ fn a_re_record_heard_while_the_clock_plays_keeps_its_range_until_the_clock_stops
     session.undo().unwrap();
     assert_eq!(session.state().words, original.words);
 }
+
+#[test]
+fn a_failed_re_record_keeps_its_range_and_wav_and_a_retry_replaces_the_range() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    let original = session.state().words;
+    re_record(&harness, &mut session, &["w2"]);
+
+    harness.transcriber.fail("the sidecar crashed");
+    session.poll().unwrap();
+    let state = session.state();
+    assert_eq!(state.words, original);
+    assert_eq!(state.pending_passages[0].replacing, ids(&["w2"]));
+    assert!(folder.join("recordings/r2.wav").is_file());
+
+    session.retry_transcription("r2").unwrap();
+    harness.transcriber.hear(&[("planet.", 1_000, 1_400)]);
+    session.poll().unwrap();
+    assert_eq!(texts(&session.state()), ["Hello,", "planet.", "Typed"]);
+}
+
+#[test]
+fn discarding_a_re_record_that_heard_no_speech_leaves_the_range_as_it_was() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    let original = session.state().words;
+    re_record(&harness, &mut session, &["w2"]);
+
+    harness.transcriber.no_speech();
+    session.poll().unwrap();
+    session.discard_transcription("r2").unwrap();
+
+    let state = session.state();
+    assert!(state.pending_passages.is_empty());
+    assert_eq!(state.words, original);
+    assert!(!folder.join("recordings/r2.wav").exists());
+}
+
+#[test]
+fn a_cancelled_re_record_leaves_the_range_as_it_was() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    let original = session.state().words;
+    session.open_recording_bar(InputChoice::default());
+    session.start_re_recording(&ids(&["w2"])).unwrap();
+
+    session.cancel_recording().unwrap();
+
+    let state = session.state();
+    assert!(state.re_recording.is_empty());
+    assert!(state.pending_passages.is_empty());
+    assert_eq!(state.words, original);
+}

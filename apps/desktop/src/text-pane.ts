@@ -326,7 +326,6 @@ export function mountTextPane(
   };
 }
 
-
 function inputFrom(event: InputEvent): Input | null {
   if (event.inputType === "insertText" && event.data) return { type: "insertText", text: event.data };
   return INPUT_TYPES[event.inputType] ?? null;
