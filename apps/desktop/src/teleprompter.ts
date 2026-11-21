@@ -83,20 +83,22 @@ function navigate(event: KeyboardEvent) {
   const position = { words, events, scriptTime: scriptTimeAt(followed, now), speed: followed.speed };
   const command = navigation(event, position, armedHome, now);
   armedHome = command === "armHome" ? now : null;
-  if (!command || command === "armHome") return command !== null;
   if (command === "reset") void reset().catch(console.error);
-  else if ("seek" in command) void seek(command.seek).catch(console.error);
-  else void setSpeed(command.speed).catch(console.error);
-  return true;
+  else if (command && command !== "armHome" && "seek" in command) void seek(command.seek).catch(console.error);
+  else if (command && command !== "armHome") void setSpeed(command.speed).catch(console.error);
+  return command !== null;
 }
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") return void getCurrentWindow().setFullscreen(false).catch(console.error);
-  if (event.repeat || !followed.state) return;
+  if (!followed.state || (event.repeat && event.key === "Home")) return;
   const modified = event.metaKey || event.ctrlKey || event.altKey || event.shiftKey;
-  const command = modified ? null : keyCommand(event.key, followed.state);
-  if (command) void (command === "play" ? play() : pause()).catch(console.error);
-  if (command || navigate(event)) event.preventDefault();
+  const toggle = modified ? null : keyCommand(event.key, followed.state);
+  if (toggle) {
+    armedHome = null;
+    event.preventDefault();
+    if (!event.repeat) void (toggle === "play" ? play() : pause()).catch(console.error);
+  } else if (navigate(event)) event.preventDefault();
 });
 
 new ResizeObserver(() => (scroll = null)).observe(column);

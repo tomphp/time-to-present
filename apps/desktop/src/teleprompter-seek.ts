@@ -1,14 +1,14 @@
 import type { ScriptWord, TimedEvent } from "./session";
 
-export const SENTENCE_RESTART_WINDOW = 1_000;
-export const HOME_CONFIRM_WINDOW = 2_000;
-export const MIN_SPEED = 0.5;
-export const MAX_SPEED = 2;
-export const SPEED_STEP = 0.05;
+const SENTENCE_RESTART_WINDOW = 1_000;
+const HOME_CONFIRM_WINDOW = 2_000;
+const MIN_SPEED = 0.5;
+const MAX_SPEED = 2;
+const SPEED_STEP = 0.05;
 
 type Timed = Pick<ScriptWord, "start" | "text" | "breakAfter">;
 
-const endsSentence = ({ text, breakAfter }: Timed) => breakAfter !== undefined || /[.?!]$/.test(text);
+const endsSentence = ({ text, breakAfter }: Timed) => breakAfter !== undefined || /[.?!]["'’”)\]]*$/.test(text);
 const endsParagraph = ({ breakAfter }: Timed) => breakAfter === "paragraph";
 
 const lastBefore = (times: number[], scriptTime: number) => times.filter((time) => time < scriptTime).pop();
@@ -72,9 +72,11 @@ export type Navigation = { seek: number } | { speed: number } | "reset" | "armHo
 
 type Seek = (position: Position) => number;
 
+const sentence: Seek = ({ words, scriptTime }) => sentenceBack(words, scriptTime);
+
 const SEEKS: Record<string, Seek> = {
-  PageUp: ({ words, scriptTime }) => sentenceBack(words, scriptTime),
-  ArrowLeft: ({ words, scriptTime }) => sentenceBack(words, scriptTime),
+  PageUp: sentence,
+  ArrowLeft: sentence,
   "alt+ArrowLeft": ({ words, scriptTime }) => wordBack(words, scriptTime),
   "alt+ArrowRight": ({ words, scriptTime }) => wordForward(words, scriptTime),
   "shift+ArrowLeft": ({ events, scriptTime }) => eventBack(events, scriptTime),

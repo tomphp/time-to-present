@@ -39,6 +39,22 @@ describe("Sentence back", () => {
     expect(sentenceBack(words, 5_900)).toBe(2_000);
   });
 
+  it("ends a Sentence on ? and ! and through closing quotes", () => {
+    const spoken = [
+      scriptWord("a", "Really?", { start: 0 }),
+      scriptWord("b", "“Yes!”", { start: 2_000 }),
+      scriptWord("c", "Fine", { start: 4_000 }),
+    ];
+    expect(sentenceBack(spoken, 5_500)).toBe(4_000);
+    expect(sentenceBack(spoken, 4_500)).toBe(2_000);
+    expect(sentenceBack(spoken, 3_000)).toBe(2_000);
+  });
+
+  it("restarts the current Sentence at exactly 1 s from its start", () => {
+    expect(sentenceBack(words, 3_000)).toBe(2_000);
+    expect(sentenceBack(words, 2_999)).toBe(0);
+  });
+
   it("stays at the start of the Script", () => {
     expect(sentenceBack(words, 300)).toBe(0);
     expect(sentenceBack([], 300)).toBe(0);
