@@ -129,3 +129,16 @@ fn a_saved_presentation_opens_again_with_the_edit() {
 
     assert_eq!(harness.open(&folder).state(), edited);
 }
+
+#[test]
+fn renaming_saves_a_pending_edit_with_the_new_title_at_once() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.edit(correct("Hullo,")).unwrap();
+
+    session.rename("Other").unwrap();
+
+    assert_eq!(saved_first_word(&folder), "Hullo,");
+    assert_eq!(harness.open(&folder).state(), session.state());
+    assert_eq!(leftovers(&folder), Vec::<String>::new());
+}
