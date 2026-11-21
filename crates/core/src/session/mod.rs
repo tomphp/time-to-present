@@ -67,7 +67,8 @@ pub struct SessionState {
     pub pending_passages: Vec<PendingPassage>,
     pub locked: bool,
     pub live_transcript: Option<LiveTranscript>,
-    /// The clock is playing a Preview the editor started, so the editor plays its sound.
+    /// The clock is playing a Preview the editor started, so the editor plays its sound; never
+    /// while recording, where the sound would reach the mic.
     pub previewing: bool,
 }
 
@@ -310,7 +311,7 @@ impl Session {
             pending_passages: self.pending.iter().map(Pending::state).collect(),
             locked: self.clock.is_playing() || self.is_recording(),
             live_transcript: self.live.transcript(),
-            previewing: self.previewing,
+            previewing: self.previewing && !self.is_recording(),
         }
     }
 

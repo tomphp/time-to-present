@@ -1,8 +1,9 @@
 use std::sync::{Arc, Mutex};
 
+use ttp_core::capture::InputChoice;
 use ttp_core::clock::{ClockState, StreamEvent};
 use ttp_core::script::EditError;
-use ttp_core::session::Session;
+use ttp_core::session::{InsertionPoint, Session};
 
 use crate::support::{Harness, Stream, correct};
 
@@ -130,4 +131,23 @@ fn the_script_is_locked_while_a_preview_plays() {
         session.edit(correct("w1", "Hullo,")),
         Err(EditError::ClockPlaying)
     );
+}
+
+#[test]
+fn a_preview_is_silent_while_recording_so_its_sound_never_reaches_the_mic() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.open_recording_bar(InputChoice::default());
+    session.preview(Some(0));
+
+    session.start_recording(InsertionPoint::default()).unwrap();
+    assert!(!session.state().previewing);
+
+    session.pause();
+    session.preview(None);
+    assert_eq!(session.snapshot().clock.state, ClockState::Playing);
+    assert!(!session.state().previewing);
+
+    session.stop_recording().unwrap();
+    assert!(session.state().previewing);
 }

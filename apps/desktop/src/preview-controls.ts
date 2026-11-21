@@ -1,4 +1,4 @@
-import { listenClip } from "./audio-schedule";
+import { listenTarget } from "./audio-schedule";
 import { clockPosition, DISCONNECTED, type ClockPanel } from "./clock-view";
 import { preview, recordingClip } from "./commands";
 import { find } from "./dom";
@@ -27,10 +27,7 @@ export function mountPreview(targets: PreviewTargets) {
   let reportedAt = 0;
   let frame = 0;
 
-  const listenable = () => {
-    const word = state?.words.find((each) => each.id === targets.selected()[0]);
-    return word ? listenClip(word) : null;
-  };
+  const listenable = () => (state ? listenTarget(state.words, targets.selected(), state.locked) : null);
 
   function renderButtons() {
     previewButton.disabled = !state || state.locked;

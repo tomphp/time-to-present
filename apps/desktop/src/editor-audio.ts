@@ -85,7 +85,6 @@ export function editorAudio(
       script = next;
       if (changed) restart();
     },
-    /** Follows the clock from the editor's event stream. */
     clock(next: ClockPanel, event: StreamEvent) {
       panel = next;
       reportedAt = now();

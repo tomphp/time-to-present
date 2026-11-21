@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { audioSchedule, clipTiming, listenClip, type ScheduledClip } from "./audio-schedule";
+import { audioSchedule, clipTiming, listenClip, listenTarget, type ScheduledClip } from "./audio-schedule";
 import { scriptWord } from "./test-words";
 
 const spoken = (id: string, start: number, duration: number, audioStart: number, audioEnd: number) =>
@@ -77,6 +77,21 @@ describe("listenClip", () => {
 
   it("has nothing to play for a typed Word", () => {
     expect(listenClip(helloWorld[2])).toBeNull();
+  });
+});
+
+describe("listenTarget", () => {
+  it("is the clip of the first selected Word", () => {
+    expect(listenTarget(helloWorld, ["w2", "w1"], false)).toEqual(listenClip(helloWorld[1]));
+  });
+
+  it("is nothing with no Word selected, or for a typed Word", () => {
+    expect(listenTarget(helloWorld, [], false)).toBeNull();
+    expect(listenTarget(helloWorld, ["w3"], false)).toBeNull();
+  });
+
+  it("is nothing while the editor is locked, where it would sound over a Preview or into the mic", () => {
+    expect(listenTarget(helloWorld, ["w1"], true)).toBeNull();
   });
 });
 

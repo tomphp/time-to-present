@@ -1,11 +1,16 @@
 import type { ClockState, StreamEvent } from "./session";
 
+export interface CurrentWord {
+  id: string;
+  text: string;
+}
+
 /** What the editor's clock control shows: folded from the Session's event stream. */
 export interface ClockPanel {
   state: ClockState | null;
   scriptTime: number;
   speed: number;
-  currentWord: { id: string; text: string } | null;
+  currentWord: CurrentWord | null;
 }
 
 export const DISCONNECTED: ClockPanel = { state: null, scriptTime: 0, speed: 1, currentWord: null };
@@ -45,4 +50,3 @@ export const ACTION_LABELS: Record<ClockAction, string> = { play: "Play", pause:
 export function clockPosition({ state, scriptTime, speed }: ClockPanel, elapsed: number, scriptEnd: number): number {
   return state === "playing" ? Math.min(scriptEnd, scriptTime + elapsed * speed) : scriptTime;
 }
-

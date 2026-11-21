@@ -48,6 +48,12 @@ export function listenClip(word: ScriptWord): Clip | null {
   return audio && { ...audio, from: Math.max(0, audio.from - LISTEN_CONTEXT_MS), until: audio.until + LISTEN_CONTEXT_MS };
 }
 
+/** What Listen would play: the first selected Word's clip, but nothing while the editor is locked. */
+export function listenTarget(words: ScriptWord[], selected: string[], locked: boolean): Clip | null {
+  const word = locked ? undefined : words.find((each) => each.id === selected[0]);
+  return word ? listenClip(word) : null;
+}
+
 /** Where the clock stood on the audio clock (in seconds) when the Preview started or last changed course. */
 export interface Anchor {
   audioTime: number;
