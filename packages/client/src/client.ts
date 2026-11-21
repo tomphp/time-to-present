@@ -55,6 +55,7 @@ export function connect<Events extends EventMap = EventMap>(options: ConnectOpti
   const error = writable<Error | null>(null);
   const stream = trackStream();
   const time = followTime(stream, source);
+  const script = scriptStore<Events>(source, stream);
   let stop: Unsubscribe | undefined;
 
   const close = () => {
@@ -92,7 +93,7 @@ export function connect<Events extends EventMap = EventMap>(options: ConnectOpti
     error: readonly(error),
     clock: readonly(stream.clock),
     currentWord: readonly(stream.currentWord),
-    script: scriptStore<Events>(source, stream),
+    script,
     ...hooks<Events>(stream),
     ...time,
     fold: (initial, reducers) => fold(stream, initial, reducers),

@@ -11,6 +11,7 @@ export {
   type EventName,
   type NamedEvent,
   type Script,
+  type ScriptWord,
   type Snapshot,
   type StreamEvent,
   type Word,
@@ -18,3 +19,5 @@ export {
 export type { Source, SourceListener } from "./source";
 export type { Store, Unsubscribe } from "./store";
 export type { Time } from "./time";
+export { simulate, type ManualSimulator, type SimulateOptions, type Simulator } from "./simulator";
+export type { SimulatedScript } from "./timeline";

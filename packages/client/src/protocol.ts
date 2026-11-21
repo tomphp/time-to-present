@@ -50,9 +50,20 @@ export interface Snapshot<Events extends EventMap = EventMap> {
   passedEvents: NamedEvent<Events>[];
 }
 
+/** A Word of the Script, and whether the line or paragraph breaks after it. */
+export interface ScriptWord extends Word {
+  breakAfter?: "line" | "paragraph";
+}
+
 /** The read-only Script served at `/_ttp/v1/script`. */
 export interface Script<Events extends EventMap = EventMap> {
-  words: Word[];
+  protocolVersion: number;
+  scriptVersion: number;
+  /** The end of the last Word or the last Named Event, whichever is later. */
+  scriptEnd: number;
+  /** In Script order, which is start order. */
+  words: ScriptWord[];
+  /** In firing order. */
   namedEvents: NamedEvent<Events>[];
 }
 
