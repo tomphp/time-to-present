@@ -104,12 +104,14 @@ title.addEventListener("keydown", (event) => {
   if (event.key === "Enter") title.blur();
 });
 
-document.querySelector("#perform")!.addEventListener("click", act(openTeleprompter));
+const perform = act(openTeleprompter);
+
+document.querySelector("#perform")!.addEventListener("click", perform);
 
 document.addEventListener("keydown", (event) => {
   if (!isPerformShortcut(event)) return;
   event.preventDefault();
-  act(openTeleprompter)();
+  perform();
 });
 
 document.addEventListener("keydown", (event) => {

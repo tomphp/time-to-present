@@ -32,6 +32,7 @@ const SESSION_EVENT: &str = "session-event";
 const START_WINDOW: &str = "start";
 const EDITOR_WINDOW: &str = "editor";
 const SETTINGS_WINDOW: &str = "settings";
+const TELEPROMPTER_WINDOW: &str = "teleprompter";
 const MODEL_PROGRESS: &str = "model-progress";
 const RECORDING_METER: &str = "recording-meter";
 const SERVER_STATUS: &str = "server-status";
@@ -155,19 +156,27 @@ fn remove_model(state: State<'_, App>, name: String) -> CommandResult<()> {
 
 #[tauri::command]
 fn open_settings(app: AppHandle) -> CommandResult<()> {
-    if let Some(window) = app.get_webview_window(SETTINGS_WINDOW) {
+    bring_up_window(&app, SETTINGS_WINDOW, "Settings", (480.0, 360.0))
+}
+
+/// Brings an open window to the front, or opens the `<label>.html` page in a new one.
+fn bring_up_window(
+    app: &AppHandle,
+    label: &str,
+    title: &str,
+    (width, height): (f64, f64),
+) -> CommandResult<()> {
+    if let Some(window) = app.get_webview_window(label) {
+        window.unminimize().map_err(message)?;
+        window.show().map_err(message)?;
         return window.set_focus().map_err(message);
     }
-    WebviewWindowBuilder::new(
-        &app,
-        SETTINGS_WINDOW,
-        WebviewUrl::App("settings.html".into()),
-    )
-    .title("Settings")
-    .inner_size(480.0, 360.0)
-    .build()
-    .map(drop)
-    .map_err(message)
+    WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("{label}.html").into()))
+        .title(title)
+        .inner_size(width, height)
+        .build()
+        .map(drop)
+        .map_err(message)
 }
 
 #[tauri::command]

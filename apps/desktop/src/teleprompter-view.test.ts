@@ -101,10 +101,10 @@ describe("scrolling", () => {
     }
 
     expect(moves).toEqual([
-      { at: 0, line: 0, jumps: 1, animate: false },
-      { at: 3_500, line: 2, jumps: 1, animate: true },
-      { at: 4_000, line: 3, jumps: 2, animate: false },
-      { at: 6_200, line: 0, jumps: 3, animate: false },
+      { at: 0, top: 0, jumps: 1, animate: false },
+      { at: 3_500, top: 2, jumps: 1, animate: true },
+      { at: 4_000, top: 3, jumps: 2, animate: false },
+      { at: 6_200, top: 0, jumps: 3, animate: false },
     ]);
   });
 
@@ -113,7 +113,7 @@ describe("scrolling", () => {
     const closed = followClock(playing, { type: "closed", reason: "closed" }, 3_600);
     const reopened = followClock(closed, rehearsal.stream[0].event, 3_700);
 
-    expect(scrollTo({ line: 2, jumps: playing.jumps, animate: true }, 0, reopened.jumps).animate).toBe(false);
+    expect(scrollTo({ top: 2, jumps: playing.jumps, animate: true }, 0, reopened.jumps).animate).toBe(false);
   });
 });
 

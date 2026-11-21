@@ -1,3 +1,4 @@
+import { clockAction } from "./clock-view";
 import type { ClockState, ClockView, ScriptWord, StreamEvent } from "./session";
 
 /**
@@ -59,25 +60,24 @@ export function wordLook(index: number, current: number | null): WordLook {
   return index === current ? "current" : "spoken";
 }
 
-/** Which line the column holds on the Reading Line, and whether moving to it eases or jumps. */
+/** The top of the line the column holds on the Reading Line, and whether moving to it eases or jumps. */
 export interface Scroll {
-  line: number;
+  top: number;
   jumps: number;
   animate: boolean;
 }
 
 /** Eases a line at a time as the Words cross onto a new line, and jumps after a seek or reset. */
-export function scrollTo(previous: Scroll | null, line: number, jumps: number): Scroll {
-  if (previous?.line === line && previous.jumps === jumps) return previous;
-  return { line, jumps, animate: previous?.jumps === jumps };
+export function scrollTo(previous: Scroll | null, top: number, jumps: number): Scroll {
+  if (previous?.top === top && previous.jumps === jumps) return previous;
+  return { top, jumps, animate: previous?.jumps === jumps };
 }
 
 const PLAY_PAUSE_KEYS = new Set([" ", "PageDown", "ArrowRight"]);
 
 export function keyCommand(key: string, state: ClockState | null): "play" | "pause" | null {
-  if (!PLAY_PAUSE_KEYS.has(key)) return null;
-  if (state === "playing") return "pause";
-  return state === "ready" || state === "paused" ? "play" : null;
+  const action = PLAY_PAUSE_KEYS.has(key) ? clockAction(state) : null;
+  return action === "reset" ? null : action;
 }
 
 export const isPerformShortcut = ({ key, metaKey, shiftKey }: { key: string; metaKey: boolean; shiftKey: boolean }) =>
