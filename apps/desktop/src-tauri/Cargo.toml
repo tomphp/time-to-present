@@ -1,0 +1,17 @@
+[package]
+name = "time-to-present"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[lib]
+name = "time_to_present_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+ttp-core = { path = "../../../crates/core" }

@@ -1,0 +1,30 @@
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  color-scheme: light dark;
+}
+
+body.start {
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
+  padding: 1.5rem;
+}
+
+body.editor {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+#script {
+  font-size: 1.25rem;
+  line-height: 1.6;
+}
+
+#script .empty {
+  color: GrayText;
+}
+
+#error {
+  color: #c62828;
+}
