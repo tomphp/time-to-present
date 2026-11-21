@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import type { Clip } from "./audio-schedule";
 import type {
   Edit,
   InputChoice,
@@ -34,6 +35,8 @@ export const paste = (after: string | null, replacing: string[], text: string) =
   invoke<SessionState>("paste", { after, replacing, text });
 export const drag = (drag: string, edit: Edit) => invoke<SessionState>("drag", { drag, edit });
 export const nudge = (run: string, edit: Edit) => invoke<SessionState>("nudge", { run, edit });
+export const recordingClip = ({ recording, from, until }: Clip) =>
+  invoke<ArrayBuffer>("recording_clip", { recording, from, until });
 export const recordingWaveform = (recording: string) => invoke<Waveform>("recording_waveform", { recording });
 export const undo = () => invoke<SessionState>("undo");
 export const redo = () => invoke<SessionState>("redo");
@@ -96,6 +99,7 @@ export function onMeter(render: (meter: Meter) => void) {
 
 export const snapshot = () => invoke<Snapshot>("snapshot");
 export const play = () => invoke<void>("play");
+export const preview = (from: number | null) => invoke<void>("preview", { from });
 export const pause = () => invoke<void>("pause");
 export const seek = (scriptTime: number) => invoke<void>("seek", { scriptTime });
 export const setSpeed = (speed: number) => invoke<void>("set_speed", { speed });

@@ -50,6 +50,10 @@ impl Clock {
         matches!(self.state, State::Playing { .. })
     }
 
+    pub fn is_ready(&self) -> bool {
+        self.state == State::Ready
+    }
+
     pub fn play(&mut self, timeline: &Timeline, now: Ms) -> Vec<StreamEvent> {
         let (from, emitted_up_to) = match self.state {
             State::Ready => (0, NOTHING_EMITTED),

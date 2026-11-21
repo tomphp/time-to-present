@@ -50,6 +50,7 @@ pub struct Session {
     pending: Vec<Pending>,
     unsaved_since: Option<Ms>,
     clock: Clock,
+    previewing: bool,
     timeline: Timeline,
 }
 
@@ -66,6 +67,8 @@ pub struct SessionState {
     pub pending_passages: Vec<PendingPassage>,
     pub locked: bool,
     pub live_transcript: Option<LiveTranscript>,
+    /// The clock is playing a Preview the editor started, so the editor plays its sound.
+    pub previewing: bool,
 }
 
 impl Session {
@@ -81,6 +84,7 @@ impl Session {
             folder: folder.to_path_buf(),
             ids: Ids::after(&presentation.script),
             clock: Clock::default(),
+            previewing: false,
             timeline: Timeline::of(&presentation.script, 1),
             presentation,
             history: History::default(),
@@ -306,6 +310,7 @@ impl Session {
             pending_passages: self.pending.iter().map(Pending::state).collect(),
             locked: self.clock.is_playing() || self.is_recording(),
             live_transcript: self.live.transcript(),
+            previewing: self.previewing,
         }
     }
 

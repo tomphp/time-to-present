@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { clockAction, DISCONNECTED, foldClock, type ClockPanel } from "./clock-view";
+import { clockAction, clockPosition, DISCONNECTED, foldClock, previewFrom, type ClockPanel } from "./clock-view";
 import type { Snapshot, StreamEvent } from "./session";
+import { scriptWord } from "./test-words";
 
 const snapshot = (overrides: Partial<Snapshot> = {}): StreamEvent => ({
   type: "snapshot",
@@ -24,7 +25,7 @@ describe("foldClock", () => {
       state: "paused",
       scriptTime: 1_400,
       speed: 1.5,
-      currentWord: "Typed",
+      currentWord: { id: "w3", text: "Typed" },
     });
     expect(fold(snapshot({ currentWord: null })).currentWord).toBeNull();
   });
@@ -43,7 +44,7 @@ describe("foldClock", () => {
       { type: "word", id: "w4", text: "next", start: 1_800, duration: 200 },
       { type: "namedEvent", id: "e9", name: "slide", data: null, scriptTime: 1_900 },
     );
-    expect(panel.currentWord).toBe("next");
+    expect(panel.currentWord).toEqual({ id: "w4", text: "next" });
   });
 
   it("goes back to nothing when the stream closes", () => {
@@ -58,5 +59,34 @@ describe("clockAction", () => {
     expect(clockAction("playing")).toBe("pause");
     expect(clockAction("ended")).toBe("reset");
     expect(clockAction(null)).toBeNull();
+  });
+});
+
+describe("clockPosition", () => {
+  const playing: ClockPanel = { state: "playing", scriptTime: 1_000, speed: 1.5, currentWord: null };
+
+  it("runs on from the last report at the clock's speed while playing, up to Script End", () => {
+    expect(clockPosition(playing, 200, 5_000)).toBe(1_300);
+    expect(clockPosition(playing, 10_000, 5_000)).toBe(5_000);
+  });
+
+  it("stays where the clock was reported when it isn't playing", () => {
+    expect(clockPosition({ ...playing, state: "paused" }, 200, 5_000)).toBe(1_000);
+  });
+});
+
+describe("previewFrom", () => {
+  const words = [scriptWord("w1", "Hello,", { start: 400 }), scriptWord("w2", "world.", { start: 850 })];
+
+  it("starts at the first selected Word", () => {
+    expect(previewFrom(words, ["w2"], { before: "w1" })).toBe(850);
+  });
+
+  it("starts at the Word after the caret when nothing is selected", () => {
+    expect(previewFrom(words, [], { before: "w2" })).toBe(850);
+  });
+
+  it("starts at the start when the caret is at the end of the Script", () => {
+    expect(previewFrom(words, [], { before: null })).toBe(0);
   });
 });

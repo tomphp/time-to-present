@@ -33,6 +33,11 @@ body.editor {
   cursor: default;
 }
 
+#script .word.current {
+  background: color-mix(in srgb, #e53935 25%, transparent);
+  border-radius: 0.2em;
+}
+
 #script .low-confidence {
   text-decoration: underline wavy;
   text-decoration-color: #e0a000;
@@ -263,6 +268,16 @@ body.editor {
   line-height: 1.4rem;
   white-space: nowrap;
   cursor: grab;
+}
+
+#timeline .playhead {
+  z-index: 2;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 2px solid #e53935;
+  pointer-events: none;
 }
 
 #timeline .flag.moved {

@@ -1,5 +1,6 @@
 mod autosave;
 mod breaks;
+mod clip;
 mod clipboard;
 mod clock;
 mod correct;
@@ -19,6 +20,7 @@ mod meter;
 mod moved;
 mod nudge;
 mod open;
+mod preview;
 mod properties;
 mod protocol;
 mod publish;

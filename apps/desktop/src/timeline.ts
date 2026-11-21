@@ -27,7 +27,10 @@ export function mountTimeline(
   const track = document.createElement("div");
   track.className = "track";
   const ticks = document.createElement("div");
-  track.append(ticks);
+  const head = document.createElement("div");
+  head.className = "playhead";
+  head.hidden = true;
+  track.append(ticks, head);
   root.append(track);
 
   const blocks = new Map<string, ReturnType<typeof timelineBlock>>();
@@ -135,6 +138,15 @@ export function mountTimeline(
     return typeof known === "object" ? known : null;
   }
 
+  /** Stands the playhead at the clock's Script Time, scrolling it back into view when it runs out of sight. */
+  function playhead(time: number | null) {
+    head.hidden = time === null;
+    if (time === null) return;
+    const x = xOf(time);
+    head.style.left = `${x}px`;
+    if (x < root.scrollLeft || x > root.scrollLeft + root.clientWidth) root.scrollLeft = x - root.clientWidth / 3;
+  }
+
   const hitAt = (event: PointerEvent) =>
     hitTest(laidOut, event.clientX - track.getBoundingClientRect().left);
 
@@ -183,5 +195,5 @@ export function mountTimeline(
   track.addEventListener("pointerup", endDrag);
   track.addEventListener("pointercancel", endDrag);
 
-  return { render, select };
+  return { render, select, playhead };
 }

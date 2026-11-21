@@ -15,6 +15,11 @@ pub fn play(state: State<'_, App>) -> CommandResult<()> {
 }
 
 #[tauri::command]
+pub fn preview(state: State<'_, App>, from: Option<i64>) -> CommandResult<()> {
+    control(&state, |session| session.preview(from))
+}
+
+#[tauri::command]
 pub fn pause(state: State<'_, App>) -> CommandResult<()> {
     control(&state, Session::pause)
 }

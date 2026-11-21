@@ -3,7 +3,9 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use serde::Serialize;
+use tauri::ipc::Response;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use ttp_core::clip;
 use ttp_core::clock::TICK_INTERVAL;
 use ttp_core::models::{InstalledModel, ModelManager, Progress, whisper_catalog};
 use ttp_core::platform::Platform;
@@ -229,15 +231,35 @@ fn nudge(state: State<'_, App>, run: String, edit: Edit) -> CommandResult<Sessio
 
 #[tauri::command]
 async fn recording_waveform(state: State<'_, App>, recording: String) -> CommandResult<Waveform> {
-    let file = with_session(&state, |session| {
-        session
-            .recording_file(&recording)
-            .ok_or(format!("no Recording with id {recording}"))
-    })?;
+    let file = recording_file(&state, &recording)?;
     tauri::async_runtime::spawn_blocking(move || waveform::read(&file))
         .await
         .map_err(message)?
         .map_err(message)
+}
+
+/// The Recording's audio from `from` to `until` in Recording Time, as WAV bytes.
+#[tauri::command]
+async fn recording_clip(
+    state: State<'_, App>,
+    recording: String,
+    from: i64,
+    until: i64,
+) -> CommandResult<Response> {
+    let file = recording_file(&state, &recording)?;
+    tauri::async_runtime::spawn_blocking(move || clip::read(&file, from, until))
+        .await
+        .map_err(message)?
+        .map(Response::new)
+        .map_err(message)
+}
+
+fn recording_file(state: &App, recording: &str) -> CommandResult<PathBuf> {
+    with_session(state, |session| {
+        session
+            .recording_file(recording)
+            .ok_or(format!("no Recording with id {recording}"))
+    })
 }
 
 #[tauri::command]
@@ -404,6 +426,7 @@ pub fn run() {
             drag,
             nudge,
             recording_waveform,
+            recording_clip,
             undo,
             redo,
             select_event,
@@ -418,6 +441,7 @@ pub fn run() {
             recording::discard_transcription,
             clock::snapshot,
             clock::play,
+            clock::preview,
             clock::pause,
             clock::seek,
             clock::set_speed,

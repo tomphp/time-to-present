@@ -36,6 +36,8 @@ export interface SessionState {
   pendingPassages: PendingPassage[];
   locked: boolean;
   liveTranscript: LiveTranscript | null;
+  /** The clock is playing a Preview the editor started, so the editor plays its sound. */
+  previewing: boolean;
 }
 
 /** The rough words heard so far in the running Recording, shown where it will land; never Script Words. */

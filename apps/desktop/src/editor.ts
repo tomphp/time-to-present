@@ -19,6 +19,7 @@ import { mountEventEditor } from "./event-editor";
 import { mountInspector } from "./inspector";
 import { eventNames, nextMoved } from "./named-events";
 import { onPendingAction } from "./pending-passage";
+import { mountPreview } from "./preview-controls";
 import { mountRecordingBar } from "./recording-bar";
 import { act, showError } from "./report-error";
 import { sharedSelection } from "./selection";
@@ -36,6 +37,7 @@ let selected: string | null = null;
 const selection = sharedSelection((ids) => {
   timeline.select(ids);
   showInspector();
+  previewControls.selectionChanged();
 });
 
 const script = document.querySelector<HTMLElement>("#script")!;
@@ -69,6 +71,13 @@ const timeline = mountTimeline(
   },
   select,
 );
+
+const previewControls = mountPreview({
+  selected: selection.ids,
+  insertionPoint: pane.insertionPoint,
+  highlight: pane.highlight,
+  playhead: timeline.playhead,
+});
 
 const inspector = mountInspector(document.querySelector<HTMLFormElement>("#inspector")!, { edit });
 
@@ -143,8 +152,9 @@ function render(state: SessionState) {
   showInspector();
   timeline.render(state.words, state.namedEvents, state.movedEvents, state.scriptEnd, selection.ids(), state.locked);
   recordingBar.render(state.recordingBar);
+  previewControls.render(state);
 }
 
 onSessionState(render);
-mountClockControl();
+mountClockControl(previewControls.clock);
 mountServerStatus();

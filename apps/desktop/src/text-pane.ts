@@ -59,6 +59,7 @@ export function mountTextPane(
   let locked = false;
   let words: ScriptWord[] = [];
   let selectedEvent: string | null = null;
+  let currentWord: string | null = null;
   let slot: Slot | null = null;
   let pending: CaretTarget | null = null;
   let lastCaret: CaretTarget | null = null;
@@ -83,8 +84,23 @@ export function mountTextPane(
       next.pendingPassages,
       next.liveTranscript,
     );
+    paintCurrent();
     if (caret) placeCaret(root, caret);
     if (next.liveTranscript) refreshLiveTranscript(root, next.liveTranscript);
+  }
+
+  /** Highlights the Word the clock is on, keeping it in view as the clock moves on. */
+  function highlight(id: string | null) {
+    if (id === currentWord) return;
+    currentWord = id;
+    paintCurrent()?.scrollIntoView({ block: "nearest" });
+  }
+
+  function paintCurrent() {
+    root.querySelector(".word.current")?.classList.remove("current");
+    const span = currentWord ? root.querySelector<HTMLElement>(`[data-word-id="${currentWord}"]`) : null;
+    span?.classList.add("current");
+    return span;
   }
 
   /** Where a Recording lands: the caret, or where it last was once the focus has moved on. */
@@ -290,7 +306,7 @@ export function mountTextPane(
     lastCaret = { slotAfter: lastId(words) };
   }
 
-  return { render, selectEvent, focus, insertionPoint, select: (range: Range) => placeRange(root, range) };
+  return { render, selectEvent, highlight, focus, insertionPoint, select: (range: Range) => placeRange(root, range) };
 }
 
 function inputFrom(event: InputEvent): Input | null {

@@ -17,6 +17,22 @@ impl Session {
         self.run_clock(Clock::play);
     }
 
+    /// Plays the clock as a Preview, from `from` or else from where it stands, unless it is
+    /// already playing: a running clock stays with whoever started it. A ready clock asked to
+    /// start from the start plays without a seek, so what is at Script Time 0 fires live.
+    pub fn preview(&mut self, from: Option<Ms>) {
+        if self.clock.is_playing() {
+            return;
+        }
+        if let Some(script_time) = from
+            && !(self.clock.is_ready() && script_time <= 0)
+        {
+            self.seek(script_time);
+        }
+        self.previewing = true;
+        self.run_clock(Clock::play);
+    }
+
     pub fn pause(&mut self) {
         self.run_clock(Clock::pause);
     }
@@ -41,6 +57,7 @@ impl Session {
         let now = self.platform.time.now();
         let was_playing = self.clock.is_playing();
         let events = command(&mut self.clock, &self.timeline, now);
+        self.previewing &= self.clock.is_playing();
         self.broadcast(events);
         if self.clock.is_playing() != was_playing {
             self.publish();
