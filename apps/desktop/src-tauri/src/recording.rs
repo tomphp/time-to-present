@@ -68,6 +68,11 @@ pub fn retry_transcription(state: State<'_, App>, recording: String) -> CommandR
 }
 
 #[tauri::command]
+pub fn remove_unused_recordings(state: State<'_, App>) -> CommandResult<()> {
+    with_session(&state, Session::remove_unused_recordings)
+}
+
+#[tauri::command]
 pub fn discard_transcription(state: State<'_, App>, recording: String) -> CommandResult<()> {
     with_session(&state, |session| session.discard_transcription(&recording))
 }

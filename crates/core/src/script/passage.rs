@@ -25,6 +25,12 @@ impl Passage {
         words.chain(self.events.iter().map(|event| &event.id))
     }
 
+    pub fn recording_ids(&self) -> impl Iterator<Item = &str> {
+        self.words
+            .iter()
+            .filter_map(|word| word.recording_id.as_deref())
+    }
+
     pub fn event_ids(&self) -> Vec<String> {
         self.events.iter().map(|event| event.id.clone()).collect()
     }

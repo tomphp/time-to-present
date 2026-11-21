@@ -91,6 +91,7 @@ export const cancelRecording = () => invoke<void>("cancel_recording");
 
 export const retryTranscription = (recording: string) => invoke<void>("retry_transcription", { recording });
 
+export const removeUnusedRecordings = () => invoke<void>("remove_unused_recordings");
 export const discardTranscription = (recording: string) => invoke<void>("discard_transcription", { recording });
 
 export function onMeter(render: (meter: Meter) => void) {

@@ -82,7 +82,7 @@ impl Session {
     pub fn open(folder: &Path, platform: Platform) -> Result<Self, StoreError> {
         let presentation = store::open(folder)?;
         let taps = Arc::<Taps>::default();
-        Ok(Self {
+        let mut session = Self {
             folder: folder.to_path_buf(),
             ids: Ids::after(&presentation.script),
             clock: Clock::default(),
@@ -103,7 +103,9 @@ impl Session {
             unsaved_since: None,
             performance_app_nap: None,
             platform,
-        })
+        };
+        session.offer_unreferenced_recordings()?;
+        Ok(session)
     }
 
     pub fn subscribe(&mut self, listener: impl Fn(&SessionState) + Send + 'static) {

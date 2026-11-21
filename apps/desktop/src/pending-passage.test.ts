@@ -115,6 +115,14 @@ describe("rendering Pending Passages", () => {
     expect(placeholder.textContent).toContain("No speech found");
   });
 
+  it("offers Transcribe and Discard on an interrupted one", () => {
+    renderScript(root, words, null, undefined, [passage("r2", "w3", null, { kind: "interrupted" })]);
+
+    const placeholder = root.querySelector<HTMLElement>('[data-recording-id="r2"]')!;
+    expect(placeholder.querySelector("[data-retry]")!.textContent).toBe("Transcribe");
+    expect(placeholder.querySelector("[data-discard]")!.textContent).toBe("Discard");
+  });
+
   it("stands alone in an empty Script", () => {
     renderScript(root, [], null, undefined, [passage("r1", null, null, { kind: "queued" })]);
 

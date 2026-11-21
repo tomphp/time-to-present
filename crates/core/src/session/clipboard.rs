@@ -27,6 +27,13 @@ impl Clipboard {
         self.held = Some(Held::Copied(passage));
     }
 
+    pub fn recording_ids(&self) -> impl Iterator<Item = &str> {
+        let held = self.held.as_ref().map(|held| match held {
+            Held::Cut(passage) | Held::Copied(passage) => passage,
+        });
+        held.into_iter().flat_map(Passage::recording_ids)
+    }
+
     /// What pasting `text` puts in, or None when the text is not the held passage.
     pub fn paste(&self, text: &str, script: &Script, ids: &mut Ids) -> Option<Paste> {
         let (passage, cut) = match self.held.as_ref()? {

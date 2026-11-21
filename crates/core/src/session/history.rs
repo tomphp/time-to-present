@@ -78,6 +78,12 @@ impl History {
         Self::step(&mut self.redo, &mut self.undo, current)
     }
 
+    /// Every Script an undo or redo could bring back.
+    pub fn scripts(&self) -> impl Iterator<Item = &Script> {
+        let steps = self.undo.iter().chain(&self.redo);
+        steps.map(|step| &step.script)
+    }
+
     fn drag_state(&self, drag: &str) -> Option<&DragState> {
         self.drag
             .as_ref()

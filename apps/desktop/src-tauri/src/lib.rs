@@ -450,6 +450,7 @@ pub fn run() {
             recording::cancel_recording,
             recording::retry_transcription,
             recording::discard_transcription,
+            recording::remove_unused_recordings,
             clock::snapshot,
             clock::play,
             clock::preview,

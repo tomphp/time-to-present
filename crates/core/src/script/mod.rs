@@ -100,6 +100,12 @@ pub struct Script {
 }
 
 impl Script {
+    pub fn recording_ids(&self) -> impl Iterator<Item = &str> {
+        self.words
+            .iter()
+            .filter_map(|word| word.recording_id.as_deref())
+    }
+
     pub fn position(&self, id: &str) -> Option<usize> {
         self.words.iter().position(|word| word.id == id)
     }

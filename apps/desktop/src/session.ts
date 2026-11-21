@@ -62,6 +62,7 @@ export type PendingStatus =
   | { kind: "queued" }
   | { kind: "fetchingModel"; percent: number | null }
   | { kind: "transcribing"; percent: number }
+  | { kind: "interrupted" }
   | { kind: "failed"; reason: string };
 
 /** A stopped Recording whose Transcription has not landed, anchored to the Words either side. */

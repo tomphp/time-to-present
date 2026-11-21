@@ -54,6 +54,8 @@ export function describePending(status: PendingStatus): string {
       return status.percent === null ? "Fetching the speech model…" : `Fetching the speech model… ${status.percent}%`;
     case "transcribing":
       return `Transcribing… ${status.percent}%`;
+    case "interrupted":
+      return "Recording left without words.";
     case "failed":
       return status.reason;
   }
@@ -87,11 +89,12 @@ function afterPrevious(ids: string[], after: string | null) {
 export function pendingElement(passage: PendingPassage) {
   const span = document.createElement("span");
   const failed = passage.status.kind === "failed";
+  const actionable = failed || passage.status.kind === "interrupted";
   span.className = failed ? "pending-passage failed" : "pending-passage";
   span.contentEditable = "false";
   span.dataset.recordingId = passage.recordingId;
   span.textContent = describePending(passage.status);
-  if (failed) span.append(" ", button("Retry", "retry"), " ", button("Discard", "discard"));
+  if (actionable) span.append(" ", button(failed ? "Retry" : "Transcribe", "retry"), " ", button("Discard", "discard"));
   return span;
 }
 

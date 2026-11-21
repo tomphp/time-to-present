@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 mod format;
+mod wav;
 
 use crate::script::Script;
 use crate::template;
@@ -101,6 +102,46 @@ pub fn new_recording(folder: &Path, presentation: &Presentation) -> Result<Recor
         file: format!("{RECORDINGS_DIR}/{id}.wav"),
         id,
     })
+}
+
+/// The Recordings in `recordings/` that no Word references, registered or not, oldest first,
+/// with any WAV header a crash left unfixed brought up to the length on disk.
+pub fn unreferenced_recordings(
+    folder: &Path,
+    presentation: &Presentation,
+) -> Result<Vec<Recording>, StoreError> {
+    let Ok(entries) = std::fs::read_dir(folder.join(RECORDINGS_DIR)) else {
+        return Ok(Vec::new());
+    };
+    let referenced: Vec<&str> = presentation.script.recording_ids().collect();
+    let mut found = Vec::new();
+    for entry in entries {
+        let path = entry?.path();
+        let (Some(stem), Some("wav")) = (
+            path.file_stem().and_then(|stem| stem.to_str()),
+            path.extension().and_then(|extension| extension.to_str()),
+        ) else {
+            continue;
+        };
+        let Some(number) = stem.strip_prefix('r').and_then(|n| n.parse::<u64>().ok()) else {
+            continue;
+        };
+        if !referenced.contains(&stem) {
+            found.push((number, stem.to_string()));
+        }
+    }
+    found.sort();
+    let recordings: Vec<Recording> = found
+        .into_iter()
+        .map(|(_, id)| Recording {
+            file: format!("{RECORDINGS_DIR}/{id}.wav"),
+            id,
+        })
+        .collect();
+    for recording in &recordings {
+        wav::fix_header(&folder.join(&recording.file))?;
+    }
+    Ok(recordings)
 }
 
 pub fn save(folder: &Path, presentation: &Presentation) -> Result<(), StoreError> {

@@ -1,8 +1,11 @@
+use std::collections::HashSet;
+use std::path::Path;
+
 use serde::{Deserialize, Serialize};
 
 use super::Session;
 use crate::script::Script;
-use crate::store::Recording;
+use crate::store::{self, Recording, StoreError};
 use crate::transcription::{HeardWord, JobId, TranscriptionEvent, TranscriptionJob};
 
 const NO_SPEECH: &str = "No speech found";
@@ -43,9 +46,17 @@ pub struct PendingPassage {
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum PendingStatus {
     Queued,
-    FetchingModel { percent: Option<u8> },
-    Transcribing { percent: u8 },
-    Failed { reason: String },
+    FetchingModel {
+        percent: Option<u8>,
+    },
+    Transcribing {
+        percent: u8,
+    },
+    /// Left by an earlier session without Words: the presenter chooses Transcribe or Discard.
+    Interrupted,
+    Failed {
+        reason: String,
+    },
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -64,7 +75,7 @@ pub enum PendingPassageError {
 /// were made.
 pub(super) struct Pending {
     recording: Recording,
-    job: JobId,
+    job: Option<JobId>,
     passage: PendingPassage,
     /// Words heard under the edit lock, waiting for the clock to stop.
     heard: Option<Vec<HeardWord>>,
@@ -102,7 +113,11 @@ impl Session {
             return;
         }
         for (job, event) in events {
-            let Some(index) = self.pending.iter().position(|pending| pending.job == job) else {
+            let Some(index) = self
+                .pending
+                .iter()
+                .position(|pending| pending.job == Some(job))
+            else {
                 continue;
             };
             let status = match event {
@@ -164,19 +179,19 @@ impl Session {
         .expect("splicing transcribed Words cannot fail");
     }
 
-    /// Queues a failed Transcription again.
+    /// Queues a failed or interrupted Transcription.
     pub fn retry_transcription(&mut self, recording_id: &str) -> Result<(), PendingPassageError> {
         let index = self.pending_index(recording_id)?;
         if !matches!(
             self.pending[index].passage.status,
-            PendingStatus::Failed { .. }
+            PendingStatus::Failed { .. } | PendingStatus::Interrupted
         ) {
             return Err(PendingPassageError::NotFailed(recording_id.to_string()));
         }
         let job = self
             .transcriptions
             .enqueue(self.job_for(&self.pending[index].recording));
-        self.pending[index].job = job;
+        self.pending[index].job = Some(job);
         self.pending[index].passage.status = PendingStatus::Queued;
         self.publish();
         Ok(())
@@ -191,11 +206,10 @@ impl Session {
             .retain(|recording| recording.id != recording_id);
         self.save(unregistered)?;
         let discarded = self.pending.remove(index);
-        self.transcriptions.abandon(discarded.job);
-        match std::fs::remove_file(self.folder.join(&discarded.recording.file)) {
-            Err(error) if error.kind() != std::io::ErrorKind::NotFound => return Err(error.into()),
-            _ => {}
+        if let Some(job) = discarded.job {
+            self.transcriptions.abandon(job);
         }
+        remove_wav(&self.folder.join(&discarded.recording.file))?;
         self.publish();
         Ok(())
     }
@@ -205,7 +219,7 @@ impl Session {
         let job = self.transcriptions.enqueue(self.job_for(recording));
         self.pending.push(Pending {
             recording: recording.clone(),
-            job,
+            job: Some(job),
             passage: PendingPassage {
                 recording_id: recording.id.clone(),
                 after,
@@ -214,6 +228,77 @@ impl Session {
             },
             heard: None,
         });
+    }
+
+    /// Offers the Recordings no Word references, left by an earlier session, for Transcribe at
+    /// the end of the Script or Discard.
+    pub(super) fn offer_unreferenced_recordings(&mut self) -> Result<(), StoreError> {
+        let found = store::unreferenced_recordings(&self.folder, &self.presentation)?;
+        if found.is_empty() {
+            return Ok(());
+        }
+        let mut registered = self.presentation.clone();
+        for recording in &found {
+            if !registered.recordings.contains(recording) {
+                registered.recordings.push(recording.clone());
+            }
+        }
+        self.save(registered)?;
+        let (after, before) = InsertionPoint::default().neighbours_in(&self.presentation.script);
+        for recording in found {
+            self.pending.push(Pending {
+                passage: PendingPassage {
+                    recording_id: recording.id.clone(),
+                    after: after.clone(),
+                    before: before.clone(),
+                    status: PendingStatus::Interrupted,
+                },
+                recording,
+                job: None,
+                heard: None,
+            });
+        }
+        Ok(())
+    }
+
+    /// Deletes the WAVs, and their registrations, that no Word references and no undo or redo
+    /// step or the clipboard could bring back, along with the ones awaiting Transcribe or
+    /// Discard. Recordings still being transcribed stay.
+    pub fn remove_unused_recordings(&mut self) -> Result<(), PendingPassageError> {
+        let script = &self.presentation.script;
+        let reachable: HashSet<&str> = std::iter::once(script)
+            .chain(self.history.scripts())
+            .flat_map(Script::recording_ids)
+            .chain(self.clipboard.recording_ids())
+            .collect();
+        let held: HashSet<&str> = self
+            .pending
+            .iter()
+            .filter(|pending| pending.passage.status != PendingStatus::Interrupted)
+            .map(|pending| pending.recording.id.as_str())
+            .collect();
+        let unused: Vec<Recording> = self
+            .presentation
+            .recordings
+            .iter()
+            .filter(|recording| !reachable.contains(recording.id.as_str()))
+            .filter(|recording| !held.contains(recording.id.as_str()))
+            .cloned()
+            .collect();
+        if unused.is_empty() {
+            return Ok(());
+        }
+        let mut kept = self.presentation.clone();
+        kept.recordings
+            .retain(|recording| !unused.contains(recording));
+        self.save(kept)?;
+        self.pending
+            .retain(|pending| !unused.contains(&pending.recording));
+        for recording in &unused {
+            remove_wav(&self.folder.join(&recording.file))?;
+        }
+        self.publish();
+        Ok(())
     }
 
     fn job_for(&self, recording: &Recording) -> TranscriptionJob {
@@ -228,6 +313,13 @@ impl Session {
             .iter()
             .position(|pending| pending.recording.id == recording_id)
             .ok_or_else(|| PendingPassageError::UnknownPassage(recording_id.to_string()))
+    }
+}
+
+fn remove_wav(path: &Path) -> std::io::Result<()> {
+    match std::fs::remove_file(path) {
+        Err(error) if error.kind() != std::io::ErrorKind::NotFound => Err(error),
+        _ => Ok(()),
     }
 }
 

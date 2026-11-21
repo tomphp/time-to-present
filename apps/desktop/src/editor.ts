@@ -3,6 +3,7 @@ import {
   copy,
   cut,
   discardTranscription,
+  removeUnusedRecordings,
   drag,
   edit,
   nudge,
@@ -89,6 +90,8 @@ onPendingAction(script, {
   retry: (recording) => retryTranscription(recording).catch(showError),
   discard: (recording) => discardTranscription(recording).catch(showError),
 });
+
+document.querySelector("#remove-unused")!.addEventListener("click", () => removeUnusedRecordings().catch(showError));
 
 title.addEventListener(
   "change",
