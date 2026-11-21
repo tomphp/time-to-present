@@ -124,4 +124,14 @@ describe("sharedSelection", () => {
 
     expect(selection.ids()).toEqual([]);
   });
+
+  it("stays empty when an undo brings back the Words a cut removed", () => {
+    const { selection } = shared();
+    selection.fromTimeline("w2", false);
+    selection.update([words[0], words[2]]);
+
+    selection.update(words);
+
+    expect(selection.ids()).toEqual([]);
+  });
 });

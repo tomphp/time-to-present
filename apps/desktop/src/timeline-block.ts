@@ -10,7 +10,7 @@ export function timelineBlock(id: string) {
   const label = document.createElement("span");
   const canvas = document.createElement("canvas");
   element.append(label, canvas);
-  let drawn = "";
+  let drawnKey = "";
 
   function update(word: ScriptWord, { left, width }: Block, selected: boolean, waveform: Waveform | null) {
     element.className = `block ${word.recordingId ? "spoken" : "typed"}`;
@@ -18,9 +18,9 @@ export function timelineBlock(id: string) {
     element.style.left = `${left}px`;
     element.style.width = `${width}px`;
     label.textContent = word.text;
-    const shown = [width, word.audioStart, word.audioEnd, waveform !== null].join(" ");
-    if (shown === drawn) return;
-    drawn = shown;
+    const waveformKey = [width, word.audioStart, word.audioEnd, waveform !== null].join(" ");
+    if (waveformKey === drawnKey) return;
+    drawnKey = waveformKey;
     draw(waveform ? waveformBars(waveform, word, Math.max(1, Math.floor(width))) : [], width);
   }
 

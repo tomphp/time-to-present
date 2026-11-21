@@ -80,6 +80,36 @@ fn a_step_of_a_drag_that_lands_after_an_edit_is_ignored() {
 }
 
 #[test]
+fn a_step_of_a_drag_that_lands_after_a_cut_is_ignored() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.drag("d1", move_w2_by(50)).unwrap();
+    session.cut(&["w3".into()]).unwrap();
+    let cut = session.state();
+
+    session.drag("d1", move_w2_by(80)).unwrap();
+
+    assert_eq!(session.state(), cut);
+    session.undo();
+    assert_eq!(gap_of_w2(&session), 200);
+}
+
+#[test]
+fn a_step_of_a_drag_that_lands_after_a_paste_is_ignored() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.drag("d1", move_w2_by(50)).unwrap();
+    session.paste(Some("w3".into()), &[], "pasted").unwrap();
+    let pasted = session.state();
+
+    session.drag("d1", move_w2_by(80)).unwrap();
+
+    assert_eq!(session.state(), pasted);
+    session.undo();
+    assert_eq!(gap_of_w2(&session), 200);
+}
+
+#[test]
 fn a_drag_back_to_where_it_started_leaves_no_undo_step() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);

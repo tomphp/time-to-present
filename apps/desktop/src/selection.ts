@@ -19,7 +19,10 @@ export function sharedSelection(show: (ids: string[]) => void) {
   }
 
   return {
-    update: (next: ScriptWord[]) => (words = next),
+    update(next: ScriptWord[]) {
+      words = next;
+      if (selectedIds(words, current).length === 0) current = null;
+    },
     ids: () => selectedIds(words, current),
     fromText: (range: Range) => set(selectionOfRange(words, range)),
     /** Picks a Word on the timeline, returning the range the text pane should select. */
