@@ -289,11 +289,6 @@ body.editor {
   border-left-color: #e0a000;
 }
 
-#script .re-recorded {
-  text-decoration: line-through;
-  color: #888;
-}
-
 #script .event-chip {
   user-select: none;
   -webkit-user-select: none;

@@ -258,3 +258,30 @@ fn a_re_record_needs_words_that_are_in_the_script() {
             .is_some_and(|bar| !bar.recording)
     );
 }
+
+#[test]
+fn a_range_re_recorded_as_one_word_gives_it_all_the_ranges_events() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    insert_event(&mut session, "intro", "w1", 0);
+    re_record(&harness, &mut session, &["w1", "w2", "w3"]);
+
+    harness.transcriber.hear(&[("Hi.", 0, 300)]);
+    session.poll().unwrap();
+
+    assert_eq!(
+        anchored(&session.state())[1..],
+        [("confetti", "Hi.", 800), ("intro", "Hi.", 0)]
+    );
+}
+
+#[test]
+fn words_a_pending_re_record_replaces_cannot_be_re_recorded_again() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    re_record(&harness, &mut session, &["w1", "w2"]);
+
+    let overlapping = session.start_re_recording(&ids(&["w2", "w3"])).unwrap_err();
+
+    assert!(matches!(overlapping, CaptureError::AlreadyReRecorded(word) if word == "w2"));
+}

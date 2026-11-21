@@ -29,6 +29,12 @@ pub(super) enum Landing {
     Over(Vec<String>),
 }
 
+impl Default for Landing {
+    fn default() -> Self {
+        Landing::At(InsertionPoint::default())
+    }
+}
+
 impl Landing {
     pub fn re_recording(&self) -> &[String] {
         match self {
@@ -123,6 +129,10 @@ pub(super) struct Pending {
 impl Pending {
     pub fn state(&self) -> PendingPassage {
         self.passage.clone()
+    }
+
+    pub fn replacing(&self) -> &[String] {
+        &self.passage.replacing
     }
 
     /// Where the passage lands now, with the Words it replaces that are still there: in place of

@@ -112,10 +112,10 @@ export function mountTextPane(
     return insertionPointAt(words, caret && resolveCaret(caret, words));
   }
 
-  /** Where a Recording goes: the selection, or where the caret last was once the focus has moved on. */
+  /** Where a Recording goes: the selection in the pane, or where the caret last was once the selection has left it. */
   function recordingTarget() {
-    const range = (root.contains(document.activeElement) && selectedRange(root)) || (lastCaret && collapsed(resolveCaret(lastCaret, words)));
-    return recordingTargetAt(words, range || null);
+    const lastPlace = lastCaret ? collapsed(resolveCaret(lastCaret, words)) : null;
+    return recordingTargetAt(words, selectedRange(root) ?? lastPlace);
   }
 
   /**

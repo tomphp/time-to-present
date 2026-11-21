@@ -2,7 +2,7 @@ import { indexOf, type Slot } from "./caret";
 import { liveTranscriptElement } from "./live-transcript";
 import { chipsByAnchor } from "./named-events";
 import { passagesByPosition, pendingElement } from "./pending-passage";
-import { scriptLayout } from "./script-view";
+import { scriptLayout, type LaidOutWord } from "./script-view";
 import { SCRIPT_START, type LiveTranscript, type PendingPassage, type ScriptWord, type TimedEvent } from "./session";
 
 export const SLOT_TEXT = "​";
@@ -73,7 +73,7 @@ function chipElement(event: TimedEvent, { moved, selected }: Chips) {
   return span;
 }
 
-function wordElement({ id, text, lowConfidence }: { id: string; text: string; lowConfidence: boolean }, struck: boolean) {
+function wordElement({ id, text, lowConfidence }: LaidOutWord, struck: boolean) {
   const span = document.createElement("span");
   span.textContent = text;
   span.dataset.wordId = id;

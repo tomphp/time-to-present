@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { Clip } from "./audio-schedule";
+import type { RecordingTarget } from "./recording-target";
 import type {
   Edit,
   InputChoice,
@@ -83,8 +84,10 @@ export const selectChannel = (channel: number) => invoke<void>("select_channel",
 
 export const closeRecordingBar = () => invoke<void>("close_recording_bar");
 
-export const startRecording = (at: InsertionPoint) => invoke<void>("start_recording", { at });
-export const startReRecording = (words: string[]) => invoke<void>("start_re_recording", { words });
+const startRecording = (at: InsertionPoint) => invoke<void>("start_recording", { at });
+const startReRecording = (words: string[]) => invoke<void>("start_re_recording", { words });
+export const startRecordingAt = (target: RecordingTarget) =>
+  "reRecord" in target ? startReRecording(target.reRecord) : startRecording(target.insertAt);
 
 export const stopRecording = () => invoke<void>("stop_recording");
 

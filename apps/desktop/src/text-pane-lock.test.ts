@@ -10,7 +10,7 @@ const script = [scriptWord("w1", "Hello,"), scriptWord("w2", "world.", { start: 
 const chip = { id: "e1", name: "slide", anchor: "w2", offset: 0, time: 300 };
 
 const state = (locked: boolean) =>
-  ({ words: script, namedEvents: [chip], movedEvents: [], pendingPassages: [], liveTranscript: null, locked }) as unknown as SessionState;
+  ({ words: script, namedEvents: [chip], movedEvents: [], pendingPassages: [], liveTranscript: null, reRecording: [], locked }) as unknown as SessionState;
 
 let root: HTMLElement;
 beforeEach(() => {

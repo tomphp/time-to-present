@@ -5,8 +5,7 @@ import {
   openRecordingBar,
   selectChannel,
   selectInput,
-  startReRecording,
-  startRecording,
+  startRecordingAt,
   stopRecording,
 } from "./commands";
 import {
@@ -102,10 +101,7 @@ function requestCancel() {
 
 /** The recording bar, starting each Recording where the editor reports: over a selection, or at the Insertion Point. */
 export function mountRecordingBar(target: () => RecordingTarget) {
-  const startHere = () => {
-    const here = target();
-    return "reRecord" in here ? startReRecording(here.reRecord) : startRecording(here.insertAt);
-  };
+  const startHere = () => startRecordingAt(target());
 
   async function toggleRecording() {
     if (bar === null) {

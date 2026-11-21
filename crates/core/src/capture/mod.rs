@@ -96,6 +96,8 @@ pub enum CaptureError {
     LiveModelFetching,
     #[error("no Recording is running")]
     NotRecording,
+    #[error("Word {0} is already being Re-recorded")]
+    AlreadyReRecorded(String),
     #[error("could not open the audio input: {0}")]
     Device(String),
     #[error("could not write the Recording: {0}")]

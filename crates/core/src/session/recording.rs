@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use super::transcription::Landing;
+use super::transcription::{Landing, Pending};
 use super::{InsertionPoint, Session};
 use crate::capture::{CaptureError, InputChoice, Meter, RecordingBar};
 use crate::store::{self, Recording};
@@ -41,6 +41,10 @@ impl Session {
     /// Starts a Re-record of the Words, which stay in the Script until its Transcription lands.
     pub fn start_re_recording(&mut self, words: &[String]) -> Result<(), CaptureError> {
         let range = self.presentation.script.in_script_order(words)?;
+        let mut pending = self.pending.iter().flat_map(Pending::replacing);
+        if let Some(taken) = pending.find(|id| range.contains(id)) {
+            return Err(CaptureError::AlreadyReRecorded(taken.clone()));
+        }
         self.start(Landing::Over(range))
     }
 
@@ -65,7 +69,7 @@ impl Session {
         let bar = self.bar.as_mut().ok_or(CaptureError::BarClosed)?;
         self.live.stop();
         let recording = bar.stop()?;
-        let at = (self.recording_at.take()).unwrap_or(Landing::At(InsertionPoint::default()));
+        let at = self.recording_at.take().unwrap_or_default();
         let mut registered = self.presentation.clone();
         registered.recordings.push(recording.clone());
         self.save(registered)?;

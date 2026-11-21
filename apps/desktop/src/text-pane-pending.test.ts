@@ -61,10 +61,8 @@ describe("the text pane while a passage is pending", () => {
 });
 
 describe("the text pane around a Re-record", () => {
-  it("records over the selected Words while it has the focus", () => {
+  it("records over the selected Words, even once the focus has moved to the recording bar", () => {
     const pane = mountPane();
-    root.tabIndex = 0; // jsdom focuses no contenteditable without one
-    root.focus();
     selectWords("w1", "w2");
 
     expect(pane.recordingTarget()).toEqual({ reRecord: ["w1", "w2"] });

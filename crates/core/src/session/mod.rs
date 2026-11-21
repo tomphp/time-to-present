@@ -314,10 +314,7 @@ impl Session {
             moved_events: self.moved_events(),
             script_end: self.presentation.script.end(),
             recording_bar: self.bar.as_ref().map(RecordingBar::state),
-            re_recording: self
-                .recording_at
-                .as_ref()
-                .map_or_else(Vec::new, |landing| landing.re_recording().to_vec()),
+            re_recording: self.re_recording().to_vec(),
             pending_passages: self.pending.iter().map(Pending::state).collect(),
             locked: self.clock.is_playing() || self.is_recording(),
             live_transcript: self.live.transcript(),
@@ -353,6 +350,12 @@ impl Session {
 
     fn is_recording(&self) -> bool {
         self.bar.as_ref().is_some_and(RecordingBar::is_recording)
+    }
+
+    fn re_recording(&self) -> &[String] {
+        self.recording_at
+            .as_ref()
+            .map_or(&[], Landing::re_recording)
     }
 
     fn moved_events(&self) -> Vec<String> {
