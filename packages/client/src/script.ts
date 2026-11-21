@@ -1,19 +1,20 @@
 import type { EventMap, Script } from "./protocol";
 import type { Source } from "./source";
 import { readonly, writable, type Store } from "./store";
+import type { StreamState } from "./stream-state";
 
-/** Fetches the Script on first subscribe, and again whenever `scriptVersion` changes. */
-export function scriptStore<Events extends EventMap>(
-  source: Source,
-  scriptVersion: Store<number | null>,
-): Store<Script<Events> | null> {
-  let wanted = false;
+/**
+ * Fetches the Script on first subscribe, again whenever a Snapshot's `scriptVersion`
+ * changes, and on the next Snapshot after a failed fetch.
+ */
+export function scriptStore<Events extends EventMap>(source: Source, stream: StreamState): Store<Script<Events> | null> {
+  let subscribedOnce = false;
+  let version: number | null = null;
   let fetchedVersion: number | null = null;
   let latestRequest = 0;
 
   const refresh = () => {
-    const version = scriptVersion.get();
-    if (!wanted || version === null || version === fetchedVersion) return;
+    if (!subscribedOnce || version === null || version === fetchedVersion) return;
     fetchedVersion = version;
     const request = ++latestRequest;
     source.script().then(
@@ -27,9 +28,12 @@ export function scriptStore<Events extends EventMap>(
   };
 
   const script = writable<Script<Events> | null>(null, () => {
-    wanted = true;
+    subscribedOnce = true;
     refresh();
   });
-  scriptVersion.subscribe(refresh);
+  stream.snapshots.on((snapshot) => {
+    version = snapshot.scriptVersion;
+    refresh();
+  });
   return readonly(script);
 }

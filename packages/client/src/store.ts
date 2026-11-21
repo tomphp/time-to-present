@@ -1,3 +1,5 @@
+import { channel, deliver } from "./channel";
+
 /** Stops a subscription or hook. */
 export type Unsubscribe = () => void;
 
@@ -19,20 +21,19 @@ export interface Writable<T> extends Store<T> {
 
 export function writable<T>(initial: T, onFirstSubscribe?: () => void): Writable<T> {
   let value = initial;
-  const subscribers = new Set<(value: T) => void>();
+  const changes = channel<T>();
   return {
     subscribe(fn) {
-      const subscriber = (next: T) => fn(next);
-      subscribers.add(subscriber);
-      if (subscribers.size === 1) onFirstSubscribe?.();
-      subscriber(value);
-      return () => subscribers.delete(subscriber);
+      const unsubscribe = changes.on(fn);
+      if (changes.size === 1) onFirstSubscribe?.();
+      deliver(fn, value);
+      return unsubscribe;
     },
     get: () => value,
     set(next) {
       if (Object.is(next, value)) return;
       value = next;
-      for (const subscriber of [...subscribers]) subscriber(value);
+      changes.emit(value);
     },
   };
 }

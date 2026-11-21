@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { connect } from "../src";
 import { fakeBrowser } from "./fake-browser";
 import { clock, namedEvent, snapshot, word } from "./protocol";
@@ -52,6 +52,24 @@ describe("raw hooks", () => {
     browser.stream.send("namedEvent", namedEvent("e2", "slide", { index: 2 }, 600));
 
     expect(slides).toEqual([1, 2]);
+  });
+
+  it("still reach every handler and Fold when one handler throws, which is reported", () => {
+    const reported: unknown[] = [];
+    vi.stubGlobal("reportError", (error: unknown) => reported.push(error));
+    const client = connect<Events>();
+    const heard: string[] = [];
+    client.onNamedEvent(() => {
+      throw new Error("broken effect");
+    });
+    client.onNamedEvent((event) => heard.push(event.id));
+    const slides = client.fold(0, { slide: (_, event) => event.data.index });
+
+    browser.stream.send("namedEvent", namedEvent("e2", "slide", { index: 2 }, 600));
+
+    expect(heard).toEqual(["e2"]);
+    expect(slides.get().state).toBe(2);
+    expect(reported).toEqual([new Error("broken effect")]);
   });
 
   it("stop hearing once unsubscribed", () => {

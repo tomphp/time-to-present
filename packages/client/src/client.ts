@@ -1,23 +1,32 @@
 import { fold, type Folded, type Reducers } from "./fold";
 import { hooks, type Hooks } from "./hooks";
-import { followPerformance } from "./performance";
 import { PROTOCOL_VERSION, type Clock, type EventMap, type Script, type StreamEvent, type Word } from "./protocol";
 import { scriptStore } from "./script";
 import { eventStream, type Source } from "./source";
-import { readonly, writable, type Store } from "./store";
+import { readonly, writable, type Store, type Unsubscribe } from "./store";
+import { trackStream } from "./stream-state";
 import { followTime, type Time } from "./time";
 
+/** How `connect()` finds the Performance. */
 export interface ConnectOptions {
-  /** The event stream to follow. Defaults to the same origin's `/_ttp/v1/events`. */
+  /**
+   * The event stream to follow. Defaults to the same origin's `/_ttp/v1/events`. The Script
+   * is fetched from `script` beside it.
+   */
   url?: string;
   /** Follow this Source instead of an event stream, such as a Simulator. */
   source?: Source;
 }
 
+/** Whether the Client is following the Performance. */
 export type ConnectionState = "connecting" | "open" | "reconnecting" | "closed";
 
+/** A connection to the Performance: its stores, Folds, hooks and time. */
 export interface Client<Events extends EventMap = EventMap> extends Hooks<Events>, Time {
-  /** `open` once a Snapshot arrives; `reconnecting` while the stream is lost or the Presentation is closed. */
+  /**
+   * `open` once a Snapshot arrives; `reconnecting` while the stream is lost or the
+   * Presentation is closed, when the clock also stops where it was.
+   */
   connection: Store<ConnectionState>;
   /** Why the Client closed itself, such as an unsupported protocol version. */
   error: Store<Error | null>;
@@ -44,12 +53,14 @@ export function connect<Events extends EventMap = EventMap>(options: ConnectOpti
   const source = options.source ?? eventStream(options.url ?? DEFAULT_URL);
   const connection = writable<ConnectionState>("connecting");
   const error = writable<Error | null>(null);
-  const performance = followPerformance();
-  const time = followTime(performance, source);
+  const stream = trackStream();
+  const time = followTime(stream, source);
+  let stop: Unsubscribe | undefined;
 
   const close = () => {
-    stop();
     connection.set("closed");
+    stop?.();
+    stream.halt(time.now());
   };
 
   const receive = (event: StreamEvent) => {
@@ -61,26 +72,30 @@ export function connect<Events extends EventMap = EventMap>(options: ConnectOpti
       }
       connection.set("open");
     }
-    if (event.type === "closed") connection.set("reconnecting");
-    performance.receive(event);
+    stream.receive(event);
+    if (event.type === "closed") {
+      connection.set("reconnecting");
+      stream.halt(time.now());
+    }
   };
 
-  const stop = source.open({
+  stop = source.open({
     event: receive,
     lost: () => {
       if (connection.get() !== "closed") connection.set("reconnecting");
     },
   });
+  if (connection.get() === "closed") stop();
 
   return {
     connection: readonly(connection),
     error: readonly(error),
-    clock: readonly(performance.clock),
-    currentWord: readonly(performance.currentWord),
-    script: scriptStore<Events>(source, performance.scriptVersion),
-    ...hooks<Events>(performance),
+    clock: readonly(stream.clock),
+    currentWord: readonly(stream.currentWord),
+    script: scriptStore<Events>(source, stream),
+    ...hooks<Events>(stream),
     ...time,
-    fold: (initial, reducers) => fold(performance, initial, reducers),
+    fold: (initial, reducers) => fold(stream, initial, reducers),
     close,
   };
 }

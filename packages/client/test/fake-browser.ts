@@ -67,7 +67,7 @@ export function fakeBrowser() {
   vi.stubGlobal("fetch", async (url: string) => {
     browser.fetched.push(url);
     const script = browser.held ? await new Promise((resolve) => browser.held!.push(resolve)) : browser.script;
-    return { ok: true, json: async () => script };
+    return { ok: script !== null, status: script === null ? 503 : 200, json: async () => script };
   });
 
   return {

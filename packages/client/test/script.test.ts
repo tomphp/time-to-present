@@ -90,4 +90,18 @@ describe("script", () => {
 
     expect(client.script.get()).toEqual(editedScript);
   });
+
+  it("tries again on the next Snapshot after a failed fetch", async () => {
+    const client = connect();
+    browser.stream.send("snapshot", snapshot());
+    client.script.subscribe(() => {});
+    await settle();
+    expect(client.script.get()).toBeNull();
+
+    browser.serveScript(firstScript);
+    browser.stream.send("snapshot", snapshot());
+    await settle();
+
+    expect(client.script.get()).toEqual(firstScript);
+  });
 });

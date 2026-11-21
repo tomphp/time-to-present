@@ -14,10 +14,13 @@ export interface SourceListener {
  * `now()` and `onFrame` deterministic.
  */
 export interface Source {
+  /** Starts delivering the stream to `listener`, until the returned function stops it. */
   open(listener: SourceListener): Unsubscribe;
+  /** The Script in the `/_ttp/v1/script` shape. */
   script(): Promise<unknown>;
   /** Wall time in ms. */
   now(): number;
+  /** Calls `callback` on the next animation frame, unless cancelled first. */
   frame(callback: () => void): Unsubscribe;
 }
 

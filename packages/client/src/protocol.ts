@@ -23,6 +23,7 @@ export interface Word {
   duration: number;
 }
 
+/** Which of its four conditions the Performance clock is in. */
 export type ClockState = "ready" | "playing" | "paused" | "ended";
 
 /** The Performance clock. All times are integer ms of Script Time. */
@@ -32,8 +33,10 @@ export interface Clock {
   speed: number;
 }
 
+/** Why the clock changed. Voice-following will add causes, so expect others. */
 export type ClockCause = "play" | "pause" | "seek" | "speed" | "end" | "reset" | (string & {});
 
+/** A change of the clock, and why. */
 export interface ClockChange extends Clock {
   cause: ClockCause;
 }
@@ -62,4 +65,13 @@ export type StreamEvent =
   | ({ type: "namedEvent" } & NamedEvent)
   | { type: "closed"; reason: string };
 
-export const STREAM_EVENT_TYPES: StreamEvent["type"][] = ["snapshot", "clock", "tick", "word", "namedEvent", "closed"];
+const streamEventTypes: Record<StreamEvent["type"], true> = {
+  snapshot: true,
+  clock: true,
+  tick: true,
+  word: true,
+  namedEvent: true,
+  closed: true,
+};
+
+export const STREAM_EVENT_TYPES = Object.keys(streamEventTypes) as StreamEvent["type"][];

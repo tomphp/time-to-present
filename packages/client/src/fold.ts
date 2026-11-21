@@ -1,4 +1,4 @@
-import type { Performance } from "./performance";
+import type { StreamState } from "./stream-state";
 import type { EventMap, EventName, NamedEvent } from "./protocol";
 import { readonly, writable, type Store } from "./store";
 
@@ -16,23 +16,26 @@ export type Reducers<Events extends EventMap, State> = {
 type Reducer<State> = (state: State, event: NamedEvent) => State;
 
 export function fold<Events extends EventMap, State>(
-  performance: Performance,
+  stream: StreamState,
   initial: State,
   reducers: Reducers<Events, State>,
 ): Store<Folded<State>> {
   const reducerFor = (name: string) =>
     Object.hasOwn(reducers, name) ? (reducers as Record<string, Reducer<State>>)[name] : undefined;
-  const reduce = (state: State, event: NamedEvent) => {
+  const step = (state: State, event: NamedEvent) => {
     const reducer = reducerFor(event.name);
-    return reducer ? reducer(state, event) : state;
+    return reducer ? { state: reducer(state, event) } : null;
   };
-  const rebuilt = (passed: NamedEvent[]) => ({ state: passed.reduce(reduce, initial), live: false });
+  const rebuilt = (passed: NamedEvent[]) => ({
+    state: passed.reduce((state, event) => step(state, event)?.state ?? state, initial),
+    live: false,
+  });
 
-  const folded = writable<Folded<State>>(rebuilt(performance.passed()));
-  performance.rebuilds.on((passed) => folded.set(rebuilt(passed)));
-  performance.namedEvents.on((event) => {
-    const reducer = reducerFor(event.name);
-    if (reducer) folded.set({ state: reducer(folded.get().state, event), live: true });
+  const folded = writable<Folded<State>>(rebuilt(stream.passed()));
+  stream.rebuilds.on((passed) => folded.set(rebuilt(passed)));
+  stream.namedEvents.on((event) => {
+    const next = step(folded.get().state, event);
+    if (next) folded.set({ state: next.state, live: true });
   });
   return readonly(folded);
 }

@@ -1,9 +1,11 @@
-import type { Performance } from "./performance";
+import { channel, deliver } from "./channel";
 import type { Source } from "./source";
 import type { Unsubscribe } from "./store";
+import type { StreamState } from "./stream-state";
 
+/** The Script Time between clock changes, for smooth motion. */
 export interface Time {
-  /** The Script Time in integer ms: extrapolated while playing, frozen otherwise. */
+  /** The Script Time in integer ms: extrapolated while playing and never stepping back, frozen otherwise. */
   now(): number;
   /**
    * Calls `fn` with `now()` at once, on every animation frame while playing, and once on
@@ -12,22 +14,21 @@ export interface Time {
   onFrame(fn: (scriptTime: number) => void): Unsubscribe;
 }
 
-export function followTime(performance: Performance, source: Source): Time {
-  const { clock } = performance;
-  const handlers = new Set<(scriptTime: number) => void>();
+export function followTime(stream: StreamState, source: Source): Time {
+  const { clock } = stream;
+  const frames = channel<number>();
   let anchor = { scriptTime: 0, at: source.now() };
+  let latest = 0;
   let cancelFrame: Unsubscribe | null = null;
 
   const now = () => {
     const { state, scriptTime, speed } = clock.get();
     if (state !== "playing") return scriptTime;
-    return Math.round(anchor.scriptTime + (source.now() - anchor.at) * speed);
+    latest = Math.max(latest, Math.round(anchor.scriptTime + (source.now() - anchor.at) * speed));
+    return latest;
   };
 
-  const render = () => {
-    const scriptTime = now();
-    for (const handler of [...handlers]) handler(scriptTime);
-  };
+  const notifyFrame = () => frames.emit(now());
 
   const stopFrames = () => {
     cancelFrame?.();
@@ -35,10 +36,10 @@ export function followTime(performance: Performance, source: Source): Time {
   };
 
   const requestFrame = () => {
-    if (cancelFrame || handlers.size === 0 || clock.get().state !== "playing") return;
+    if (cancelFrame || frames.size === 0 || clock.get().state !== "playing") return;
     cancelFrame = source.frame(() => {
       cancelFrame = null;
-      render();
+      notifyFrame();
       requestFrame();
     });
   };
@@ -49,22 +50,22 @@ export function followTime(performance: Performance, source: Source): Time {
 
   clock.subscribe(({ scriptTime }) => {
     anchorAt(scriptTime);
+    latest = scriptTime;
     stopFrames();
-    render();
+    notifyFrame();
     requestFrame();
   });
-  performance.ticks.on(anchorAt);
+  stream.ticks.on(anchorAt);
 
   return {
     now,
     onFrame(fn) {
-      const handler = (scriptTime: number) => fn(scriptTime);
-      handlers.add(handler);
-      handler(now());
+      const unsubscribe = frames.on(fn);
+      deliver(fn, now());
       requestFrame();
       return () => {
-        handlers.delete(handler);
-        if (handlers.size === 0) stopFrames();
+        unsubscribe();
+        if (frames.size === 0) stopFrames();
       };
     },
   };

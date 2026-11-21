@@ -40,6 +40,19 @@ describe("now", () => {
     expect(client.now()).toBe(130);
   });
 
+  it("never steps back on a Tick that arrives late", () => {
+    const client = connect();
+    browser.stream.send("snapshot", playingFrom(0));
+    browser.advance(130);
+    expect(client.now()).toBe(130);
+
+    browser.stream.send("tick", { scriptTime: 100 });
+    expect(client.now()).toBe(130);
+
+    browser.advance(40);
+    expect(client.now()).toBe(140);
+  });
+
   it("is frozen while not playing", () => {
     const client = connect();
     browser.stream.send("snapshot", playingFrom(1000));
@@ -100,5 +113,32 @@ describe("onFrame", () => {
     stop();
 
     expect(browser.pendingFrames).toBe(0);
+  });
+
+  it("freezes and stops frames once the Client is closed", () => {
+    const client = connect();
+    const frames: number[] = [];
+    browser.stream.send("snapshot", playingFrom(0));
+    client.onFrame((scriptTime) => frames.push(scriptTime));
+    browser.advance(100);
+
+    client.close();
+    browser.advance(500);
+
+    expect(client.now()).toBe(100);
+    expect(frames).toEqual([0, 100]);
+    expect(browser.pendingFrames).toBe(0);
+  });
+
+  it("freezes once the Presentation is closed", () => {
+    const client = connect();
+    browser.stream.send("snapshot", playingFrom(0));
+    browser.advance(100);
+
+    browser.stream.send("closed", { reason: "closed" });
+    browser.advance(500);
+
+    expect(client.now()).toBe(100);
+    expect(client.clock.get().state).toBe("paused");
   });
 });

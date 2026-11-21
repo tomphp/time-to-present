@@ -1,4 +1,4 @@
-import type { Performance } from "./performance";
+import type { StreamState } from "./stream-state";
 import type { ClockChange, EventMap, EventName, NamedEvent, Snapshot, Word } from "./protocol";
 import type { Unsubscribe } from "./store";
 
@@ -26,16 +26,18 @@ export interface Hooks<Events extends EventMap> {
 
 type AnyHandler = (event: NamedEvent) => void;
 
-export function hooks<Events extends EventMap>(performance: Performance): Hooks<Events> {
+export function hooks<Events extends EventMap>(stream: StreamState): Hooks<Events> {
   return {
-    onWord: (handler) => performance.words.on(handler),
+    onWord: (handler) => stream.words.on(handler),
     onNamedEvent(...args: [AnyHandler] | [string, AnyHandler]): Unsubscribe {
-      if (args.length === 1) return performance.namedEvents.on(args[0]);
+      if (args.length === 1) return stream.namedEvents.on(args[0]);
       const [name, handler] = args;
-      return performance.namedEvents.on((event) => event.name === name && handler(event));
+      return stream.namedEvents.on((event) => {
+        if (event.name === name) handler(event);
+      });
     },
-    onClock: (handler) => performance.clockChanges.on(handler),
-    onTick: (handler) => performance.ticks.on(handler),
-    onSnapshot: (handler) => performance.snapshots.on(handler as (snapshot: Snapshot) => void),
+    onClock: (handler) => stream.clockChanges.on(handler),
+    onTick: (handler) => stream.ticks.on(handler),
+    onSnapshot: (handler) => stream.snapshots.on(handler as (snapshot: Snapshot) => void),
   } as Hooks<Events>;
 }

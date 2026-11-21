@@ -45,4 +45,22 @@ describe("options.source", () => {
     client.close();
     expect(fake.listener).toBeNull();
   });
+
+  it("closes on an unsupported protocol version sent while the Source opens", () => {
+    let stopped = false;
+    const source: Source = {
+      open(listener) {
+        listener.event({ type: "snapshot", ...snapshot({ protocolVersion: 2 }) } as never);
+        return () => (stopped = true);
+      },
+      script: async () => null,
+      now: () => 0,
+      frame: () => () => {},
+    };
+
+    const client = connect({ source });
+
+    expect(client.connection.get()).toBe("closed");
+    expect(stopped).toBe(true);
+  });
 });

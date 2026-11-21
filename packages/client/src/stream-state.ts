@@ -4,13 +4,14 @@ import { writable } from "./store";
 
 const READY: Clock = { state: "ready", scriptTime: 0, speed: 1 };
 
-export type Performance = ReturnType<typeof followPerformance>;
+export type StreamState = ReturnType<typeof trackStream>;
+
+const payload = <E extends StreamEvent>({ type: _, ...rest }: E) => rest;
 
 /** What the stream says the Performance has reached, kept for stores, Folds and hooks. */
-export function followPerformance() {
+export function trackStream() {
   const clock = writable<Clock>(READY);
   const currentWord = writable<Word | null>(null);
-  const scriptVersion = writable<number | null>(null);
   let passed: NamedEvent[] = [];
 
   const channels = {
@@ -30,15 +31,14 @@ export function followPerformance() {
   const receive = (event: StreamEvent) => {
     switch (event.type) {
       case "snapshot": {
-        const { type: _, ...snapshot } = event;
-        scriptVersion.set(snapshot.scriptVersion);
+        const snapshot = payload(event);
         currentWord.set(snapshot.currentWord);
         clock.set(snapshot.clock);
         rebuild(snapshot.passedEvents);
         return channels.snapshots.emit(snapshot);
       }
       case "clock": {
-        const { type: _, ...change } = event;
+        const change = payload(event);
         if (change.cause === "reset") {
           currentWord.set(null);
           rebuild([]);
@@ -49,17 +49,22 @@ export function followPerformance() {
       case "tick":
         return channels.ticks.emit(event.scriptTime);
       case "word": {
-        const { type: _, ...word } = event;
+        const word = payload(event);
         currentWord.set(word);
         return channels.words.emit(word);
       }
       case "namedEvent": {
-        const { type: _, ...namedEvent } = event;
+        const namedEvent = payload(event);
         passed = [...passed, namedEvent];
         return channels.namedEvents.emit(namedEvent);
       }
     }
   };
 
-  return { clock, currentWord, scriptVersion, passed: () => passed, receive, ...channels };
+  /** Stops the clock where it is, once nothing is driving it any more. */
+  const halt = (scriptTime: number) => {
+    if (clock.get().state === "playing") clock.set({ ...clock.get(), state: "paused", scriptTime });
+  };
+
+  return { clock, currentWord, passed: () => passed, receive, halt, ...channels };
 }
