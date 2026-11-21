@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use tauri::{
     AppHandle, Emitter, Manager, Monitor, State, Url, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder, Window, WindowEvent,
@@ -10,7 +12,9 @@ use ttp_core::settings::ApproachCue;
 use crate::displays::monitor_for;
 use crate::fullscreen::{self, Fullscreen, logical_size, place};
 use crate::window_set::WindowSet;
-use crate::{App, CommandResult, TELEPROMPTER_WINDOW, bring_up_window, message, with_session};
+use crate::{
+    App, CommandResult, TELEPROMPTER_WINDOW, bring_up_window, message, reveal, with_session,
+};
 
 const PRESENTATION_WINDOW: &str = "presentation";
 const APPROACH_CUE: &str = "approach-cue";
@@ -22,7 +26,15 @@ const PERFORMANCE_WINDOWS: [&str; 2] = [TELEPROMPTER_WINDOW, PRESENTATION_WINDOW
 
 /// The Performance windows that have focus, so keys reach the Performance while any one does.
 #[derive(Default)]
-pub struct Focused(WindowSet);
+pub struct FocusedPerformanceWindows(WindowSet);
+
+impl Deref for FocusedPerformanceWindows {
+    type Target = WindowSet;
+
+    fn deref(&self) -> &WindowSet {
+        &self.0
+    }
+}
 
 /// Opens the remembered Performance Layout, each window simple-fullscreen on its display. With only
 /// one display, the Presentation Window stays a window at its size, as for sharing it on a call.
@@ -71,7 +83,7 @@ pub fn set_performance_settings(
     let Some(presentation) = app.get_webview_window(PRESENTATION_WINDOW) else {
         return Ok(());
     };
-    if app.state::<Fullscreen>().0.contains(presentation.label()) {
+    if app.state::<Fullscreen>().contains(presentation.label()) {
         return Ok(());
     }
     if let Some(monitor) = presentation.current_monitor().map_err(message)? {
@@ -104,7 +116,7 @@ pub fn on_window_event(window: &Window, event: &WindowEvent) {
     match event {
         WindowEvent::Focused(focused) => tell_teleprompter_of_focus(window, *focused),
         WindowEvent::Destroyed => {
-            window.state::<Fullscreen>().0.remove(window.label());
+            window.state::<Fullscreen>().remove(window.label());
             tell_teleprompter_of_focus(window, false);
             if window.label() == TELEPROMPTER_WINDOW {
                 pause_unseen_performance(window);
@@ -118,7 +130,7 @@ fn tell_teleprompter_of_focus(window: &Window, focused: bool) {
     if !PERFORMANCE_WINDOWS.contains(&window.label()) {
         return;
     }
-    let windows = &window.state::<Focused>().0;
+    let windows = window.state::<FocusedPerformanceWindows>();
     if focused {
         windows.insert(window.label());
     } else {
@@ -184,8 +196,7 @@ fn presentation_window(
 ) -> CommandResult<WebviewWindow> {
     let url = Url::parse(&state.server.status().url).map_err(message)?;
     if let Some(window) = app.get_webview_window(PRESENTATION_WINDOW) {
-        window.unminimize().map_err(message)?;
-        window.show().map_err(message)?;
+        reveal(&window)?;
         if window.url().map_err(message)?.origin() != url.origin() {
             window.navigate(url).map_err(message)?;
         }

@@ -5,12 +5,7 @@ use crate::{CommandResult, message};
 
 #[tauri::command]
 pub fn displays(app: AppHandle) -> CommandResult<Vec<Display>> {
-    let primary = app.primary_monitor().map_err(message)?;
-    let monitors = app.available_monitors().map_err(message)?;
-    Ok(monitors
-        .iter()
-        .map(|monitor| display(monitor, primary.as_ref()))
-        .collect())
+    Ok(connected(&app)?.1)
 }
 
 /// The monitor the window goes fullscreen on, if any is connected.
@@ -19,23 +14,29 @@ pub fn monitor_for(
     window: PerformanceWindow,
     remembered: Option<&str>,
 ) -> CommandResult<Option<Monitor>> {
+    let (mut monitors, displays) = connected(app)?;
+    Ok(display_for(window, remembered, &displays).map(|index| monitors.swap_remove(index)))
+}
+
+/// The connected monitors, each with the Display the core chooses between.
+fn connected(app: &AppHandle) -> CommandResult<(Vec<Monitor>, Vec<Display>)> {
     let primary = app.primary_monitor().map_err(message)?;
-    let mut monitors = app.available_monitors().map_err(message)?;
-    let displays: Vec<_> = monitors
+    let monitors = app.available_monitors().map_err(message)?;
+    let displays = monitors
         .iter()
         .map(|monitor| display(monitor, primary.as_ref()))
         .collect();
-    Ok(display_for(window, remembered, &displays).map(|index| monitors.swap_remove(index)))
+    Ok((monitors, displays))
 }
 
 fn display(monitor: &Monitor, primary: Option<&Monitor>) -> Display {
     Display {
-        name: name(monitor),
-        primary: primary.is_some_and(|primary| name(primary) == name(monitor)),
+        name: display_name(monitor),
+        primary: primary.is_some_and(|primary| display_name(primary) == display_name(monitor)),
     }
 }
 
-fn name(monitor: &Monitor) -> String {
+fn display_name(monitor: &Monitor) -> String {
     monitor.name().cloned().unwrap_or_else(|| {
         let position = monitor.position();
         format!("Display at {},{}", position.x, position.y)

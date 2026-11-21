@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { AUTOMATIC, displayChoices } from "./perform-menu-view";
+import { AUTOMATIC, chosenSettings, displayChoices } from "./perform-menu-view";
 
 const displays = [
   { name: "Built-in Retina Display", primary: true },
@@ -24,5 +24,28 @@ describe("display choices", () => {
 
   test("do not repeat a remembered display that is connected", () => {
     expect(displayChoices(displays, "Projector")).toHaveLength(3);
+  });
+});
+
+describe("chosen settings", () => {
+  const menu = {
+    layout: "teleprompterOnly",
+    teleprompterDisplay: AUTOMATIC,
+    presentationDisplay: "Projector",
+    presentationSize: "fit",
+  };
+
+  test("leave Automatic displays to the core and keep chosen ones", () => {
+    expect(chosenSettings(menu)).toEqual({
+      layout: "teleprompterOnly",
+      teleprompterDisplay: null,
+      presentationDisplay: "Projector",
+      presentationSize: "fit",
+    });
+  });
+
+  test("refuse a layout or size the core does not know", () => {
+    expect(() => chosenSettings({ ...menu, layout: "combined" })).toThrow("combined");
+    expect(() => chosenSettings({ ...menu, presentationSize: "4k" })).toThrow("4k");
   });
 });

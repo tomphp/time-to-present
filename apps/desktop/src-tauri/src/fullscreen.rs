@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, Monitor, WebviewWindow};
 
 use crate::window_set::WindowSet;
@@ -5,7 +7,15 @@ use crate::{CommandResult, message};
 
 /// The windows that are simple-fullscreen, as macOS offers no way to ask.
 #[derive(Default)]
-pub struct Fullscreen(pub WindowSet);
+pub struct Fullscreen(WindowSet);
+
+impl Deref for Fullscreen {
+    type Target = WindowSet;
+
+    fn deref(&self) -> &WindowSet {
+        &self.0
+    }
+}
 
 pub fn logical_size(monitor: &Monitor) -> (f64, f64) {
     let size = monitor.size().to_logical::<f64>(monitor.scale_factor());
@@ -42,12 +52,12 @@ pub fn enter(
     leave(app, window)?;
     place(window, monitor, size)?;
     window.set_simple_fullscreen(true).map_err(message)?;
-    app.state::<Fullscreen>().0.insert(window.label());
+    app.state::<Fullscreen>().insert(window.label());
     Ok(())
 }
 
 /// Leaves simple fullscreen, keeping the window open at the size it was placed at.
 pub fn leave(app: &AppHandle, window: &WebviewWindow) -> CommandResult<()> {
-    app.state::<Fullscreen>().0.remove(window.label());
+    app.state::<Fullscreen>().remove(window.label());
     window.set_simple_fullscreen(false).map_err(message)
 }

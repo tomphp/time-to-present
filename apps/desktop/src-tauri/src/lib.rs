@@ -165,6 +165,11 @@ fn open_settings(app: AppHandle) -> CommandResult<()> {
 }
 
 /// Brings an open window to the front, or opens the `<label>.html` page in a new one.
+fn reveal(window: &WebviewWindow) -> CommandResult<()> {
+    window.unminimize().map_err(message)?;
+    window.show().map_err(message)
+}
+
 fn bring_up_window(
     app: &AppHandle,
     label: &str,
@@ -172,8 +177,7 @@ fn bring_up_window(
     (width, height): (f64, f64),
 ) -> CommandResult<WebviewWindow> {
     if let Some(window) = app.get_webview_window(label) {
-        window.unminimize().map_err(message)?;
-        window.show().map_err(message)?;
+        reveal(&window)?;
         return Ok(window);
     }
     WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("{label}.html").into()))
@@ -428,7 +432,7 @@ pub fn run() {
                 models,
             });
             app.manage(fullscreen::Fullscreen::default());
-            app.manage(perform::Focused::default());
+            app.manage(perform::FocusedPerformanceWindows::default());
             let handle = app.handle().clone();
             std::thread::spawn(move || poll_session(handle));
             tauri::async_runtime::spawn(watch_server(app.handle().clone()));

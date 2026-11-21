@@ -15,6 +15,7 @@ import {
   setSpeed,
 } from "./commands";
 import { find } from "./dom";
+import { asKeydown } from "./forwarded-key";
 import {
   applyAction,
   loadOptions,
@@ -292,9 +293,7 @@ new ResizeObserver(() => (scroll = null)).observe(column);
 
 window.addEventListener("resize", applyOptions);
 document.addEventListener("keydown", onKey);
-onPerformanceKey(({ key, meta, ctrl, alt, shift, repeat }) =>
-  onKey(new KeyboardEvent("keydown", { key, metaKey: meta, ctrlKey: ctrl, altKey: alt, shiftKey: shift, repeat })),
-);
+onPerformanceKey((key) => onKey(asKeydown(key)));
 onAppFocus((appFocused) => (focused = appFocused));
 bar.copy.addEventListener("click", () => void navigator.clipboard.writeText(bar.url.textContent ?? "").catch(console.error));
 bar.open.addEventListener("click", () => void openInBrowser().catch(console.error));

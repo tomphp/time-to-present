@@ -1,8 +1,8 @@
 import { displays, performanceSettings, setPerformanceSettings } from "./commands";
 import { find } from "./dom";
-import { AUTOMATIC, displayChoices } from "./perform-menu-view";
+import { AUTOMATIC, chosenSettings, displayChoices } from "./perform-menu-view";
 import { act } from "./report-error";
-import type { Display, PerformanceLayout, PerformanceSettings, PresentationSize } from "./session";
+import type { Display } from "./session";
 
 const menu = find<HTMLDetailsElement>("#perform-menu");
 const layout = find<HTMLSelectElement>("#perform-layout");
@@ -23,16 +23,15 @@ async function show() {
   fill(presentationDisplay, connected, settings.presentationDisplay);
 }
 
-const chosen = (select: HTMLSelectElement) => (select.value === AUTOMATIC ? null : select.value);
-
 function remember(): Promise<void> {
-  const settings: PerformanceSettings = {
-    layout: layout.value as PerformanceLayout,
-    teleprompterDisplay: chosen(teleprompterDisplay),
-    presentationDisplay: chosen(presentationDisplay),
-    presentationSize: presentationSize.value as PresentationSize,
-  };
-  return setPerformanceSettings(settings);
+  return setPerformanceSettings(
+    chosenSettings({
+      layout: layout.value,
+      teleprompterDisplay: teleprompterDisplay.value,
+      presentationDisplay: presentationDisplay.value,
+      presentationSize: presentationSize.value,
+    }),
+  );
 }
 
 /** The Perform menu: the Performance Layout, each window's display and the Presentation Window's size. */

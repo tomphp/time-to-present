@@ -114,7 +114,7 @@ pub enum PerformanceLayout {
     TeleprompterOnly,
 }
 
-/// How Perform sets up the rig on this machine.
+/// How Perform lays out its windows and displays on this machine.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct PerformanceSettings {

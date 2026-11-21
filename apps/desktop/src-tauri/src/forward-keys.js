@@ -20,7 +20,7 @@ window.addEventListener(
       composing: event.isComposing,
       target,
     };
-    window.__TAURI_INTERNALS__.invoke("forward_key", { key }).catch(() => {});
+    window.__TAURI_INTERNALS__.invoke("forward_key", { key }).catch(console.error);
   },
   true,
 );
