@@ -1,4 +1,4 @@
-import { edit, onSessionState, redo, renamePresentation, selectEvent, undo } from "./commands";
+import { copy, cut, edit, onSessionState, paste, redo, renamePresentation, selectEvent, undo } from "./commands";
 import { mountEventEditor } from "./event-editor";
 import { eventNames, nextMoved } from "./named-events";
 import { renderRecordingBar } from "./recording-bar";
@@ -12,7 +12,7 @@ let selected: string | null = null;
 
 const pane = mountTextPane(
   document.querySelector<HTMLElement>("#script")!,
-  { edit, undo, redo },
+  { edit, cut, copy, paste, undo, redo },
   {
     insertEventAt: (at) => {
       select(null);

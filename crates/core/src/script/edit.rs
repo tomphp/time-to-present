@@ -2,7 +2,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use super::{Anchor, BreakAfter, Ids, Script, Word};
-use super::{estimate, events, transform};
+use super::{estimate, events, plain_text, transform};
 use crate::time::Ms;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -31,6 +31,10 @@ pub enum Edit {
         break_after: Option<BreakAfter>,
     },
     InsertWord {
+        after: Option<String>,
+        text: String,
+    },
+    InsertText {
         after: Option<String>,
         text: String,
     },
@@ -64,6 +68,8 @@ pub enum EditError {
     UnknownEvent(String),
     #[error("a Named Event needs a name")]
     UnnamedEvent,
+    #[error("no Words are selected")]
+    NothingSelected,
 }
 
 impl Script {
@@ -103,6 +109,17 @@ impl Script {
                 };
                 let typed = self.typed_word(ids.next_word(), one_word(text)?, index);
                 self.words.insert(index, typed);
+            }
+            Edit::InsertText { after, text } => {
+                let start = match after {
+                    Some(id) => self.index_of(&id)? + 1,
+                    None => 0,
+                };
+                for (index, (text, break_after)) in (start..).zip(plain_text::words(&text)) {
+                    let mut typed = self.typed_word(ids.next_word(), text, index);
+                    typed.break_after = break_after;
+                    self.words.insert(index, typed);
+                }
             }
             Edit::InsertEvent {
                 anchor,
@@ -159,7 +176,7 @@ impl Script {
         }
     }
 
-    fn index_of(&self, id: &str) -> Result<usize, EditError> {
+    pub(super) fn index_of(&self, id: &str) -> Result<usize, EditError> {
         self.words
             .iter()
             .position(|word| word.id == id)

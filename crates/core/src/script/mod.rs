@@ -7,11 +7,14 @@ mod edit;
 mod estimate;
 mod events;
 mod ids;
+mod passage;
+mod plain_text;
 mod reanchor;
 mod transform;
 
 pub use edit::{Edit, EditError};
 pub use ids::Ids;
+pub use passage::Passage;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

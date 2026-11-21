@@ -138,7 +138,7 @@ describe("the text pane's event keys", () => {
 
   function mountPane() {
     const hooks = { insertEventAt: vi.fn(), selectEvent: vi.fn() };
-    const commands = { edit: vi.fn(), undo: vi.fn(), redo: vi.fn() };
+    const commands = { edit: vi.fn(), cut: vi.fn(), copy: vi.fn(), paste: vi.fn(), undo: vi.fn(), redo: vi.fn() };
     const root = document.querySelector<HTMLElement>("#script")!;
     const pane = mountTextPane(root, commands, hooks);
     pane.render(state);

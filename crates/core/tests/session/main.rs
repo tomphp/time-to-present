@@ -1,5 +1,6 @@
 mod autosave;
 mod breaks;
+mod clipboard;
 mod correct;
 mod create;
 mod delete;

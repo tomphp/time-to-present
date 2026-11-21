@@ -16,6 +16,10 @@ enum Step {
     SetBreak(usize, Option<BreakAfter>),
     Insert(Option<usize>, String),
     InsertEvent(Option<usize>, i64),
+    Cut(Vec<usize>),
+    Copy(Vec<usize>),
+    /// Pastes the clipboard's passage, or plain text when it holds none or this is false.
+    Paste(Option<usize>, bool, String),
     Undo,
     Redo,
 }
@@ -41,6 +45,14 @@ fn step() -> impl Strategy<Value = Step> {
         (prop::option::of(any::<usize>()), word_text()).prop_map(|(w, t)| Step::Insert(w, t)),
         (prop::option::of(any::<usize>()), -2000i64..2000)
             .prop_map(|(w, offset)| Step::InsertEvent(w, offset)),
+        prop::collection::vec(any::<usize>(), 1..4).prop_map(Step::Cut),
+        prop::collection::vec(any::<usize>(), 1..4).prop_map(Step::Copy),
+        (
+            prop::option::of(any::<usize>()),
+            any::<bool>(),
+            "[a-z]{1,8}( [a-z]{1,8}){0,2}"
+        )
+            .prop_map(|(w, internal, text)| Step::Paste(w, internal, text)),
         Just(Step::Undo),
         Just(Step::Redo),
     ]
@@ -89,7 +101,7 @@ fn resolve(step: &Step, state: &SessionState) -> Option<Edit> {
                 .map_or(Anchor::ScriptStart, |w| Anchor::Word(pick(w)));
             insert_event(anchor, *offset)
         }
-        Step::Undo | Step::Redo => return None,
+        Step::Cut(_) | Step::Copy(_) | Step::Paste(..) | Step::Undo | Step::Redo => return None,
     })
 }
 
@@ -102,19 +114,98 @@ fn insert_event(anchor: Anchor, offset: i64) -> Edit {
     }
 }
 
-/// Runs a step, returning how many Named Events an edit added, or None for undo and redo.
-fn run(session: &mut Session, step: &Step) -> Option<usize> {
+/// What the test knows the clipboard holds: its text, its Named Events, and the ids a cut
+/// took out, which its first paste may bring back.
+#[derive(Default)]
+struct Clipboard {
+    text: Option<String>,
+    events: usize,
+    cut_ids: HashSet<String>,
+}
+
+impl Clipboard {
+    fn hold(&mut self, words: &[String], state: &SessionState, cut: bool) {
+        let held = |id: &String| words.contains(id);
+        let texts: Vec<&str> = state
+            .words
+            .iter()
+            .filter(|w| held(&w.word.id))
+            .map(|w| w.word.text.as_str())
+            .collect();
+        let events = state
+            .named_events
+            .iter()
+            .filter(|e| matches!(&e.event.anchor, Anchor::Word(id) if held(id)));
+        let event_ids: Vec<String> = events.map(|e| e.event.id.clone()).collect();
+        self.text = Some(texts.join(" "));
+        self.events = event_ids.len();
+        self.cut_ids = if cut {
+            words.iter().cloned().chain(event_ids).collect()
+        } else {
+            HashSet::new()
+        };
+    }
+}
+
+/// What a step did to the Named Events: how many it added, less those it took away.
+enum Outcome {
+    Restored,
+    Events(isize),
+}
+
+fn pick_words(ws: &[usize], state: &SessionState) -> Vec<String> {
+    ws.iter()
+        .map(|n| state.words[n % state.words.len()].word.id.clone())
+        .collect()
+}
+
+/// Runs a step, returning the ids it may bring back alongside what it did to the events.
+fn run(
+    session: &mut Session,
+    clipboard: &mut Clipboard,
+    step: &Step,
+) -> (Outcome, HashSet<String>) {
+    let state = session.state();
+    let none = HashSet::new();
     match step {
         Step::Undo => session.undo(),
         Step::Redo => session.redo(),
+        Step::Cut(ws) | Step::Copy(ws) if !state.words.is_empty() => {
+            let words = pick_words(ws, &state);
+            let cut = matches!(step, Step::Cut(_));
+            let held = if cut {
+                session.cut(&words)
+            } else {
+                session.copy(&words)
+            };
+            held.unwrap();
+            clipboard.hold(&words, &state, cut);
+            let taken = if cut { clipboard.events as isize } else { 0 };
+            return (Outcome::Events(-taken), none);
+        }
+        Step::Cut(_) | Step::Copy(_) => return (Outcome::Events(0), none),
+        Step::Paste(w, internal, text) => {
+            let after = w
+                .as_ref()
+                .filter(|_| !state.words.is_empty())
+                .map(|n| state.words[n % state.words.len()].word.id.clone());
+            let passage = clipboard.text.clone().filter(|_| *internal);
+            let text = passage.clone().unwrap_or_else(|| text.clone());
+            session.paste(after, &text).unwrap();
+            if passage.is_none() {
+                return (Outcome::Events(0), none);
+            }
+            let restorable = std::mem::take(&mut clipboard.cut_ids);
+            return (Outcome::Events(clipboard.events as isize), restorable);
+        }
         _ => {
-            let edit = resolve(step, &session.state());
+            let edit = resolve(step, &state);
             let inserts_event = matches!(edit, Some(Edit::InsertEvent { .. }));
             let applied = edit.is_some_and(|edit| session.edit(edit).is_ok());
-            return Some(usize::from(inserts_event && applied));
+            return (Outcome::Events(isize::from(inserts_event && applied)), none);
         }
     }
-    None
+    (Outcome::Restored, none)
 }
 
 fn assert_script_times_monotonic(state: &SessionState) {
@@ -129,13 +220,13 @@ fn assert_script_times_monotonic(state: &SessionState) {
     }
 }
 
-/// An edit keeps every Named Event it does not add; each resolves to a Word or the Script start.
-/// Undo and redo only bring back a Script that was already checked.
-fn assert_every_event_resolves(state: &SessionState, before: usize, added: Option<usize>) {
-    if let Some(added) = added {
+/// An edit keeps every Named Event it does not add or cut; each resolves to a Word or the
+/// Script start. Undo and redo only bring back a Script that was already checked.
+fn assert_every_event_resolves(state: &SessionState, before: usize, outcome: &Outcome) {
+    if let Outcome::Events(added) = outcome {
         assert_eq!(
-            state.named_events.len(),
-            before + added,
+            state.named_events.len() as isize,
+            before as isize + added,
             "an event stopped resolving"
         );
     }
@@ -158,16 +249,18 @@ fn all_ids(state: &SessionState) -> impl Iterator<Item = &String> {
     words.chain(state.named_events.iter().map(|e| &e.event.id))
 }
 
-/// Undo and redo bring Words back under their old ids; any other step may only mint new ones.
+/// Undo and redo bring Words back under their old ids, and so does pasting a cut passage the
+/// first time; any other step may only mint new ones.
 fn assert_minted_ids_fresh(
-    step: &Step,
+    outcome: &Outcome,
+    restorable: &HashSet<String>,
     state: &SessionState,
     before: &HashSet<String>,
     ever: &mut HashSet<String>,
 ) {
-    let restores = matches!(step, Step::Undo | Step::Redo);
+    let restores = matches!(outcome, Outcome::Restored);
     for id in ids_of(state) {
-        if !restores && !before.contains(&id) {
+        if !restores && !before.contains(&id) && !restorable.contains(&id) {
             assert!(!ever.contains(&id), "id {id} was reused");
         }
         ever.insert(id);
@@ -189,16 +282,17 @@ proptest! {
         let (harness, folder) = Harness::with_fixture(fixture);
         let mut session = harness.open(&folder);
         let mut ever = ids_of(&session.state());
+        let mut clipboard = Clipboard::default();
 
         for step in &steps {
             let before = session.state();
-            let added = run(&mut session, step);
+            let (outcome, restorable) = run(&mut session, &mut clipboard, step);
 
             let state = session.state();
             assert_script_times_monotonic(&state);
-            assert_every_event_resolves(&state, before.named_events.len(), added);
+            assert_every_event_resolves(&state, before.named_events.len(), &outcome);
             assert_ids_unique(&state);
-            assert_minted_ids_fresh(step, &state, &ids_of(&before), &mut ever);
+            assert_minted_ids_fresh(&outcome, &restorable, &state, &ids_of(&before), &mut ever);
             session.undo();
             if session.state() != state {
                 session.redo();

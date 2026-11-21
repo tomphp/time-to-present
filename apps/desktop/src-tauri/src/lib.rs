@@ -172,6 +172,31 @@ fn edit(state: State<'_, App>, edit: Edit) -> CommandResult<SessionState> {
 }
 
 #[tauri::command]
+fn cut(state: State<'_, App>, words: Vec<String>) -> CommandResult<SessionState> {
+    with_session(&state, |session| {
+        session.cut(&words)?;
+        Ok::<_, EditError>(session.state())
+    })
+}
+
+#[tauri::command]
+fn copy(state: State<'_, App>, words: Vec<String>) -> CommandResult<()> {
+    with_session(&state, |session| session.copy(&words))
+}
+
+#[tauri::command]
+fn paste(
+    state: State<'_, App>,
+    after: Option<String>,
+    text: String,
+) -> CommandResult<SessionState> {
+    with_session(&state, |session| {
+        session.paste(after, &text)?;
+        Ok::<_, EditError>(session.state())
+    })
+}
+
+#[tauri::command]
 fn undo(state: State<'_, App>) -> CommandResult<SessionState> {
     with_session(&state, |session| {
         session.undo();
@@ -293,6 +318,9 @@ pub fn run() {
             open_settings,
             session_state,
             edit,
+            cut,
+            copy,
+            paste,
             undo,
             redo,
             select_event,

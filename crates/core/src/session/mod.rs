@@ -6,13 +6,15 @@ use serde::Serialize;
 
 use crate::capture::{RecordingBar, RecordingBarState, Taps};
 use crate::platform::Platform;
-use crate::script::{Edit, EditError, Ids, TimedEvent, TimedWord};
+use crate::script::{Edit, EditError, Ids, Script, TimedEvent, TimedWord};
 use crate::store::{self, Presentation, StoreError};
 use crate::time::Ms;
 
+mod clipboard;
 mod history;
 mod recording;
 
+use clipboard::Clipboard;
 use history::History;
 
 type Listener = Box<dyn Fn(&SessionState) + Send>;
@@ -25,6 +27,7 @@ pub struct Session {
     presentation: Presentation,
     ids: Ids,
     history: History,
+    clipboard: Clipboard,
     moved: HashSet<String>,
     listeners: Vec<Listener>,
     platform: Platform,
@@ -58,6 +61,7 @@ impl Session {
             ids: Ids::after(&presentation.script),
             presentation,
             history: History::default(),
+            clipboard: Clipboard::default(),
             moved: HashSet::new(),
             listeners: Vec::new(),
             platform,
@@ -85,23 +89,35 @@ impl Session {
     /// Applies one edit (a Batch counts as one) as a single undo step, or leaves the Script
     /// untouched if any part of it fails or nothing changes.
     pub fn edit(&mut self, edit: Edit) -> Result<(), EditError> {
-        let before = self.presentation.script.clone();
-        let reanchored = match self.presentation.script.apply(edit, &mut self.ids) {
-            Ok(reanchored) => reanchored,
-            Err(error) => {
-                self.presentation.script = before;
-                return Err(error);
-            }
+        self.change(|script, ids| Ok(((), script.apply(edit, ids)?)))
+    }
+
+    /// Takes the Words out onto the clipboard with their Named Events, as one undo step.
+    pub fn cut(&mut self, words: &[String]) -> Result<(), EditError> {
+        let passage = self.change(|script, _| Ok((script.cut(words)?, Vec::new())))?;
+        self.clipboard.hold(passage, true);
+        Ok(())
+    }
+
+    pub fn copy(&mut self, words: &[String]) -> Result<(), EditError> {
+        let passage = self.presentation.script.copy(words)?;
+        self.clipboard.hold(passage, false);
+        Ok(())
+    }
+
+    /// Pastes the clipboard's passage when `text` reads as it, and otherwise `text` as typed
+    /// Words. A cut passage moving back in gives its Named Events a Moved badge.
+    pub fn paste(&mut self, after: Option<String>, text: &str) -> Result<(), EditError> {
+        let script = &self.presentation.script;
+        let Some(paste) = self.clipboard.paste(text, script, &mut self.ids) else {
+            let text = text.to_string();
+            return self.edit(Edit::InsertText { after, text });
         };
-        if self.presentation.script == before {
-            return Ok(());
-        }
-        let newly_moved = reanchored
-            .into_iter()
-            .filter(|id| self.moved.insert(id.clone()))
-            .collect();
-        self.history.record(before, newly_moved);
-        self.changed();
+        self.change(|script, _| {
+            script.paste(after.as_deref(), paste.passage)?;
+            Ok(((), paste.moved))
+        })?;
+        self.clipboard.pasted();
         Ok(())
     }
 
@@ -156,6 +172,32 @@ impl Session {
             script_end: self.presentation.script.end(),
             recording_bar: self.bar.as_ref().map(RecordingBar::state),
         }
+    }
+
+    /// Runs a change to the Script as one undo step, giving the Named Events it reports
+    /// re-anchoring a Moved badge, or puts the Script back if it fails.
+    fn change<T>(
+        &mut self,
+        change: impl FnOnce(&mut Script, &mut Ids) -> Result<(T, Vec<String>), EditError>,
+    ) -> Result<T, EditError> {
+        let before = self.presentation.script.clone();
+        let (changed, reanchored) = match change(&mut self.presentation.script, &mut self.ids) {
+            Ok(changed) => changed,
+            Err(error) => {
+                self.presentation.script = before;
+                return Err(error);
+            }
+        };
+        if self.presentation.script == before {
+            return Ok(changed);
+        }
+        let newly_moved = reanchored
+            .into_iter()
+            .filter(|id| self.moved.insert(id.clone()))
+            .collect();
+        self.history.record(before, newly_moved);
+        self.changed();
+        Ok(changed)
     }
 
     fn moved_events(&self) -> Vec<String> {
