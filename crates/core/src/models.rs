@@ -88,11 +88,14 @@ impl ModelManager {
         on_progress: impl FnMut(Progress),
     ) -> Result<PathBuf, ModelError> {
         let spec = self.spec(name)?;
+        let path = self.path(spec);
+        if path.is_file() {
+            return Ok(path);
+        }
         let _turn = self
             .downloading
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let path = self.path(spec);
         if !path.is_file() {
             fs::create_dir_all(&self.dir)?;
             self.download(spec, &path, on_progress)?;

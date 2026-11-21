@@ -46,23 +46,6 @@ async function showRecent() {
       button.addEventListener("click", () =>
         openFolder(folder).catch((reason) => {
           showError(reason);
-          async function checkMicrophone() {
-  error.hidden = true;
-  notice.hidden = true;
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stream.getTracks().forEach((track) => track.stop());
-    notice.textContent = "Microphone access granted";
-    notice.hidden = false;
-  } catch (reason) {
-    showError(`Microphone access failed: ${reason}`);
-  }
-}
-
-document.querySelector("#open-settings")!.addEventListener("click", () => void openSettings());
-document.querySelector("#check-microphone")!.addEventListener("click", checkMicrophone);
-
-void showRecent();
         }),
       );
       const item = document.createElement("li");
