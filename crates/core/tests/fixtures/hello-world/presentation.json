@@ -1,0 +1,16 @@
+{
+  "formatVersion": 1,
+  "title": "Hello world",
+  "recordings": [
+    {"id":"r1","file":"recordings/r1.wav"}
+  ],
+  "words": [
+    {"id":"w1","text":"Hello,","gap":400,"duration":300,"recordingId":"r1","audioStart":1200,"audioEnd":1500,"confidence":0.98},
+    {"id":"w2","text":"world.","gap":150,"duration":450,"recordingId":"r1","audioStart":1650,"audioEnd":2100,"confidence":0.91,"breakAfter":"paragraph"},
+    {"id":"w3","text":"Typed","gap":100,"duration":300,"recordingId":null,"audioStart":null,"audioEnd":null,"confidence":null}
+  ],
+  "namedEvents": [
+    {"id":"e1","name":"slide","data":{"index":1},"anchor":"scriptStart","offset":0},
+    {"id":"e2","name":"confetti","anchor":"w3","offset":800}
+  ]
+}

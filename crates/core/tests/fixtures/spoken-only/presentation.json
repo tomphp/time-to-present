@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "title": "Spoken only",
+  "recordings": [
+    {"id":"r1","file":"recordings/r1.wav"}
+  ],
+  "words": [
+    {"id":"w1","text":"Just","gap":0,"duration":250,"recordingId":"r1","audioStart":300,"audioEnd":550,"confidence":0.97},
+    {"id":"w2","text":"words.","gap":120,"duration":480,"recordingId":"r1","audioStart":670,"audioEnd":1150,"confidence":0.95}
+  ],
+  "namedEvents": [
+    {"id":"e1","name":"intro","anchor":"w1","offset":-100}
+  ]
+}
