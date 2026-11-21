@@ -26,6 +26,17 @@ document.querySelector("#open-folder")!.addEventListener("click", async () => {
   if (folder) await openFolder(folder).catch(showError);
 });
 
+document.querySelector("#check-microphone")!.addEventListener("click", async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((track) => track.stop());
+    notice.textContent = "Microphone access granted";
+    notice.hidden = false;
+  } catch (reason) {
+    showError(`Microphone access failed: ${reason}`);
+  }
+});
+
 const notice = document.querySelector<HTMLParagraphElement>("#notice")!;
 const recent = document.querySelector<HTMLElement>("#recent")!;
 const recentList = document.querySelector<HTMLUListElement>("#recent-list")!;
