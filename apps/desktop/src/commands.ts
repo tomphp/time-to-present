@@ -103,6 +103,7 @@ export function onMeter(render: (meter: Meter) => void) {
 }
 
 export const snapshot = () => invoke<Snapshot>("snapshot");
+export const play = () => invoke<void>("play");
 export const preview = (from: number | null) => invoke<void>("preview", { from });
 export const play = () => invoke<void>("play");
 export const pause = () => invoke<void>("pause");

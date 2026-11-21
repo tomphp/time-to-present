@@ -328,8 +328,36 @@ body.teleprompter {
   color: #eee;
   background: #000;
   --line: 1.4em;
+  --reading-line: 0.3333;
   font-size: 48px;
   line-height: var(--line);
+}
+
+body.teleprompter #stage.blanked {
+  visibility: hidden;
+}
+
+body.teleprompter .marker {
+  font-size: 0.3em;
+  color: #888;
+  opacity: 0.6;
+  margin-right: 0.5em;
+  vertical-align: middle;
+}
+
+body.teleprompter .marker.fired {
+  animation: marker-flash 600ms ease-out;
+}
+
+body.teleprompter.markers-hidden .marker {
+  display: none;
+}
+
+@keyframes marker-flash {
+  from {
+    color: #ffd54f;
+    opacity: 1;
+  }
 }
 
 body.teleprompter #column {
@@ -357,7 +385,7 @@ body.teleprompter .current {
 
 body.teleprompter #reading-line {
   position: fixed;
-  top: 33.333vh;
+  top: calc(var(--reading-line) * 100vh);
   left: max(0px, calc(50% - min(15ch, 45vw) - 1em));
   transform: translateY(-50%);
   color: #ffd54f;

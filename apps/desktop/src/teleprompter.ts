@@ -1,6 +1,15 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { onServerStatus, onSessionState, onStreamEvent, openInBrowser, pause, play, reset, seek, setSpeed } from "./commands";
 import { find } from "./dom";
+import {
+  applyAction,
+  loadOptions,
+  markerPlacements,
+  mirrorFor,
+  mirrorTransform,
+  saveOptions,
+  displayAction,
+} from "./display-options";
 import { formatElapsed } from "./recording-bar-view";
 import {
   clockIcon,
@@ -38,6 +47,12 @@ const SCROLL_EASE = "transform 200ms ease";
 const readingLine = find<HTMLSpanElement>("#reading-line");
 const column = find<HTMLElement>("#column");
 const paused = find<HTMLParagraphElement>("#paused");
+const stage = find<HTMLDivElement>("#stage");
+const display = `${screen.width}x${screen.height}@${devicePixelRatio}`;
+const FLASH = "fired";
+
+let options = loadOptions(localStorage);
+let layoutKey = "";
 
 const bar = {
   warning: find<HTMLParagraphElement>("#bar-warning"),
@@ -69,25 +84,39 @@ let followed = UNFOLLOWED;
 let current: number | null = null;
 let scroll: Scroll | null = null;
 
-function renderScript(next: ScriptWord[]) {
-  const unchanged = sameLayout(words, next);
+function marker({ id, name }: { id: string; name: string }) {
+  const element = document.createElement("small");
+  element.className = "marker";
+  element.dataset.event = id;
+  element.textContent = name;
+  return element;
+}
+
+function renderScript(next: ScriptWord[], nextEvents: TimedEvent[]) {
+  const placements = markerPlacements(next, nextEvents);
+  const key = JSON.stringify(placements);
+  const unchanged = sameLayout(words, next) && key === layoutKey;
   words = next;
+  layoutKey = key;
   if (unchanged && spans.length > 0) return;
-  column.replaceChildren(
-    ...scriptLayout(next).map((paragraph) => {
-      const element = document.createElement("p");
-      paragraph.forEach((line, index) => {
-        if (index > 0) element.append(document.createElement("br"));
-        line.forEach((word, position) => {
-          if (position > 0) element.append(" ");
-          const span = document.createElement("span");
-          span.textContent = word.text;
-          element.append(span);
-        });
+  let index = 0;
+  const paragraphs = scriptLayout(next).map((paragraph) => {
+    const element = document.createElement("p");
+    paragraph.forEach((line, row) => {
+      if (row > 0) element.append(document.createElement("br"));
+      line.forEach((word, position) => {
+        if (position > 0) element.append(" ");
+        element.append(...placements.filter(({ before }) => before === index).map(marker));
+        const span = document.createElement("span");
+        span.textContent = word.text;
+        element.append(span);
+        index++;
       });
-      return element;
-    }),
-  );
+    });
+    return element;
+  });
+  paragraphs.at(-1)?.append(...placements.filter(({ before }) => before === index).map(marker));
+  column.replaceChildren(...paragraphs);
   spans = [...column.querySelectorAll("span")];
   current = null;
   scroll = null;
@@ -163,6 +192,12 @@ function navigate(event: KeyboardEvent) {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") return void getCurrentWindow().setFullscreen(false).catch(console.error);
+  const action = displayAction(event);
+  if (action) {
+    event.preventDefault();
+    if (!event.repeat || action.startsWith("font") || action.startsWith("reading")) perform(action);
+    return;
+  }
   if (!followed.state || (event.repeat && event.key === "Home")) return;
   const modified = event.metaKey || event.ctrlKey || event.altKey || event.shiftKey;
   const toggle = modified ? null : keyCommand(event.key, followed.state);
@@ -174,6 +209,30 @@ document.addEventListener("keydown", (event) => {
     else void (toggle === "play" ? play() : pause()).catch(console.error);
   } else if (navigate(event)) event.preventDefault();
 });
+
+function applyOptions() {
+  const mirror = mirrorFor(options, display);
+  document.body.classList.toggle("markers-hidden", !options.markers);
+  document.body.style.fontSize = `${options.fontSize}px`;
+  document.body.style.setProperty("--reading-line", String(options.readingLine));
+  stage.style.transform = mirrorTransform(mirror);
+  scroll = null;
+}
+
+function flash(id: string) {
+  const element = column.querySelector<HTMLElement>(`[data-event="${id}"]`);
+  if (!element) return;
+  element.classList.remove(FLASH);
+  void element.offsetWidth;
+  element.classList.add(FLASH);
+}
+
+function perform(action: NonNullable<ReturnType<typeof displayAction>>) {
+  if (action === "blank") return void stage.classList.toggle("blanked");
+  options = applyAction(options, action, display);
+  saveOptions(localStorage, options);
+  applyOptions();
+}
 
 new ResizeObserver(() => (scroll = null)).observe(column);
 
@@ -197,13 +256,15 @@ onSessionState((state) => {
   events = state.namedEvents;
   scriptEnd = state.scriptEnd;
   renderTicks();
-  renderScript(state.words);
+  renderScript(state.words, state.namedEvents);
 });
 void onStreamEvent((event) => {
   const at = performance.now();
   followed = followClock(followed, event, at);
   run = foldRun(run, event, at);
+  if (event.type === "namedEvent") flash(event.id);
   if (followed.state !== "ready") noAppWarned = false;
   paused.hidden = followed.state !== "paused";
 });
+applyOptions();
 requestAnimationFrame(frame);
