@@ -34,7 +34,11 @@ export function approachCue(
   };
 }
 
+const LONG_GAP_SECONDS = { min: 0.1, max: 3600 };
+
 export function longGapFromSeconds(text: string) {
-  const seconds = Number(text.trim() || Number.NaN);
-  return seconds > 0 ? Math.round(seconds * 1000) : null;
+  if (text.trim() === "") return null;
+  const seconds = Number(text);
+  const inRange = seconds >= LONG_GAP_SECONDS.min && seconds <= LONG_GAP_SECONDS.max;
+  return inRange ? Math.round(seconds * 1000) : null;
 }

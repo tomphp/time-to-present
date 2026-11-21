@@ -329,6 +329,7 @@ body.teleprompter {
   background: #000;
   --line: 1.4em;
   --reading-line: 0.3333;
+  --accent: #ffd54f;
   font-size: 48px;
   line-height: var(--line);
 }
@@ -361,7 +362,7 @@ body.teleprompter.markers-hidden .marker {
 
 @keyframes marker-flash {
   from {
-    color: #ffd54f;
+    color: var(--accent);
     opacity: 1;
   }
 }
@@ -385,7 +386,7 @@ body.teleprompter .spoken {
 
 body.teleprompter .current {
   color: #000;
-  background: #ffd54f;
+  background: var(--accent);
   border-radius: 0.1em;
 }
 
@@ -394,7 +395,7 @@ body.teleprompter #reading-line {
   top: calc(var(--reading-line) * 100vh);
   left: max(0px, calc(50% - min(15ch, 45vw) - 1em));
   transform: translateY(-50%);
-  color: #ffd54f;
+  color: var(--accent);
 }
 
 body.teleprompter #paused {
@@ -431,7 +432,7 @@ body.teleprompter #bar p {
 }
 
 body.teleprompter #bar-warning {
-  color: #ffd54f;
+  color: var(--accent);
 }
 
 body.teleprompter #bar-main {
@@ -462,7 +463,7 @@ body.teleprompter #bar-progress i {
 }
 
 body.teleprompter #bar .changed {
-  color: #ffd54f;
+  color: var(--accent);
 }
 
 body.teleprompter #bar button {
@@ -479,12 +480,12 @@ body.teleprompter #bar [hidden] {
 
 body.teleprompter .approaching {
   position: relative;
-  background: linear-gradient(#ffd54f, #ffd54f) left bottom / calc(var(--fill) * 100%) 0.08em no-repeat;
+  background: linear-gradient(var(--accent), var(--accent)) left bottom / calc(var(--fill) * 100%) 0.08em no-repeat;
 }
 
 body.teleprompter .approaching.long-gap {
   background:
-    linear-gradient(#ffd54f, #ffd54f) left bottom / calc(var(--fill) * 100%) 0.2em no-repeat,
+    linear-gradient(var(--accent), var(--accent)) left bottom / calc(var(--fill) * 100%) 0.2em no-repeat,
     linear-gradient(rgb(255 255 255 / 0.2), rgb(255 255 255 / 0.2)) left bottom / 100% 0.2em no-repeat;
 }
 
@@ -495,7 +496,7 @@ body.teleprompter .long-gap::before {
   left: 0;
   font-size: 0.5em;
   line-height: 1;
-  color: #ffd54f;
+  color: var(--accent);
 }
 
 body.teleprompter #end {
@@ -507,5 +508,5 @@ body.teleprompter #end {
 
 body.teleprompter #end.over {
   opacity: 1;
-  color: #ffd54f;
+  color: var(--accent);
 }

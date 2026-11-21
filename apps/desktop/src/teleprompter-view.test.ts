@@ -99,7 +99,7 @@ describe("scrolling", () => {
     for (let at = 0; at <= 6_500; at += 50) {
       const followed = followedAt(at);
       const current = currentWord(words, followed.state, scriptTimeAt(followed, at));
-      const next = scrollTo(scroll, lineOf[current ?? 0], 0, followed.jumps);
+      const next = scrollTo(scroll, { top: lineOf[current ?? 0], free: 0, jumps: followed.jumps });
       if (next !== scroll) moves.push({ at, ...next });
       scroll = next;
     }
@@ -117,26 +117,32 @@ describe("scrolling", () => {
     const closed = followClock(playing, { type: "closed", reason: "closed" }, 3_600);
     const reopened = followClock(closed, rehearsal.stream[0].event, 3_700);
 
-    expect(scrollTo({ top: 2, free: 0, jumps: playing.jumps, animate: true }, 0, 0, reopened.jumps).animate).toBe(false);
+    expect(scrollTo({ top: 2, free: 0, jumps: playing.jumps, animate: true }, { top: 0, free: 0, jumps: reopened.jumps }).animate).toBe(false);
   });
 });
 
 describe("free scrolling", () => {
   const range = { min: -100, max: 500 };
 
-  it("follows the presenter's scrolling at once in ready and paused, within the Script", () => {
+  it("adds up the presenter's scrolling in paused, within the Script", () => {
     const paused = followedAt(2_500);
     const once = scrollFreely(null, paused, 120, range);
-    const twice = scrollFreely(once, paused, 1_000, range);
 
     expect(once).toEqual({ offset: 120, jumps: paused.jumps });
-    expect(twice?.offset).toBe(500);
-    const ready = followClock(UNFOLLOWED, rehearsal.stream[0].event, 0);
-    expect(scrollFreely(null, ready, -300, range)?.offset).toBe(-100);
+    expect(scrollFreely(once, paused, 1_000, range)?.offset).toBe(500);
     expect(scrollFreely(null, paused, -300, range)?.offset).toBe(-100);
+  });
 
-    const top = scrollTo(null, 2, 0, paused.jumps);
-    expect(scrollTo(top, 2, 120, paused.jumps).animate).toBe(false);
+  it("works in ready too", () => {
+    const ready = followClock(UNFOLLOWED, rehearsal.stream[0].event, 0);
+
+    expect(scrollFreely(null, ready, 120, range)?.offset).toBe(120);
+  });
+
+  it("moves the text at once, with no ease", () => {
+    const top = scrollTo(null, { top: 2, free: 0, jumps: 1 });
+
+    expect(scrollTo(top, { top: 2, free: 120, jumps: 1 }).animate).toBe(false);
   });
 
   it("does nothing while playing or once ended", () => {
@@ -150,8 +156,8 @@ describe("free scrolling", () => {
 
     expect(heldFreeScroll(free, followedAt(2_900))).toBe(free);
     expect(heldFreeScroll(free, playing)).toBeNull();
-    const freely = scrollTo(null, 2, 120, playing.jumps);
-    expect(scrollTo(freely, 2, 0, playing.jumps).animate).toBe(true);
+    const freely = scrollTo(null, { top: 2, free: 120, jumps: playing.jumps });
+    expect(scrollTo(freely, { top: 2, free: 0, jumps: playing.jumps }).animate).toBe(true);
   });
 
   it("snaps back on a seek", () => {

@@ -62,7 +62,10 @@ describe("the Long Gap threshold in Settings", () => {
     expect(longGapFromSeconds("2")).toBe(2_000);
   });
 
-  it("refuses anything that is not a positive number", () => {
-    for (const text of ["", "abc", "0", "-1"]) expect(longGapFromSeconds(text)).toBeNull();
+  it("refuses anything that is not between a tenth of a second and an hour", () => {
+    for (const text of ["", "abc", "0", "-1", "0.05", "3601", "1e999", "Infinity"]) {
+      expect(longGapFromSeconds(text)).toBeNull();
+    }
+    expect(longGapFromSeconds("0.1")).toBe(100);
   });
 });

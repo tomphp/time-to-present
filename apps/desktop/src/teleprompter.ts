@@ -94,7 +94,7 @@ let followed = UNFOLLOWED;
 let current: number | null = null;
 let scroll: Scroll | null = null;
 let free: FreeScroll | null = null;
-let cueSettings: ApproachCueSettings = { enabled: false, longGap: 0 };
+let cueSettings: ApproachCueSettings | null = null;
 let cue: Cue | null = null;
 
 function marker({ id, name }: { id: string; name: string }) {
@@ -157,7 +157,7 @@ function showCue(next: Cue | null) {
 
 /** Holds the current Word's line level with the Reading Line's chevron, less any free scrolling. */
 function follow(target: HTMLElement) {
-  const next = scrollTo(scroll, target.offsetTop, free?.offset ?? 0, followed.jumps);
+  const next = scrollTo(scroll, { top: target.offsetTop, free: free?.offset ?? 0, jumps: followed.jumps });
   if (next === scroll) return;
   scroll = next;
   const offset = options.readingLine * innerHeight - (target.offsetTop + target.offsetHeight / 2) - next.free;
@@ -202,7 +202,7 @@ function frame() {
   const over = isOver(followed, at);
   const next = over ? words.length : currentWord(words, followed.state, scriptTime);
   if (next !== current) highlight(next);
-  showCue(approachCue(words, followed, scriptTime, cueSettings));
+  showCue(cueSettings && approachCue(words, followed, scriptTime, cueSettings));
   end.classList.toggle("over", over);
   free = heldFreeScroll(free, followed);
   const target = over ? end : spans[current ?? 0];

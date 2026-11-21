@@ -77,7 +77,7 @@ export interface Scroll {
 }
 
 /** Eases a line at a time and on snapping back, follows free scrolling at once, and jumps after a seek or reset. */
-export function scrollTo(previous: Scroll | null, top: number, free: number, jumps: number): Scroll {
+export function scrollTo(previous: Scroll | null, { top, free, jumps }: Omit<Scroll, "animate">): Scroll {
   if (previous?.top === top && previous.free === free && previous.jumps === jumps) return previous;
   const scrolling = previous !== null && free !== 0 && previous.free !== free;
   return { top, free, jumps, animate: previous?.jumps === jumps && !scrolling };

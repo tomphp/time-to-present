@@ -16,7 +16,10 @@ function show(settings: ApproachCueSettings) {
 
 form.addEventListener("change", () => {
   const threshold = longGapFromSeconds(longGap.value);
-  if (threshold === null) return saved && show(saved);
+  if (threshold === null) {
+    if (saved) show(saved);
+    return;
+  }
   void setApproachCue({ enabled: enabled.checked, longGap: threshold }).catch(console.error);
 });
 form.addEventListener("submit", (event) => event.preventDefault());
