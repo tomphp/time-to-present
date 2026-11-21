@@ -2,17 +2,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ScriptWord, SessionState } from "./session";
 import { mountTextPane } from "./text-pane";
+import { scriptWord } from "./test-words";
 
 const settle = () => new Promise((resolve) => setTimeout(resolve));
 
-const word = (id: string, text: string, breakAfter?: ScriptWord["breakAfter"]): ScriptWord => ({
-  id,
-  text,
-  start: 0,
-  duration: 300,
-  confidence: null,
-  breakAfter,
-});
+const word = (id: string, text: string, breakAfter?: ScriptWord["breakAfter"]) => scriptWord(id, text, { breakAfter });
 
 const state = (words: ScriptWord[]) => ({ words, namedEvents: [], movedEvents: [] }) as unknown as SessionState;
 const script = [word("w1", "Hello,", "line"), word("w2", "world."), word("w3", "Typed")];
@@ -32,7 +26,7 @@ function mountPane() {
     undo: vi.fn(),
     redo: vi.fn(),
   };
-  const pane = mountTextPane(root, commands, { insertEventAt: vi.fn(), selectEvent: vi.fn() });
+  const pane = mountTextPane(root, commands, { insertEventAt: vi.fn(), selectEvent: vi.fn() }, vi.fn());
   pane.render(state(script));
   return commands;
 }

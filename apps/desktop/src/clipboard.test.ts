@@ -2,15 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { Caret, Range } from "./caret";
 import { caretAfterPaste, passageText, pasteAt, selectedWords } from "./clipboard";
 import type { ScriptWord } from "./session";
+import { scriptWord } from "./test-words";
 
-const word = (id: string, text: string, breakAfter?: ScriptWord["breakAfter"]): ScriptWord => ({
-  id,
-  text,
-  start: 0,
-  duration: 300,
-  confidence: null,
-  breakAfter,
-});
+const word = (id: string, text: string, breakAfter?: ScriptWord["breakAfter"]) => scriptWord(id, text, { breakAfter });
 
 const words = [word("w1", "Hello,", "line"), word("w2", "world.", "paragraph"), word("w3", "Typed")];
 const range = (start: Caret, end: Caret): Range => ({ start, end });
