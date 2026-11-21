@@ -15,8 +15,7 @@ use crate::hub::Subscription;
 pub(crate) const PATH: &str = "/_ttp/v1/events";
 const RETRY: Duration = Duration::from_millis(1000);
 
-/// The Snapshot is taken and the broadcast joined under the Session's lock, which every
-/// broadcast also holds, so a connection neither misses an event nor sees one twice.
+/// Snapshot and join under the Session's lock, as every broadcast holds it: nothing is missed or doubled.
 pub(crate) async fn stream(State(shared): State<Arc<Shared>>) -> Response {
     let joined = {
         let mut open = shared.session.lock().unwrap();

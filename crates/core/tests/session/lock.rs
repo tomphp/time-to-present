@@ -196,14 +196,24 @@ fn a_transcription_heard_while_the_clock_is_playing_lands_once_it_stops() {
 
     assert_eq!(session.state().pending_passages.len(), 1);
     assert_eq!(session.state().words.len(), 3);
-    assert!(stream.take().iter().all(|event| !matches!(event, StreamEvent::Snapshot(_))));
+    assert!(
+        stream
+            .take()
+            .iter()
+            .all(|event| !matches!(event, StreamEvent::Snapshot(_)))
+    );
 
     session.pause();
     session.poll().unwrap();
 
     assert!(session.state().pending_passages.is_empty());
     assert_eq!(session.state().words[3].word.text, "Thanks");
-    assert!(stream.take().iter().any(|event| matches!(event, StreamEvent::Snapshot(_))));
+    assert!(
+        stream
+            .take()
+            .iter()
+            .any(|event| matches!(event, StreamEvent::Snapshot(_)))
+    );
 }
 
 #[test]

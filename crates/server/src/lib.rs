@@ -19,6 +19,7 @@ mod bind;
 mod events;
 mod hub;
 mod pages;
+mod script;
 
 use bind::PortNotice;
 use hub::Hub;
@@ -58,7 +59,7 @@ impl Server {
         });
         let router = Router::new()
             .route(events::PATH, get(events::stream))
-            .route(pages::SCRIPT_PATH, get(pages::script))
+            .route(script::PATH, get(script::script))
             .fallback(pages::app)
             .layer(SetResponseHeaderLayer::if_not_present(
                 header::CACHE_CONTROL,
@@ -96,8 +97,8 @@ impl Server {
 
     /// Closes the open Presentation, which ends every stream with a `closed` event.
     pub fn close(&self) -> Result<(), StoreError> {
-        let closing = self.shared.session.lock().unwrap().take();
-        closing.map_or(Ok(()), Session::close)
+        let mut open = self.shared.session.lock().unwrap();
+        open.take().map_or(Ok(()), Session::close)
     }
 
     pub fn watch_connected_apps(&self) -> watch::Receiver<usize> {
@@ -113,7 +114,7 @@ impl Server {
             shadow_warning: session
                 .as_ref()
                 .and_then(|session| pages::shadow_warning(session.folder())),
-            connected_apps: *self.watch_connected_apps().borrow(),
+            connected_apps: self.shared.hub.connected_apps(),
         }
     }
 }

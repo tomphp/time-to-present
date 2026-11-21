@@ -81,7 +81,16 @@ async fn files_under_app_ttp_are_shadowed_by_the_reserved_prefix_and_warned_abou
     write(&folder, "app/_ttp/notes.txt", "shadowed");
 
     assert_eq!(harness.get("/_ttp/notes.txt").await.status(), 404);
-    assert_eq!(harness.get("/%5Fttp/notes.txt").await.status(), 404);
+    for disguised in [
+        "/%5Fttp/notes.txt",
+        "/./_ttp/notes.txt",
+        "/%2e/_ttp/notes.txt",
+        "//_ttp/notes.txt",
+        "/_TTP/notes.txt",
+    ] {
+        assert_eq!(harness.raw_status(disguised).await, 404, "{disguised}");
+    }
+    assert_eq!(harness.raw_status("/./index.html").await, 200);
     assert_eq!(
         harness.get("/_ttp/v1/events").await.headers()["content-type"],
         "text/event-stream"

@@ -7,7 +7,7 @@ use serde_json::{Map, Value};
 use crate::capture::InputChoice;
 
 const RECENT_LIMIT: usize = 10;
-pub const DEFAULT_PORT: u16 = 4747;
+const DEFAULT_PORT: u16 = 4747;
 
 #[derive(Debug, thiserror::Error)]
 pub enum SettingsError {
@@ -18,14 +18,12 @@ pub enum SettingsError {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(default)]
 struct Values {
-    #[serde(default)]
     recent: Vec<PathBuf>,
-    #[serde(default)]
     input: InputChoice,
-    #[serde(default = "default_port")]
     port: u16,
-    #[serde(default = "loopback", rename = "bindAddress")]
+    #[serde(rename = "bindAddress")]
     bind_address: IpAddr,
     #[serde(flatten)]
     other: Map<String, Value>,
@@ -37,22 +35,13 @@ impl Default for Values {
             recent: Vec::new(),
             input: InputChoice::default(),
             port: DEFAULT_PORT,
-            bind_address: loopback(),
+            bind_address: Ipv4Addr::LOCALHOST.into(),
             other: Map::new(),
         }
     }
 }
 
-fn default_port() -> u16 {
-    DEFAULT_PORT
-}
-
-fn loopback() -> IpAddr {
-    Ipv4Addr::LOCALHOST.into()
-}
-
-/// Where the event stream server listens. The bind address has no control in Settings: it is
-/// kept so that LAN access can be added later.
+/// Where the event stream server listens. Only the port is ever offered in Settings.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ServerSettings {
     pub address: IpAddr,

@@ -25,8 +25,7 @@ impl Frame {
     }
 }
 
-/// The broadcast every connection subscribes to. Frames are numbered in the order they go
-/// out, Snapshots included, for debugging only: nothing is kept to replay.
+/// The broadcast every connection joins, numbering frames for debugging only: nothing is replayed.
 pub(crate) struct Hub {
     frames: broadcast::Sender<Frame>,
     sequence: AtomicU64,
@@ -64,6 +63,10 @@ impl Hub {
             frames: self.frames.subscribe(),
             connected: self.connected.clone(),
         }
+    }
+
+    pub(crate) fn connected_apps(&self) -> usize {
+        *self.connected.borrow()
     }
 
     pub(crate) fn watch_connected(&self) -> watch::Receiver<usize> {

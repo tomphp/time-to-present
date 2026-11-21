@@ -3,12 +3,11 @@ use std::net::Ipv4Addr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI64, Ordering};
-use std::time::Duration;
 
-use futures_util::StreamExt;
-use futures_util::stream::BoxStream;
 use serde_json::Value;
 use tempfile::TempDir;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
 use ttp_core::capture::{Access, AudioCallback, AudioSource, CaptureError, Input};
 use ttp_core::platform::{AppNap, Platform};
 use ttp_core::session::Session;
@@ -17,7 +16,7 @@ use ttp_core::time::{Ms, TimeSource};
 use ttp_core::transcription::{Report, RunningJob, Transcriber, TranscriptionJob};
 use ttp_server::{Server, SharedSession};
 
-const PATIENCE: Duration = Duration::from_secs(5);
+use crate::sse::{Events, PATIENCE};
 
 struct ManualTime(AtomicI64);
 
@@ -139,6 +138,17 @@ impl Harness {
         reqwest::get(self.url(path)).await.unwrap()
     }
 
+    /// The status of a GET sent exactly as written, where an HTTP client would tidy the path.
+    pub async fn raw_status(&self, path: &str) -> u16 {
+        let mut connection = TcpStream::connect(self.server.address()).await.unwrap();
+        let request =
+            format!("GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+        connection.write_all(request.as_bytes()).await.unwrap();
+        let mut response = String::new();
+        connection.read_to_string(&mut response).await.unwrap();
+        response[9..12].parse().unwrap()
+    }
+
     pub async fn connect(&self) -> Events {
         Events::connect(&self.url("/_ttp/v1/events")).await
     }
@@ -171,88 +181,4 @@ pub fn hello_events() -> Value {
         {"id": "e1", "name": "slide", "data": {"index": 1}, "anchor": "scriptStart", "offset": 0},
         {"id": "e2", "name": "confetti", "anchor": "w2", "offset": 100},
     ])
-}
-
-/// One SSE message as it came over the wire.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Message {
-    pub event: String,
-    pub id: Option<u64>,
-    pub retry: Option<u64>,
-    pub data: Value,
-}
-
-/// An SSE connection read message by message.
-pub struct Events {
-    pub status: reqwest::StatusCode,
-    body: BoxStream<'static, reqwest::Result<bytes::Bytes>>,
-    buffered: String,
-}
-
-impl Events {
-    pub async fn connect(url: &str) -> Self {
-        let response = reqwest::get(url).await.unwrap();
-        Self {
-            status: response.status(),
-            body: response.bytes_stream().boxed(),
-            buffered: String::new(),
-        }
-    }
-
-    /// The next message, skipping keep-alive comments, or None once the stream has ended.
-    pub async fn next(&mut self) -> Option<Message> {
-        loop {
-            if let Some(end) = self.buffered.find("\n\n") {
-                let block: String = self.buffered.drain(..end + 2).collect();
-                if let Some(message) = parse(&block) {
-                    return Some(message);
-                }
-                continue;
-            }
-            let chunk = tokio::time::timeout(PATIENCE, self.body.next())
-                .await
-                .expect("the stream went quiet");
-            match chunk {
-                Some(bytes) => self
-                    .buffered
-                    .push_str(&String::from_utf8_lossy(&bytes.unwrap())),
-                None => return None,
-            }
-        }
-    }
-
-    pub async fn expect(&mut self) -> Message {
-        self.next().await.expect("the stream ended")
-    }
-
-    pub async fn expect_end(&mut self) {
-        if let Some(message) = self.next().await {
-            panic!("expected the stream to end, got {message:?}");
-        }
-    }
-}
-
-fn parse(block: &str) -> Option<Message> {
-    let mut message = Message {
-        event: "message".into(),
-        id: None,
-        retry: None,
-        data: Value::Null,
-    };
-    let mut data = None;
-    for line in block.lines() {
-        let Some((field, value)) = line.split_once(':') else {
-            continue;
-        };
-        let value = value.strip_prefix(' ').unwrap_or(value);
-        match field {
-            "event" => message.event = value.into(),
-            "id" => message.id = Some(value.parse().unwrap()),
-            "retry" => message.retry = Some(value.parse().unwrap()),
-            "data" => data = Some(serde_json::from_str(value).unwrap()),
-            _ => {}
-        }
-    }
-    message.data = data?;
-    Some(message)
 }

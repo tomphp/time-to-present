@@ -424,8 +424,10 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building Time to Present")
         .run(|app, event| {
-            if let tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit = event {
-                save_open_session(app, "saving on exit", Session::flush);
+            if let tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit = event
+                && let Err(error) = app.state::<App>().server.close()
+            {
+                eprintln!("saving on exit failed: {error}");
             }
         });
 }
