@@ -53,6 +53,11 @@ pub fn start_recording(state: State<'_, App>, at: InsertionPoint) -> CommandResu
 }
 
 #[tauri::command]
+pub fn start_re_recording(state: State<'_, App>, words: Vec<String>) -> CommandResult<()> {
+    with_session(&state, |session| session.start_re_recording(&words))
+}
+
+#[tauri::command]
 pub fn stop_recording(state: State<'_, App>) -> CommandResult<()> {
     with_session(&state, |session| session.stop_recording().map(drop))
 }

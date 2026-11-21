@@ -138,6 +138,7 @@ describe("the text pane's event keys", () => {
     pendingPassages: [],
     locked: false,
     liveTranscript: null,
+    reRecording: [],
   };
 
   function mountPane() {

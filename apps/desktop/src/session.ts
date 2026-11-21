@@ -33,6 +33,8 @@ export interface SessionState {
   movedEvents: string[];
   scriptEnd: number;
   recordingBar: RecordingBarState | null;
+  /** The Words the running Recording Re-records. */
+  reRecording: string[];
   pendingPassages: PendingPassage[];
   locked: boolean;
   liveTranscript: LiveTranscript | null;
@@ -65,11 +67,15 @@ export type PendingStatus =
   | { kind: "interrupted" }
   | { kind: "failed"; reason: string };
 
-/** A stopped Recording whose Transcription has not landed, anchored to the Words either side. */
+/**
+ * A stopped Recording whose Transcription has not landed, anchored to the Words either side,
+ * with the Words it replaces when it is a Re-record.
+ */
 export interface PendingPassage {
   recordingId: string;
   after: string | null;
   before: string | null;
+  replacing: string[];
   status: PendingStatus;
 }
 

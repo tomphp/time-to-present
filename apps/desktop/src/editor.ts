@@ -84,7 +84,7 @@ const previewControls = mountPreview({
 
 const inspector = mountInspector(document.querySelector<HTMLFormElement>("#inspector")!, { edit });
 
-const recordingBar = mountRecordingBar(pane.insertionPoint);
+const recordingBar = mountRecordingBar(pane.recordingTarget);
 
 onPendingAction(script, {
   retry: (recording) => retryTranscription(recording).catch(showError),

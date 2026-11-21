@@ -101,6 +101,8 @@ pub enum CaptureError {
     #[error("could not write the Recording: {0}")]
     Wav(#[from] hound::Error),
     #[error("{0}")]
+    Script(#[from] crate::script::EditError),
+    #[error("{0}")]
     Store(#[from] crate::store::StoreError),
     #[error("{0}")]
     Io(#[from] std::io::Error),

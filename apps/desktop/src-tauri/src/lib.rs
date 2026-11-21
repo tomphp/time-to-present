@@ -446,6 +446,7 @@ pub fn run() {
             recording::select_channel,
             recording::close_recording_bar,
             recording::start_recording,
+            recording::start_re_recording,
             recording::stop_recording,
             recording::cancel_recording,
             recording::retry_transcription,

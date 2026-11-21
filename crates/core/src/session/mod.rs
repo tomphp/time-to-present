@@ -24,8 +24,8 @@ use clipboard::Clipboard;
 use history::History;
 use live::Live;
 pub use live::LiveTranscript;
-use transcription::Pending;
 pub use transcription::{InsertionPoint, PendingPassage, PendingPassageError, PendingStatus};
+use transcription::{Landing, Pending};
 
 type Listener = Box<dyn Fn(&SessionState) + Send>;
 type StreamListener = Box<dyn Fn(&StreamEvent) + Send>;
@@ -45,7 +45,7 @@ pub struct Session {
     platform: Platform,
     bar: Option<RecordingBar>,
     taps: Arc<Taps>,
-    recording_at: Option<InsertionPoint>,
+    recording_at: Option<Landing>,
     live: Live,
     transcriptions: TranscriptionQueue,
     pending: Vec<Pending>,
@@ -66,6 +66,7 @@ pub struct SessionState {
     pub moved_events: Vec<String>,
     pub script_end: Ms,
     pub recording_bar: Option<RecordingBarState>,
+    pub re_recording: Vec<String>,
     pub pending_passages: Vec<PendingPassage>,
     pub locked: bool,
     pub live_transcript: Option<LiveTranscript>,
@@ -313,6 +314,10 @@ impl Session {
             moved_events: self.moved_events(),
             script_end: self.presentation.script.end(),
             recording_bar: self.bar.as_ref().map(RecordingBar::state),
+            re_recording: self
+                .recording_at
+                .as_ref()
+                .map_or_else(Vec::new, |landing| landing.re_recording().to_vec()),
             pending_passages: self.pending.iter().map(Pending::state).collect(),
             locked: self.clock.is_playing() || self.is_recording(),
             live_transcript: self.live.transcript(),

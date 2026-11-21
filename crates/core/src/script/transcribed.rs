@@ -29,11 +29,6 @@ impl Script {
             })
             .collect()
     }
-
-    /// Splices transcribed Words in before the Word at `index`, or at the end.
-    pub fn insert_transcribed(&mut self, index: usize, words: Vec<Word>) {
-        self.words.splice(index..index, words);
-    }
 }
 
 fn spoken(id: String, recording_id: &str, heard: &HeardWord, gap: Ms) -> Word {

@@ -44,6 +44,11 @@ body.editor {
   text-underline-offset: 0.2em;
 }
 
+#script .re-recorded {
+  text-decoration: line-through;
+  color: #888;
+}
+
 #script .event-chip {
   display: inline-block;
   margin-right: 0.25em;
@@ -282,6 +287,11 @@ body.editor {
 
 #timeline .flag.moved {
   border-left-color: #e0a000;
+}
+
+#script .re-recorded {
+  text-decoration: line-through;
+  color: #888;
 }
 
 #script .event-chip {

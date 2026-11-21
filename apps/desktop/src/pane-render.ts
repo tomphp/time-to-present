@@ -18,7 +18,8 @@ const NO_CHIPS: Chips = { events: [], moved: [], selected: null };
 /**
  * Renders the Script as paragraphs of Word spans, each after the chips of the Named Events
  * anchored to it and any Pending Passage waiting to land before it, then the Live Transcript
- * if it is there, with the open slot (if any) where a typed Word would go.
+ * if it is there, with the open slot (if any) where a typed Word would go. The Words being
+ * Re-recorded, or waiting for a pending Re-record to replace them, are struck through.
  */
 export function renderScript(
   root: HTMLElement,
@@ -27,7 +28,9 @@ export function renderScript(
   chips = NO_CHIPS,
   pending: PendingPassage[] = [],
   live: LiveTranscript | null = null,
+  reRecording: string[] = [],
 ) {
+  const struck = new Set([...reRecording, ...pending.flatMap((passage) => passage.replacing)]);
   const slotBeforeWord = slot && words[indexOf(words, slot.slotAfter) + 1]?.id;
   const byAnchor = chipsByAnchor(chips.events);
   const chipsFor = (anchor: string) => (byAnchor.get(anchor) ?? []).map((event) => chipElement(event, chips));
@@ -45,7 +48,7 @@ export function renderScript(
         if (position > 0) paragraph.append(" ");
         paragraph.append(...pendingBefore(word.id));
         if (slot && word.id === slotBeforeWord) paragraph.append(slotElement(slot), " ");
-        paragraph.append(...chipsFor(word.id), wordElement(word.id, word.text, word.lowConfidence));
+        paragraph.append(...chipsFor(word.id), wordElement(word, struck.has(word.id)));
       });
     });
     return paragraph;
@@ -70,11 +73,11 @@ function chipElement(event: TimedEvent, { moved, selected }: Chips) {
   return span;
 }
 
-function wordElement(id: string, text: string, lowConfidence: boolean) {
+function wordElement({ id, text, lowConfidence }: { id: string; text: string; lowConfidence: boolean }, struck: boolean) {
   const span = document.createElement("span");
   span.textContent = text;
   span.dataset.wordId = id;
-  span.className = lowConfidence ? "word low-confidence" : "word";
+  span.className = ["word", lowConfidence && "low-confidence", struck && "re-recorded"].filter(Boolean).join(" ");
   return span;
 }
 

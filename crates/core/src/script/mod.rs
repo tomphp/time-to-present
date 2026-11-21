@@ -9,6 +9,7 @@ mod events;
 mod ids;
 mod passage;
 mod plain_text;
+mod re_record;
 mod reanchor;
 mod timing;
 mod transcribed;

@@ -84,6 +84,7 @@ export const selectChannel = (channel: number) => invoke<void>("select_channel",
 export const closeRecordingBar = () => invoke<void>("close_recording_bar");
 
 export const startRecording = (at: InsertionPoint) => invoke<void>("start_recording", { at });
+export const startReRecording = (words: string[]) => invoke<void>("start_re_recording", { words });
 
 export const stopRecording = () => invoke<void>("stop_recording");
 

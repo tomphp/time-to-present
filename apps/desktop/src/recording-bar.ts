@@ -5,6 +5,7 @@ import {
   openRecordingBar,
   selectChannel,
   selectInput,
+  startReRecording,
   startRecording,
   stopRecording,
 } from "./commands";
@@ -19,8 +20,9 @@ import {
   shortcut,
 } from "./recording-bar-view";
 import { find } from "./dom";
+import type { RecordingTarget } from "./recording-target";
 import { act } from "./report-error";
-import type { InsertionPoint, RecordingBarState } from "./session";
+import type { RecordingBarState } from "./session";
 
 const section = find<HTMLElement>("#recording-bar");
 const denied = find<HTMLParagraphElement>("#recording-denied");
@@ -98,9 +100,12 @@ function requestCancel() {
   if (action === "keep") setConfirming(false);
 }
 
-/** The recording bar, starting each Recording at the Insertion Point the editor reports. */
-export function mountRecordingBar(insertionPoint: () => InsertionPoint) {
-  const startHere = () => startRecording(insertionPoint());
+/** The recording bar, starting each Recording where the editor reports: over a selection, or at the Insertion Point. */
+export function mountRecordingBar(target: () => RecordingTarget) {
+  const startHere = () => {
+    const here = target();
+    return "reRecord" in here ? startReRecording(here.reRecord) : startRecording(here.insertAt);
+  };
 
   async function toggleRecording() {
     if (bar === null) {

@@ -20,23 +20,64 @@ impl InsertionPoint {
         let before = self.before.as_deref().and_then(|id| script.position(id));
         before.unwrap_or(script.words.len())
     }
+}
 
-    /// The ids of the Words either side of the point.
-    pub(super) fn neighbours_in(&self, script: &Script) -> (Option<String>, Option<String>) {
-        let index = self.index_in(script);
-        let after = index.checked_sub(1).map(|i| script.words[i].id.clone());
-        let before = script.words.get(index).map(|word| word.id.clone());
-        (after, before)
+/// Where a Recording lands: at an Insertion Point, or over the Words it Re-records.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum Landing {
+    At(InsertionPoint),
+    Over(Vec<String>),
+}
+
+impl Landing {
+    pub fn re_recording(&self) -> &[String] {
+        match self {
+            Landing::At(_) => &[],
+            Landing::Over(words) => words,
+        }
+    }
+
+    /// The ids of the Words either side of where it lands, and of the Words it replaces that
+    /// are still in the Script.
+    pub fn anchors_in(&self, script: &Script) -> (Option<String>, Option<String>, Vec<String>) {
+        let (start, end, replacing) = self.span_in(script);
+        let after = start.checked_sub(1).map(|i| script.words[i].id.clone());
+        let before = script.words.get(end).map(|word| word.id.clone());
+        (after, before, replacing)
+    }
+
+    /// The Words it replaces that are still in the Script, and the indexes either side of them.
+    fn span_in(&self, script: &Script) -> (usize, usize, Vec<String>) {
+        let positions: Vec<usize> = self
+            .re_recording()
+            .iter()
+            .filter_map(|id| script.position(id))
+            .collect();
+        match positions.first().zip(positions.last()) {
+            Some((&first, &last)) => {
+                let replacing = positions.iter().map(|&i| script.words[i].id.clone());
+                (first, last + 1, replacing.collect())
+            }
+            None => {
+                let index = match self {
+                    Landing::At(point) => point.index_in(script),
+                    Landing::Over(_) => script.words.len(),
+                };
+                (index, index, Vec::new())
+            }
+        }
     }
 }
 
-/// A stopped Recording whose Transcription has not landed, anchored to the Words either side.
+/// A stopped Recording whose Transcription has not landed, anchored to the Words either side,
+/// with the Words it replaces when it is a Re-record.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PendingPassage {
     pub recording_id: String,
     pub after: Option<String>,
     pub before: Option<String>,
+    pub replacing: Vec<String>,
     pub status: PendingStatus,
 }
 
@@ -84,13 +125,35 @@ impl Pending {
         self.passage.clone()
     }
 
-    /// Where the passage lands now: before its next Word, else after its previous one, else at
-    /// the end, so edits around it while it was pending leave it in place.
+    /// Where the passage lands now, with the Words it replaces that are still there: in place of
+    /// those, else before its next Word, else after its previous one, else at the end, so edits
+    /// around it while it was pending leave it in place.
+    fn landing_in(&self, script: &Script) -> (usize, Vec<String>) {
+        let replaced: Vec<String> = (self.passage.replacing.iter())
+            .filter(|id| script.position(id).is_some())
+            .cloned()
+            .collect();
+        let at = replaced.first().and_then(|id| script.position(id));
+        (at.unwrap_or_else(|| self.index_in(script)), replaced)
+    }
+
     fn index_in(&self, script: &Script) -> usize {
         let position = |id: &Option<String>| script.position(id.as_deref()?);
         position(&self.passage.before)
             .or_else(|| position(&self.passage.after).map(|i| i + 1))
             .unwrap_or(script.words.len())
+    }
+
+    /// Anchors to the new Words where it was anchored to the Words they replaced.
+    fn follow_replaced(&mut self, replaced: &[String], first: &str, last: &str) {
+        let was_replaced =
+            |id: &Option<String>| id.as_ref().is_some_and(|id| replaced.contains(id));
+        if was_replaced(&self.passage.after) {
+            self.passage.after = Some(last.to_string());
+        }
+        if was_replaced(&self.passage.before) {
+            self.passage.before = Some(first.to_string());
+        }
     }
 
     fn shares_spot_with(&self, other: &Pending) -> bool {
@@ -150,17 +213,19 @@ impl Session {
         }
     }
 
-    /// Splices the heard Words in as one undo step. Other passages pending at the same spot
-    /// keep their order: earlier ones now land before these Words, later ones after them.
+    /// Splices the heard Words in, in place of any they Re-record, as one undo step. Other
+    /// passages pending at the same spot keep their order: earlier ones now land before these
+    /// Words, later ones after them. Those anchored to replaced Words anchor to these instead.
     fn land(&mut self, index: usize, heard: &[HeardWord]) {
         let landed = self.pending.remove(index);
         let script = &self.presentation.script;
-        let at = landed.index_in(script);
+        let (at, replaced) = landed.landing_in(script);
         let words = script.transcribed(at, &landed.recording.id, heard, &mut self.ids);
         let Some((first, last)) = words.first().zip(words.last()) else {
             return;
         };
         for (position, pending) in self.pending.iter_mut().enumerate() {
+            pending.follow_replaced(&replaced, &first.id, &last.id);
             if !pending.shares_spot_with(&landed) {
                 continue;
             }
@@ -170,11 +235,8 @@ impl Session {
                 pending.passage.after = Some(last.id.clone());
             }
         }
-        self.change(|script, _| {
-            script.insert_transcribed(at, words);
-            Ok(((), Vec::new()))
-        })
-        .expect("splicing transcribed Words cannot fail");
+        self.change(|script, _| Ok(((), script.splice_transcribed(at, &replaced, words))))
+            .expect("splicing transcribed Words cannot fail");
     }
 
     /// Queues a failed or interrupted Transcription.
@@ -212,8 +274,8 @@ impl Session {
         Ok(())
     }
 
-    pub(super) fn queue_transcription(&mut self, recording: &Recording, at: InsertionPoint) {
-        let (after, before) = at.neighbours_in(&self.presentation.script);
+    pub(super) fn queue_transcription(&mut self, recording: &Recording, landing: Landing) {
+        let (after, before, replacing) = landing.anchors_in(&self.presentation.script);
         let job = self.transcriptions.enqueue(self.job_for(recording));
         self.pending.push(Pending {
             recording: recording.clone(),
@@ -222,6 +284,7 @@ impl Session {
                 recording_id: recording.id.clone(),
                 after,
                 before,
+                replacing,
                 status: PendingStatus::Queued,
             },
             heard: None,

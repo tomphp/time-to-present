@@ -1,24 +1,17 @@
-import { indexAfter, type Caret } from "./caret";
-import type { InsertionPoint, PendingPassage, PendingStatus, ScriptWord } from "./session";
-
-/**
- * Where a Recording lands from the caret: before the Word the caret starts or the one after a
- * slot, after a Word the caret is inside, and at the end with no caret.
- */
-export function insertionPointAt(words: ScriptWord[], caret: Caret | null): InsertionPoint {
-  if (!caret) return { before: null };
-  const index = "slotAfter" in caret || caret.offset === 0 ? indexAfter(words, caret) : indexAfter(words, caret) + 1;
-  return { before: words[index]?.id ?? null };
-}
+import type { PendingPassage, PendingStatus, ScriptWord } from "./session";
 
 /** Whether the Pending Passages read the same: same ones, in the same places, at the same progress. */
 export function samePending(a: PendingPassage[], b: PendingPassage[]): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-/** Whether the same Pending Passages sit at the same anchors, in the same order, whatever their progress. */
+/**
+ * Whether the same Pending Passages sit at the same anchors, replacing the same Words, in the
+ * same order, whatever their progress.
+ */
 export function samePlacement(a: PendingPassage[], b: PendingPassage[]): boolean {
-  const placement = (passages: PendingPassage[]) => passages.map(({ recordingId, after, before }) => [recordingId, after, before]);
+  const placement = (passages: PendingPassage[]) =>
+    passages.map(({ recordingId, after, before, replacing }) => [recordingId, after, before, replacing]);
   return JSON.stringify(placement(a)) === JSON.stringify(placement(b));
 }
 

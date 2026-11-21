@@ -1,37 +1,20 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { currentCaret } from "./dom-caret";
-import { describePending, insertionPointAt, onPendingAction, samePending, samePlacement } from "./pending-passage";
+import { describePending, onPendingAction, samePending, samePlacement } from "./pending-passage";
 import { renderScript } from "./pane-render";
 import type { PendingPassage } from "./session";
 import { scriptWord } from "./test-words";
 
 const words = [scriptWord("w1", "Hello,"), scriptWord("w2", "world."), scriptWord("w3", "Typed")];
 
-const passage = (recordingId: string, after: string | null, before: string | null, status: PendingPassage["status"]) => ({
-  recordingId,
-  after,
-  before,
-  status,
-});
-
-describe("insertionPointAt", () => {
-  it("is before the Word after a slot", () => {
-    expect(insertionPointAt(words, { slotAfter: "w1" })).toEqual({ before: "w2" });
-    expect(insertionPointAt(words, { slotAfter: null })).toEqual({ before: "w1" });
-  });
-
-  it("is the end of the Script after the last Word or with no caret", () => {
-    expect(insertionPointAt(words, { slotAfter: "w3" })).toEqual({ before: null });
-    expect(insertionPointAt(words, null)).toEqual({ before: null });
-  });
-
-  it("is before a Word the caret starts, and after one it is inside or ends", () => {
-    expect(insertionPointAt(words, { word: "w2", offset: 0 })).toEqual({ before: "w2" });
-    expect(insertionPointAt(words, { word: "w2", offset: 3 })).toEqual({ before: "w3" });
-    expect(insertionPointAt(words, { word: "w3", offset: 5 })).toEqual({ before: null });
-  });
-});
+const passage = (
+  recordingId: string,
+  after: string | null,
+  before: string | null,
+  status: PendingPassage["status"],
+  replacing: string[] = [],
+): PendingPassage => ({ recordingId, after, before, replacing, status });
 
 describe("describePending", () => {
   it("names each stage of a Transcription", () => {
@@ -71,6 +54,7 @@ describe("samePlacement", () => {
     expect(samePlacement([queued], [queued, other])).toBe(false);
     expect(samePlacement([queued, other], [other, queued])).toBe(false);
     expect(samePlacement([queued], [{ ...queued, after: "w2" }])).toBe(false);
+    expect(samePlacement([queued], [{ ...queued, replacing: ["w3"] }])).toBe(false);
   });
 });
 
@@ -81,6 +65,8 @@ describe("rendering Pending Passages", () => {
     document.body.innerHTML = '<article id="script"></article>';
     root = document.querySelector<HTMLElement>("#script")!;
   });
+
+  const struck = () => Array.from(root.querySelectorAll<HTMLElement>(".re-recorded")).map((word) => word.dataset.wordId);
 
   const sequence = () =>
     Array.from(root.querySelector("p")!.childNodes).map((node) =>
@@ -121,6 +107,19 @@ describe("rendering Pending Passages", () => {
     const placeholder = root.querySelector<HTMLElement>('[data-recording-id="r2"]')!;
     expect(placeholder.querySelector("[data-retry]")!.textContent).toBe("Transcribe");
     expect(placeholder.querySelector("[data-discard]")!.textContent).toBe("Discard");
+  });
+
+  it("strikes through the Words a pending Re-record replaces, showing its progress after them", () => {
+    renderScript(root, words, null, undefined, [passage("r2", null, "w3", { kind: "queued" }, ["w1", "w2"])]);
+
+    expect(sequence()).toEqual(["w1", " ", "w2", " ", "r2", " ", "w3"]);
+    expect(struck()).toEqual(["w1", "w2"]);
+  });
+
+  it("strikes through the Words being Re-recorded while capturing", () => {
+    renderScript(root, words, null, undefined, [], null, ["w2"]);
+
+    expect(struck()).toEqual(["w2"]);
   });
 
   it("stands alone in an empty Script", () => {

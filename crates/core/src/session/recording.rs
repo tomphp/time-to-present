@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use super::transcription::Landing;
 use super::{InsertionPoint, Session};
 use crate::capture::{CaptureError, InputChoice, Meter, RecordingBar};
 use crate::store::{self, Recording};
@@ -34,16 +35,26 @@ impl Session {
 
     /// Starts a Recording that will land at the Insertion Point, with its Live Transcript there.
     pub fn start_recording(&mut self, at: InsertionPoint) -> Result<(), CaptureError> {
+        self.start(Landing::At(at))
+    }
+
+    /// Starts a Re-record of the Words, which stay in the Script until its Transcription lands.
+    pub fn start_re_recording(&mut self, words: &[String]) -> Result<(), CaptureError> {
+        let range = self.presentation.script.in_script_order(words)?;
+        self.start(Landing::Over(range))
+    }
+
+    fn start(&mut self, landing: Landing) -> Result<(), CaptureError> {
         let recording = store::new_recording(&self.folder, &self.presentation)?;
         let path = self.folder.join(&recording.file);
         let bar = self.bar.as_mut().ok_or(CaptureError::BarClosed)?;
-        let (after, before) = at.neighbours_in(&self.presentation.script);
+        let (after, before, _) = landing.anchors_in(&self.presentation.script);
         self.live.start(after, before);
         if let Err(error) = bar.start(&self.platform, recording, path) {
             self.live.stop();
             return Err(error);
         }
-        self.recording_at = Some(at);
+        self.recording_at = Some(landing);
         self.publish();
         Ok(())
     }
@@ -54,7 +65,7 @@ impl Session {
         let bar = self.bar.as_mut().ok_or(CaptureError::BarClosed)?;
         self.live.stop();
         let recording = bar.stop()?;
-        let at = self.recording_at.take().unwrap_or_default();
+        let at = (self.recording_at.take()).unwrap_or(Landing::At(InsertionPoint::default()));
         let mut registered = self.presentation.clone();
         registered.recordings.push(recording.clone());
         self.save(registered)?;

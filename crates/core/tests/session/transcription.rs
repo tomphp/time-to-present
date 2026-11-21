@@ -39,6 +39,7 @@ fn stop_queues_a_pending_passage_at_the_insertion_point_and_hands_the_wav_to_the
             recording_id: "r2".into(),
             after: Some("w1".into()),
             before: Some("w2".into()),
+            replacing: Vec::new(),
             status: PendingStatus::Queued,
         }]
     );

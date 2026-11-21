@@ -13,7 +13,7 @@ const live = (heard: string[], failure: string | null = null): LiveTranscript =>
   failure,
 });
 
-const state = (liveTranscript: LiveTranscript | null, pendingPassages: PendingPassage[] = []) =>
+const state = (liveTranscript: LiveTranscript | null, pendingPassages: PendingPassage[] = [], reRecording: string[] = []) =>
   ({
     words,
     namedEvents: [],
@@ -21,6 +21,7 @@ const state = (liveTranscript: LiveTranscript | null, pendingPassages: PendingPa
     pendingPassages,
     liveTranscript,
     locked: liveTranscript !== null,
+    reRecording,
   }) as unknown as SessionState;
 
 let root: HTMLElement;
@@ -73,9 +74,19 @@ describe("the text pane while recording", () => {
     expect(textOf(transcript())).toBe("The — the live model would not load");
   });
 
+  it("shows the Live Transcript of a Re-record after the Words it is struck through over", () => {
+    const pane = mountPane();
+
+    pane.render(state({ after: null, before: "w2", words: ["Howdy,"], failure: null }, [], ["w1"]));
+
+    expect(textOf(root)).toBe("Hello, Howdy, world.");
+    expect(root.querySelector(".re-recorded")!.textContent).toBe("Hello,");
+    expect(root.querySelector(".re-recorded")!.nextElementSibling).toBe(transcript());
+  });
+
   it("sits after the passages already pending at the same spot", () => {
     const pane = mountPane();
-    const pending: PendingPassage = { recordingId: "r1", after: "w1", before: "w2", status: { kind: "queued" } };
+    const pending: PendingPassage = { recordingId: "r1", after: "w1", before: "w2", replacing: [], status: { kind: "queued" } };
 
     pane.render(state(live(["Later"]), [pending]));
 

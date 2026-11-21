@@ -4,7 +4,8 @@ import { currentCaret, placeCaret, placeRange, selectedRange } from "./dom-caret
 import { chipDropEdit, eventAnchorAt, sameChips, type ChipDrop, type EventAt } from "./named-events";
 import { refreshLiveTranscript, sameLivePlacement } from "./live-transcript";
 import { renderScript } from "./pane-render";
-import { insertionPointAt, refreshPending, samePending, samePlacement } from "./pending-passage";
+import { refreshPending, samePending, samePlacement } from "./pending-passage";
+import { insertionPointAt, recordingTargetAt } from "./recording-target";
 import { sameLayout } from "./script-view";
 import type { Edit, ScriptWord, SessionState } from "./session";
 import { applyInput, type Input } from "./text-editing";
@@ -25,7 +26,7 @@ export interface EventHooks {
 
 export type PaneScript = Pick<
   SessionState,
-  "words" | "namedEvents" | "movedEvents" | "pendingPassages" | "locked" | "liveTranscript"
+  "words" | "namedEvents" | "movedEvents" | "pendingPassages" | "locked" | "liveTranscript" | "reRecording"
 >;
 
 const INPUT_TYPES: Record<string, Input | undefined> = {
@@ -55,6 +56,7 @@ export function mountTextPane(
     pendingPassages: [],
     locked: false,
     liveTranscript: null,
+    reRecording: [],
   };
   let locked = false;
   let words: ScriptWord[] = [];
@@ -83,6 +85,7 @@ export function mountTextPane(
       { events: next.namedEvents, moved: next.movedEvents, selected: selectedEvent },
       next.pendingPassages,
       next.liveTranscript,
+      next.reRecording,
     );
     paintCurrent();
     if (caret) placeCaret(root, caret);
@@ -103,10 +106,16 @@ export function mountTextPane(
     return span;
   }
 
-  /** Where a Recording lands: the caret, or where it last was once the focus has moved on. */
+  /** The Insertion Point: the caret, or where it last was once the focus has moved on. */
   function insertionPoint() {
     const caret = (root.contains(document.activeElement) && currentCaret(root)) || lastCaret;
     return insertionPointAt(words, caret && resolveCaret(caret, words));
+  }
+
+  /** Where a Recording goes: the selection, or where the caret last was once the focus has moved on. */
+  function recordingTarget() {
+    const range = (root.contains(document.activeElement) && selectedRange(root)) || (lastCaret && collapsed(resolveCaret(lastCaret, words)));
+    return recordingTargetAt(words, range || null);
   }
 
   /**
@@ -120,7 +129,8 @@ export function mountTextPane(
       sameLayout(words, next.words) &&
       sameChips(script, next) &&
       samePlacement(script.pendingPassages, next.pendingPassages) &&
-      sameLivePlacement(script.liveTranscript, next.liveTranscript);
+      sameLivePlacement(script.liveTranscript, next.liveTranscript) &&
+      sameIds(script.reRecording, next.reRecording);
     if (!sameShape) return repaint(next);
     if (!samePending(script.pendingPassages, next.pendingPassages)) refreshPending(root, next.pendingPassages);
     if (next.liveTranscript && next.liveTranscript !== script.liveTranscript) refreshLiveTranscript(root, next.liveTranscript);
@@ -306,8 +316,18 @@ export function mountTextPane(
     lastCaret = { slotAfter: lastId(words) };
   }
 
-  return { render, selectEvent, highlight, focus, insertionPoint, select: (range: Range) => placeRange(root, range) };
+  return {
+    render,
+    selectEvent,
+    highlight,
+    focus,
+    insertionPoint,
+    recordingTarget,
+    select: (range: Range) => placeRange(root, range),
+  };
 }
+
+const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((id, index) => id === b[index]);
 
 function inputFrom(event: InputEvent): Input | null {
   if (event.inputType === "insertText" && event.data) return { type: "insertText", text: event.data };
