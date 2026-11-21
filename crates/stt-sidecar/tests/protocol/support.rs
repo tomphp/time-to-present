@@ -54,6 +54,26 @@ pub fn wav_as(dir: &TempDir, runs: &[Run], rate: u32, bits: u16) -> PathBuf {
     path
 }
 
+pub fn stereo_float_wav(dir: &TempDir, runs: &[Run], rate: u32) -> PathBuf {
+    let path = dir.path().join(format!("recording-{rate}-stereo.wav"));
+    let spec = hound::WavSpec {
+        channels: 2,
+        sample_rate: rate,
+        bits_per_sample: 32,
+        sample_format: hound::SampleFormat::Float,
+    };
+    let mut writer = hound::WavWriter::create(&path, spec).unwrap();
+    for run in runs {
+        for _ in 0..(run.ms * rate / 1000) {
+            for _channel in 0..2 {
+                writer.write_sample(f32::from(run.value) / 32768.0).unwrap();
+            }
+        }
+    }
+    writer.finalize().unwrap();
+    path
+}
+
 pub fn model(dir: &TempDir) -> PathBuf {
     let path = dir.path().join("ggml-fake.bin");
     std::fs::write(&path, b"fake").unwrap();
@@ -73,8 +93,28 @@ pub fn audio(runs: &[Run]) -> Value {
     json!({"type": "audio", "pcm": STANDARD.encode(bytes)})
 }
 
-pub fn spoken(text: &str, start: u64, end: u64) -> Value {
+pub fn heard(text: &str, start: u64, end: u64) -> Value {
     json!({"text": text, "start": start, "end": end, "confidence": 1.0})
+}
+
+pub fn ready() -> Value {
+    json!({"type": "ready", "protocol": 1})
+}
+
+pub fn no_speech() -> Value {
+    json!({"type": "no_speech"})
+}
+
+pub fn done() -> Value {
+    json!({"type": "done"})
+}
+
+/// The message of the session's closing error, after checking the process failed.
+pub fn closing_error(out: &Output) -> String {
+    assert!(!out.success);
+    let last = out.events.last().expect("an event");
+    assert_eq!(last["type"], "error", "{:?}", out.events);
+    last["message"].as_str().unwrap().to_owned()
 }
 
 pub struct Output {

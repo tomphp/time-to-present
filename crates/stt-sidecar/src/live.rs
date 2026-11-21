@@ -1,13 +1,13 @@
-use crate::engine::{Engine, SAMPLE_RATE, Word};
+use crate::engine::{Engine, Word, ms_to_samples, samples_to_ms as ms};
 use crate::protocol::Event;
 
-const STEP_MS: usize = 500;
-const WINDOW_MS: usize = 5000;
-const SETTLE_MS: usize = 1000;
+const STEP_MS: u64 = 500;
+const WINDOW_MS: u64 = 5000;
+const SETTLE_MS: u64 = 1000;
 
 /// The live pass: re-decodes a sliding window of the audio heard so far every
 /// step, revising the Words it has not settled yet.
-pub struct Live {
+pub struct LiveTranscript {
     engine: Box<dyn Engine>,
     window: Vec<f32>,
     window_start: usize,
@@ -16,7 +16,12 @@ pub struct Live {
     stable: usize,
 }
 
-impl Live {
+enum Settle {
+    Due,
+    All,
+}
+
+impl LiveTranscript {
     pub fn new(engine: Box<dyn Engine>) -> Self {
         Self {
             engine,
@@ -31,46 +36,51 @@ impl Live {
     pub fn hear(&mut self, samples: &[f32]) -> Result<Option<Event>, String> {
         self.window.extend_from_slice(samples);
         self.undecoded += samples.len();
-        if self.undecoded < samples_in(STEP_MS) {
+        if self.undecoded < ms_to_samples(STEP_MS) {
             return Ok(None);
         }
         self.undecoded = 0;
-        self.decode(false)
+        self.decode(Settle::Due)
     }
 
     pub fn finish(&mut self) -> Result<Option<Event>, String> {
-        self.decode(true)
+        if self.undecoded == 0 {
+            let unsettled = self.words[self.stable..].to_vec();
+            let count = unsettled.len();
+            return Ok(self.revise(unsettled, count));
+        }
+        self.decode(Settle::All)
     }
 
     pub fn heard_nothing(&self) -> bool {
         self.words.is_empty()
     }
 
-    fn decode(&mut self, last: bool) -> Result<Option<Event>, String> {
-        let tentative = self.hear_window()?;
-        let full = self.window.len() >= samples_in(WINDOW_MS);
-        let settled = if last {
-            tentative.len()
-        } else if full {
-            let settle_by = ms(self.window_end() - samples_in(SETTLE_MS));
-            tentative
-                .iter()
-                .take_while(|word| word.end <= settle_by)
-                .count()
-        } else {
-            0
+    fn decode(&mut self, settle: Settle) -> Result<Option<Event>, String> {
+        let tentative = self.recognise_window()?;
+        let full = self.window.len() >= ms_to_samples(WINDOW_MS);
+        let settled = match settle {
+            Settle::All => tentative.len(),
+            Settle::Due if full => {
+                let settle_by = ms(self.window_end() - ms_to_samples(SETTLE_MS));
+                tentative
+                    .iter()
+                    .take_while(|word| word.end <= settle_by)
+                    .count()
+            }
+            Settle::Due => 0,
         };
-        if full && !last {
+        if full && matches!(settle, Settle::Due) {
             self.slide_past(settled.checked_sub(1).map(|i| tentative[i].end));
         }
         Ok(self.revise(tentative, settled))
     }
 
-    fn hear_window(&mut self) -> Result<Vec<Word>, String> {
+    fn recognise_window(&mut self) -> Result<Vec<Word>, String> {
         let offset = ms(self.window_start);
         Ok(self
             .engine
-            .transcribe(&self.window, &mut |_| {})?
+            .recognise(&self.window, &mut |_| {})?
             .into_iter()
             .map(|word| Word {
                 start: word.start + offset,
@@ -84,9 +94,7 @@ impl Live {
     /// second when nothing settled.
     fn slide_past(&mut self, settled_end: Option<u64>) {
         let start = settled_end
-            .map_or(self.window_end() - samples_in(SETTLE_MS), |end| {
-                samples_in(end as usize)
-            })
+            .map_or(self.window_end() - ms_to_samples(SETTLE_MS), ms_to_samples)
             .max(self.window_start);
         self.window.drain(..start - self.window_start);
         self.window_start = start;
@@ -118,12 +126,4 @@ impl Live {
     fn window_end(&self) -> usize {
         self.window_start + self.window.len()
     }
-}
-
-fn samples_in(ms: usize) -> usize {
-    ms * SAMPLE_RATE / 1000
-}
-
-fn ms(samples: usize) -> u64 {
-    (samples * 1000 / SAMPLE_RATE) as u64
 }

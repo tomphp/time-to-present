@@ -8,25 +8,26 @@ pub mod whisper;
 
 use std::io::{BufRead, Write};
 use std::path::Path;
+use std::process::ExitCode;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
 
 pub use engine::{Engine, Loader, Mode, NoEngine, SAMPLE_RATE, Word};
-use live::Live;
+use live::LiveTranscript;
 use protocol::{Event, Request};
 
 const LANGUAGES: [&str; 1] = ["en"];
 
 /// Speaks the sidecar protocol (see `docs/stt-sidecar-protocol.md`) for one
-/// session, returning whether it ended without an error.
-pub fn serve(loader: &dyn Loader, input: impl BufRead, output: impl Write) -> bool {
+/// session.
+pub fn serve(loader: &dyn Loader, input: impl BufRead, output: impl Write) -> ExitCode {
     let mut emit = emitter(output);
     match run(loader, input, &mut emit) {
-        Ok(()) => true,
+        Ok(()) => ExitCode::SUCCESS,
         Err(message) => {
             emit(Event::Error { message });
-            false
+            ExitCode::FAILURE
         }
     }
 }
@@ -56,8 +57,9 @@ fn run(
             model,
             language,
             path,
+            prompt,
         } => {
-            let engine = load(loader, &model, &language, Mode::Transcription)?;
+            let engine = load(loader, &model, &language, Mode::Transcription { prompt })?;
             transcribe(engine, &path, emit)
         }
         Request::Audio { .. } => Err("the first request must be live or transcribe".into()),
@@ -95,7 +97,7 @@ fn listen(
     requests: impl Iterator<Item = Result<Request, String>>,
     emit: &mut dyn FnMut(Event),
 ) -> Result<(), String> {
-    let mut live = Live::new(engine);
+    let mut live = LiveTranscript::new(engine);
     emit(Event::Ready {
         protocol: protocol::VERSION,
     });
@@ -106,7 +108,7 @@ fn listen(
         let pcm = STANDARD
             .decode(pcm)
             .map_err(|e| format!("audio is not base64: {e}"))?;
-        if let Some(event) = live.hear(&audio::decode_pcm(&pcm)?)? {
+        if let Some(event) = live.hear(&audio::decode_pcm16le(&pcm)?)? {
             emit(event);
         }
     }
@@ -130,7 +132,15 @@ fn transcribe(
     });
     let audio = audio::read_wav(path)
         .map_err(|e| format!("could not read the recording {}: {e}", path.display()))?;
-    let words = engine.transcribe(&audio, &mut |percent| emit(Event::Progress { percent }))?;
+    let mut reported = None;
+    let mut report = |percent: u8| {
+        if reported.is_none_or(|last| percent > last) {
+            emit(Event::Progress { percent });
+            reported = Some(percent);
+        }
+    };
+    let words = engine.recognise(&audio, &mut report)?;
+    report(100);
     if words.is_empty() {
         emit(Event::NoSpeech);
     } else {

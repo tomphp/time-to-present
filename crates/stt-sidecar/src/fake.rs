@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::engine::{Engine, Loader, Mode, SAMPLE_RATE, Word};
+use crate::engine::{Engine, Loader, Mode, SAMPLE_RATE, Word, samples_to_ms as ms};
 
 const SHORTEST_WORD: usize = SAMPLE_RATE / 200;
 
@@ -19,7 +19,7 @@ impl Loader for FakeLoader {
 struct FakeEngine;
 
 impl Engine for FakeEngine {
-    fn transcribe(
+    fn recognise(
         &mut self,
         audio: &[f32],
         progress: &mut dyn FnMut(u8),
@@ -65,8 +65,4 @@ fn runs(audio: &[f32]) -> Vec<Run> {
         }
     }
     runs
-}
-
-fn ms(samples: usize) -> u64 {
-    ((samples * 1000) as f64 / SAMPLE_RATE as f64).round() as u64
 }

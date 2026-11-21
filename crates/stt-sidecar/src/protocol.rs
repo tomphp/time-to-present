@@ -20,6 +20,8 @@ pub enum Request {
         model: PathBuf,
         language: String,
         path: PathBuf,
+        #[serde(default)]
+        prompt: Option<String>,
     },
 }
 

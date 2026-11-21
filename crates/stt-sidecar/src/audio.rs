@@ -26,8 +26,7 @@ pub fn read_wav(path: &Path) -> Result<Vec<f32>, String> {
     Ok(resample(&mono, spec.sample_rate as usize, SAMPLE_RATE))
 }
 
-/// Decodes 16-bit little-endian PCM.
-pub fn decode_pcm(bytes: &[u8]) -> Result<Vec<f32>, String> {
+pub fn decode_pcm16le(bytes: &[u8]) -> Result<Vec<f32>, String> {
     if !bytes.len().is_multiple_of(2) {
         return Err("audio must be whole 16-bit samples".into());
     }

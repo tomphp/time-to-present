@@ -1,10 +1,12 @@
+mod words;
+
 use std::path::Path;
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 
 use whisper_rs::{
     DtwMode, DtwModelPreset, FullParams, SamplingStrategy, WhisperContext,
-    WhisperContextParameters, WhisperSegment, WhisperState, WhisperTokenId,
+    WhisperContextParameters, WhisperError, WhisperState, WhisperTokenId,
 };
 
 use crate::engine::{Engine, Loader, Mode, Word};
@@ -18,8 +20,16 @@ impl Loader for WhisperLoader {
     fn load(&self, model: &Path, language: &str, mode: Mode) -> Result<Box<dyn Engine>, String> {
         let path = model.to_str().ok_or("the model path is not UTF-8")?;
         let mut params = WhisperContextParameters::default();
-        if let (Mode::Transcription, Some(model_preset)) = (mode, dtw_preset(model)) {
-            params.dtw_parameters.mode = DtwMode::ModelPreset { model_preset };
+        if let Mode::Transcription { .. } = mode {
+            match dtw_preset(model) {
+                Some(model_preset) => {
+                    params.dtw_parameters.mode = DtwMode::ModelPreset { model_preset }
+                }
+                None => eprintln!(
+                    "ttp-stt-sidecar: no DTW alignment heads for {}; using plain token timestamps",
+                    model.display()
+                ),
+            }
         }
         let context = WhisperContext::new_with_params(path, params).map_err(|e| e.to_string())?;
         Ok(Box::new(Whisper {
@@ -39,7 +49,7 @@ struct Whisper {
 }
 
 impl Engine for Whisper {
-    fn transcribe(
+    fn recognise(
         &mut self,
         audio: &[f32],
         progress: &mut dyn FnMut(u8),
@@ -54,14 +64,21 @@ impl Engine for Whisper {
         params.set_print_realtime(false);
         params.set_print_special(false);
         params.set_print_timestamps(false);
-        params.set_single_segment(self.mode == Mode::Live);
         let state = &mut self.state;
-        match self.mode {
-            Mode::Live => state.full(params, audio),
-            Mode::Transcription => full_with_progress(state, params, audio, progress),
+        match &self.mode {
+            Mode::Live => {
+                params.set_single_segment(true);
+                state.full(params, audio)
+            }
+            Mode::Transcription { prompt } => {
+                if let Some(prompt) = prompt {
+                    params.set_initial_prompt(prompt);
+                }
+                full_with_progress(state, params, audio, progress)
+            }
         }
         .map_err(|e| e.to_string())?;
-        Ok(words(state, self.end_of_text))
+        Ok(words::from_tokens(state, self.end_of_text))
     }
 }
 
@@ -72,7 +89,7 @@ fn full_with_progress(
     mut params: FullParams,
     audio: &[f32],
     progress: &mut dyn FnMut(u8),
-) -> Result<(), whisper_rs::WhisperError> {
+) -> Result<(), WhisperError> {
     let (sender, receiver) = mpsc::channel();
     let slot = Arc::new(Mutex::new(Some(sender)));
     let reporter = Arc::clone(&slot);
@@ -87,95 +104,9 @@ fn full_with_progress(
             slot.lock().unwrap().take();
             result
         });
-        let mut reported = None;
-        for percent in receiver {
-            if reported.is_none_or(|last| percent > last) {
-                progress(percent);
-                reported = Some(percent);
-            }
-        }
+        receiver.into_iter().for_each(&mut *progress);
         decoding.join().expect("decoding does not panic")
     })
-}
-
-fn words(state: &WhisperState, end_of_text: WhisperTokenId) -> Vec<Word> {
-    let mut words: Vec<Spoken> = Vec::new();
-    for segment in state.as_iter() {
-        for token in tokens(&segment, end_of_text) {
-            match words.last_mut() {
-                Some(word) if !token.bytes.starts_with(b" ") => word.extend(token),
-                _ => words.push(Spoken::from(token)),
-            }
-        }
-    }
-    words.into_iter().filter_map(Spoken::into_word).collect()
-}
-
-struct Token {
-    bytes: Vec<u8>,
-    start: i64,
-    end: i64,
-    probability: f32,
-}
-
-fn tokens(segment: &WhisperSegment, end_of_text: WhisperTokenId) -> Vec<Token> {
-    (0..segment.n_tokens())
-        .filter_map(|i| segment.get_token(i))
-        .filter(|token| token.token_id() < end_of_text)
-        .map(|token| {
-            let data = token.token_data();
-            Token {
-                bytes: token.to_bytes().unwrap_or_default().to_vec(),
-                start: if data.t_dtw >= 0 { data.t_dtw } else { data.t0 },
-                end: data.t1,
-                probability: data.p,
-            }
-        })
-        .collect()
-}
-
-struct Spoken {
-    bytes: Vec<u8>,
-    start: i64,
-    end: i64,
-    probabilities: Vec<f32>,
-}
-
-impl From<Token> for Spoken {
-    fn from(token: Token) -> Self {
-        Self {
-            bytes: token.bytes,
-            start: token.start,
-            end: token.end,
-            probabilities: vec![token.probability],
-        }
-    }
-}
-
-impl Spoken {
-    fn extend(&mut self, token: Token) {
-        self.bytes.extend(token.bytes);
-        self.end = token.end;
-        self.probabilities.push(token.probability);
-    }
-
-    fn into_word(self) -> Option<Word> {
-        let text = String::from_utf8_lossy(&self.bytes).trim().to_owned();
-        if text.is_empty() || is_annotation(&text) {
-            return None;
-        }
-        let centiseconds = |t: i64| t.max(0) as u64 * 10;
-        Some(Word {
-            text,
-            start: centiseconds(self.start),
-            end: centiseconds(self.end.max(self.start)),
-            confidence: self.probabilities.iter().sum::<f32>() / self.probabilities.len() as f32,
-        })
-    }
-}
-
-fn is_annotation(text: &str) -> bool {
-    (text.starts_with('[') && text.ends_with(']')) || (text.starts_with('(') && text.ends_with(')'))
 }
 
 fn dtw_preset(model: &Path) -> Option<DtwModelPreset> {

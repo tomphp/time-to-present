@@ -1,10 +1,38 @@
-use serde_json::json;
+use serde_json::{Value, json};
 use tempfile::TempDir;
 
 use crate::support::*;
 
+fn only_error(out: &Output) -> String {
+    assert_eq!(out.events.len(), 1, "{:?}", out.events);
+    closing_error(out)
+}
+
+fn live_error(requests: &[Value]) -> String {
+    let dir = TempDir::new().unwrap();
+    let mut all = vec![live(&model(&dir))];
+    all.extend_from_slice(requests);
+    let out = sidecar(&all);
+    assert_eq!(out.events[0], ready());
+    closing_error(&out)
+}
+
 #[test]
-fn a_language_other_than_english_is_refused() {
+fn a_live_session_in_a_language_other_than_english_is_refused() {
+    let dir = TempDir::new().unwrap();
+    let mut request = live(&model(&dir));
+    request["language"] = json!("de");
+
+    let message = only_error(&sidecar(&[request]));
+
+    assert_eq!(
+        message,
+        "unsupported language \"de\": only \"en\" is available"
+    );
+}
+
+#[test]
+fn a_transcription_in_a_language_other_than_english_is_refused() {
     let dir = TempDir::new().unwrap();
     let recording = wav(&dir, &[word(1, 300)]);
     let mut request = transcribe(&model(&dir), &recording);
@@ -19,14 +47,6 @@ fn a_language_other_than_english_is_refused() {
         ]
     );
     assert!(!out.success);
-}
-
-fn only_error(out: &Output) -> String {
-    assert!(!out.success);
-    match out.events.as_slice() {
-        [event] if event["type"] == "error" => event["message"].as_str().unwrap().to_owned(),
-        events => panic!("expected one error, got {events:?}"),
-    }
 }
 
 #[test]
@@ -75,10 +95,9 @@ fn an_unreadable_recording_is_an_error_after_ready() {
 
     let out = sidecar(&[transcribe(&model(&dir), &missing)]);
 
-    assert!(!out.success);
-    assert_eq!(out.events[0], json!({"type": "ready", "protocol": 1}));
     assert_eq!(out.events.len(), 2);
-    let message = out.events[1]["message"].as_str().unwrap();
+    assert_eq!(out.events[0], ready());
+    let message = closing_error(&out);
     assert!(
         message.starts_with(&format!(
             "could not read the recording {}: ",
@@ -93,18 +112,6 @@ fn audio_before_a_live_request_is_an_error() {
     let message = only_error(&sidecar(&[audio(&[word(1, 500)])]));
 
     assert_eq!(message, "the first request must be live or transcribe");
-}
-
-fn live_error(requests: &[serde_json::Value]) -> String {
-    let dir = TempDir::new().unwrap();
-    let mut all = vec![live(&model(&dir))];
-    all.extend_from_slice(requests);
-    let out = sidecar(&all);
-    assert!(!out.success);
-    assert_eq!(out.events[0], json!({"type": "ready", "protocol": 1}));
-    let last = out.events.last().unwrap();
-    assert_eq!(last["type"], "error");
-    last["message"].as_str().unwrap().to_owned()
 }
 
 #[test]
@@ -143,8 +150,8 @@ fn an_engine_failure_mid_session_is_an_error_after_the_words_so_far() {
     assert_eq!(
         out.events,
         [
-            json!({"type": "ready", "protocol": 1}),
-            json!({"type": "words", "from": 0, "stable": 0, "words": [spoken("w1", 0, 300)]}),
+            ready(),
+            json!({"type": "words", "from": 0, "stable": 0, "words": [heard("w1", 0, 300)]}),
             json!({"type": "error", "message": "the fake engine was told to fail"}),
         ]
     );

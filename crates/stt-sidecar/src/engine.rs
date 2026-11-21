@@ -12,16 +12,16 @@ pub struct Word {
     pub confidence: f32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Mode {
     Live,
-    Transcription,
+    Transcription { prompt: Option<String> },
 }
 
 /// A speech recogniser over 16 kHz mono audio. Word times are milliseconds from
 /// the start of the audio it is given.
 pub trait Engine {
-    fn transcribe(
+    fn recognise(
         &mut self,
         audio: &[f32],
         progress: &mut dyn FnMut(u8),
@@ -42,4 +42,12 @@ impl Loader for NoEngine {
                 .into(),
         )
     }
+}
+
+pub fn samples_to_ms(samples: usize) -> u64 {
+    ((samples * 1000) as f64 / SAMPLE_RATE as f64).round() as u64
+}
+
+pub fn ms_to_samples(ms: u64) -> usize {
+    ms as usize * SAMPLE_RATE / 1000
 }

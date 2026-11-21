@@ -16,10 +16,10 @@ fn a_live_session_shows_words_as_they_are_heard_and_settles_them_when_stdin_clos
     assert_eq!(
         out.events,
         [
-            json!({"type": "ready", "protocol": 1}),
-            json!({"type": "words", "from": 0, "stable": 0, "words": [spoken("w1", 200, 500)]}),
+            ready(),
+            json!({"type": "words", "from": 0, "stable": 0, "words": [heard("w1", 200, 500)]}),
             json!({"type": "words", "from": 1, "stable": 1, "words": []}),
-            json!({"type": "done"}),
+            done(),
         ]
     );
     assert!(out.success);
@@ -38,10 +38,10 @@ fn a_word_still_being_spoken_is_revised_as_more_of_it_is_heard() {
     assert_eq!(
         out.events[1..3],
         [
-            json!({"type": "words", "from": 0, "stable": 0, "words": [spoken("w1", 200, 500)]}),
+            json!({"type": "words", "from": 0, "stable": 0, "words": [heard("w1", 200, 500)]}),
             json!({"type": "words", "from": 0, "stable": 0, "words": [
-                spoken("w1", 200, 700),
-                spoken("w2", 800, 1000),
+                heard("w1", 200, 700),
+                heard("w2", 800, 1000),
             ]}),
         ]
     );
@@ -59,7 +59,7 @@ fn audio_shorter_than_a_step_waits_for_the_rest_of_the_step() {
 
     assert_eq!(
         out.events[1],
-        json!({"type": "words", "from": 0, "stable": 0, "words": [spoken("w1", 0, 300)]})
+        json!({"type": "words", "from": 0, "stable": 0, "words": [heard("w1", 0, 300)]})
     );
 }
 
@@ -71,7 +71,7 @@ fn once_the_window_is_full_words_a_second_behind_settle_and_the_window_slides_pa
 
     let out = sidecar(&requests);
 
-    let at = |n: u64| spoken(&format!("w{n}"), (n - 1) * 500, (n - 1) * 500 + 300);
+    let at = |n: u64| heard(&format!("w{n}"), (n - 1) * 500, (n - 1) * 500 + 300);
     assert_eq!(
         out.events[9..],
         [
@@ -79,7 +79,7 @@ fn once_the_window_is_full_words_a_second_behind_settle_and_the_window_slides_pa
             json!({"type": "words", "from": 9, "stable": 8, "words": [at(10)]}),
             json!({"type": "words", "from": 10, "stable": 8, "words": [at(11)]}),
             json!({"type": "words", "from": 11, "stable": 11, "words": []}),
-            json!({"type": "done"}),
+            done(),
         ]
     );
 }
@@ -96,9 +96,9 @@ fn a_long_silence_slides_the_window_without_losing_later_words() {
     assert_eq!(
         out.events[1..],
         [
-            json!({"type": "words", "from": 0, "stable": 0, "words": [spoken("w1", 6000, 6300)]}),
+            json!({"type": "words", "from": 0, "stable": 0, "words": [heard("w1", 6000, 6300)]}),
             json!({"type": "words", "from": 1, "stable": 1, "words": []}),
-            json!({"type": "done"}),
+            done(),
         ]
     );
 }
@@ -109,13 +109,15 @@ fn a_live_session_that_hears_only_silence_reports_no_speech() {
 
     let out = sidecar(&[live(&model(&dir)), audio(&[silence(1500)])]);
 
-    assert_eq!(
-        out.events,
-        [
-            json!({"type": "ready", "protocol": 1}),
-            json!({"type": "no_speech"}),
-            json!({"type": "done"}),
-        ]
-    );
+    assert_eq!(out.events, [ready(), no_speech(), done()]);
     assert!(out.success);
+}
+
+#[test]
+fn a_live_session_closed_before_any_audio_reports_no_speech() {
+    let dir = TempDir::new().unwrap();
+
+    let out = sidecar(&[live(&model(&dir))]);
+
+    assert_eq!(out.events, [ready(), no_speech(), done()]);
 }

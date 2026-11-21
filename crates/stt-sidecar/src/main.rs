@@ -2,10 +2,7 @@ use std::io;
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    match ttp_stt_sidecar::serve(&loader(), io::stdin().lock(), io::stdout().lock()) {
-        true => ExitCode::SUCCESS,
-        false => ExitCode::FAILURE,
-    }
+    ttp_stt_sidecar::serve(&loader(), io::stdin().lock(), io::stdout().lock())
 }
 
 #[cfg(feature = "whisper")]

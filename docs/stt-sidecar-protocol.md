@@ -38,16 +38,19 @@ left, settles every Word, and sends `done`.
 ### `transcribe`
 
 ```json
-{"type": "transcribe", "model": "/…/models/ggml-large-v3-turbo.bin", "language": "en", "path": "/…/recordings/r1.wav"}
+{"type": "transcribe", "model": "/…/models/ggml-large-v3-turbo.bin", "language": "en", "path": "/…/recordings/r1.wav", "prompt": "The quick brown fox."}
 ```
 
 `path` is a WAV of any rate, depth and channel count: the sidecar mixes it down and resamples to
-16 kHz itself. Nothing more is read from stdin.
+16 kHz itself. `prompt` is optional: text the speaker is expected to say, such as the Script text a
+Re-record replaces. whisper.cpp takes it as its initial prompt, and a forced aligner would align to
+it. Nothing more is read from stdin.
 
 ### Fields
 
 - `model`: the path of the model file. whisper.cpp takes ggml models; their DTW alignment heads are
-  picked from the file name (`ggml-<name>.bin`, optionally with a `-q…` quantisation suffix).
+  picked from the file name (`ggml-<name>.bin`, optionally with a `-q…` quantisation suffix). A
+  name with no preset falls back to plain token timestamps, with a note on stderr.
 - `language`: an ISO 639-1 code. Only `en` is accepted in v1; any other is an `error`.
 
 ## Events
@@ -91,7 +94,8 @@ and every Word settled.
 {"type": "progress", "percent": 40}
 ```
 
-Transcription mode only. Rises from 0 to 100, before the `words` event.
+Transcription mode only. Each value is higher than the last, and the last is 100, sent before
+`words` or `no_speech`.
 
 ### `no_speech`
 
@@ -145,6 +149,10 @@ it, the sidecar answers every session with an `error`. `scripts/build-sidecar.sh
 sidecar with Metal and stages it in `apps/desktop/src-tauri/binaries/` for Tauri's `externalBin`.
 `npm run dev` and the release build run it first. Building `apps/desktop/src-tauri` on its own
 needs it staged.
+
+Not yet applied from the whisper research: Silero VAD, which needs a second model download. The
+live pass relies on whisper's own no-speech handling until the on-Mac spike measures whether VAD is
+needed.
 
 The slow test runs real whisper.cpp on a spoken fixture:
 
