@@ -7,20 +7,20 @@ import type { Unsubscribe } from "./store";
  * seek-safe: a seek or a late join skips them. Derive state with a Fold instead.
  */
 export interface Hooks<Events extends EventMap> {
-  /** Each Word as it starts. */
+  /** Each Word as it starts. Not seek-safe. */
   onWord(handler: (word: Word) => void): Unsubscribe;
-  /** Each live Named Event. */
+  /** Each live Named Event. Not seek-safe: a seek skips the ones it passes. */
   onNamedEvent(handler: (event: NamedEvent<Events>) => void): Unsubscribe;
-  /** Each live Named Event called `name`. */
+  /** Each live Named Event called `name`. Not seek-safe: a seek skips the ones it passes. */
   onNamedEvent<Name extends EventName<Events>>(
     name: Name,
     handler: (event: NamedEvent<Events, Name>) => void,
   ): Unsubscribe;
-  /** Each clock change: play, pause, seek, speed, end or reset. */
+  /** Each clock change: play, pause, seek, speed, end or reset. Not seek-safe; read the `clock` store for state. */
   onClock(handler: (change: ClockChange) => void): Unsubscribe;
-  /** Each Tick's Script Time, ten times a second while playing. */
+  /** Each Tick's Script Time, ten times a second while playing. Not seek-safe; use `onFrame` for motion. */
   onTick(handler: (scriptTime: number) => void): Unsubscribe;
-  /** Each Snapshot: on connect, seek and Script edit. */
+  /** Each Snapshot: on connect, seek and Script edit. The place to reset anything a hook built up. */
   onSnapshot(handler: (snapshot: Snapshot<Events>) => void): Unsubscribe;
 }
 

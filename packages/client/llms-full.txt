@@ -1,0 +1,520 @@
+# @time-to-present/client: full reference
+
+Follows a Time to Present Performance from a Presentation App. Rule one: derive state with `client.fold`, never from raw hooks, which are not seek-safe (a seek sends a Snapshot and skips events).
+
+The library a Presentation App uses to follow a Performance: it connects to the
+event stream Time to Present serves and folds Named Events into app state.
+
+```ts
+import { connect } from "@time-to-present/client";
+
+const client = connect<{ slide: { index: number } }>();
+const deck = client.fold(0, { slide: (_, event) => event.data.index });
+deck.subscribe(({ state, live }) => showSlide(state, { animate: live }));
+client.onFrame((scriptTime) => moveProgressBar(scriptTime));
+```
+
+Derive state with a Fold: it is rebuilt on every Snapshot, so seeks, late joins and
+reconnects are always right. The raw `on…` hooks only hear live events and are not
+seek-safe.
+
+## Without the desktop app
+
+`simulate(script)` runs the Performance clock in the page over a Script in the
+`/_ttp/v1/script` shape and speaks the same protocol, so the app runs unchanged:
+
+```ts
+import script from "./script.json";
+import { connect, simulate } from "@time-to-present/client";
+
+const simulator = simulate(script);
+simulator.keyboard(); // the Teleprompter's Performance keys
+const client = connect({ source: simulator });
+```
+
+Drive it with `play`, `pause`, `seek`, `setSpeed` and `reset`. In tests, pass
+`{ clock: "manual" }` and move time with `advance(ms)`.
+
+## Seek safety
+
+A seek sends one Snapshot and never replays what it skipped, and a late join or reconnect
+starts the same way. So derive everything on screen from a Fold (or the `clock` and
+`currentWord` stores), never from `onNamedEvent`, `onWord`, `onClock`, `onTick` or
+`onSnapshot` alone: those hear live events only and are not seek-safe. Use `live` from a
+Fold to animate only changes that really happened just now.
+
+## Developing your app
+
+Run your dev server and let it reach the desktop app's stream. With Vite, proxy `/_ttp`:
+
+```ts
+// vite.config.ts
+export default defineConfig({
+  server: { proxy: { "/_ttp": "http://localhost:4747" } },
+});
+```
+
+`connect()` then works unchanged at the dev server's origin. The editor's toolbar shows the
+port if 4747 was taken. Build into the Presentation's `app/` to perform
+(see [docs/folder-format.md](docs/folder-format.md)).
+
+With no desktop app, use `simulate()` as above. `connection` is `reconnecting` while the
+stream is lost or the Presentation is closed, and `error` holds why a Client closed itself,
+such as a protocol version mismatch.
+
+## Frameworks
+
+Every `Store` has `subscribe(fn)` (called at once, then on each change) and `get()`, bound,
+and `get()` keeps returning the same object until the value changes. Create the Client once,
+outside components.
+
+**React**: `useSyncExternalStore` takes a store as it is.
+
+```tsx
+const useStore = <T,>(store: Store<T>) => useSyncExternalStore(store.subscribe, store.get);
+const deck = useStore(client.fold(0, { slide: (_, event) => event.data.index }));
+```
+
+Create the Fold at module level, not in render, or it is rebuilt every render. See
+[examples/react-slides.tsx](examples/react-slides.tsx).
+
+**Svelte**: a Store is a Svelte store; use `$` directly.
+
+```svelte
+<script>
+  const deck = client.fold(0, { slide: (_, event) => event.data.index });
+</script>
+<h1 class:animate={$deck.live}>{slides[$deck.state]}</h1>
+```
+
+**Vue**: wrap a store in a `ref` and unsubscribe on unmount.
+
+```ts
+function useStore<T>(store: Store<T>) {
+  const value = shallowRef(store.get());
+  const stop = store.subscribe((next) => (value.value = next));
+  onScopeDispose(stop);
+  return value;
+}
+```
+
+**No framework**: see [examples/vanilla-slides.ts](examples/vanilla-slides.ts). For captions
+that follow the spoken Word, see [examples/word-captions.ts](examples/word-captions.ts).
+
+## More
+
+- [docs/protocol.md](docs/protocol.md): the stream and Script over HTTP, for non-JS clients
+- [docs/folder-format.md](docs/folder-format.md): the Presentation folder, including optional `app-src/`
+- [llms.txt](llms.txt) and [llms-full.txt](llms-full.txt): the same for coding agents
+- [examples/](examples): each smoke-tested against the Simulator
+
+
+# API
+
+All exports of the package entry. Types are TypeScript source with TSDoc.
+
+
+## client.ts
+
+```ts
+/** How `connect()` finds the Performance. */
+export interface ConnectOptions {
+  /**
+   * The event stream to follow. Defaults to the same origin's `/_ttp/v1/events`. The Script
+   * is fetched from `script` beside it.
+   */
+  url?: string;
+  /** Follow this Source instead of an event stream, such as a Simulator. */
+  source?: Source;
+}
+/** Whether the Client is following the Performance. */
+export type ConnectionState = "connecting" | "open" | "reconnecting" | "closed";
+/** A connection to the Performance: its stores, Folds, hooks and time. */
+export interface Client<Events extends EventMap = EventMap> extends Hooks<Events>, Time {
+  /**
+   * `open` once a Snapshot arrives; `reconnecting` while the stream is lost or the
+   * Presentation is closed, when the clock also stops where it was.
+   */
+  connection: Store<ConnectionState>;
+  /** Why the Client closed itself, such as an unsupported protocol version. */
+  error: Store<Error | null>;
+  /** The clock as it last changed. Use `now()` for the Script Time in between. */
+  clock: Store<Clock>;
+  /** The Word being spoken, else the last Word started, else null. */
+  currentWord: Store<Word | null>;
+  /** The whole Script, read-only: null until fetched on first subscribe, refetched after each edit. */
+  script: Store<Script<Events> | null>;
+  /**
+   * Derives app state from the Named Events passed so far: rebuilt from `initial` on every
+   * Snapshot with `live: false`, and stepped by each live Named Event with `live: true`.
+   * Reducers must be pure.
+   */
+  fold<State>(initial: State, reducers: Reducers<Events, State>): Store<Folded<State>>;
+  /** Disconnects for good. */
+  close(): void;
+}
+/** Follows the Performance, by default from the desktop app serving this page. */
+export function connect<Events extends EventMap = EventMap>(options: ConnectOptions = {}): Client<Events>
+```
+
+
+## fold.ts
+
+```ts
+/** A Fold's state, and whether it last changed from a live Named Event rather than a Snapshot. */
+export interface Folded<State> {
+  state: State;
+  live: boolean;
+}
+/** Pure functions from the state and one Named Event to the next state, by event name. */
+export type Reducers<Events extends EventMap, State> = {
+  [Name in EventName<Events>]?: (state: State, event: NamedEvent<Events, Name>) => State;
+};
+```
+
+
+## hooks.ts
+
+```ts
+/**
+ * One-shot reactions to live events. None is ever called for past events, so they are not
+ * seek-safe: a seek or a late join skips them. Derive state with a Fold instead.
+ */
+export interface Hooks<Events extends EventMap> {
+  /** Each Word as it starts. Not seek-safe. */
+  onWord(handler: (word: Word) => void): Unsubscribe;
+  /** Each live Named Event. Not seek-safe: a seek skips the ones it passes. */
+  onNamedEvent(handler: (event: NamedEvent<Events>) => void): Unsubscribe;
+  /** Each live Named Event called `name`. Not seek-safe: a seek skips the ones it passes. */
+  onNamedEvent<Name extends EventName<Events>>(
+    name: Name,
+    handler: (event: NamedEvent<Events, Name>) => void,
+  ): Unsubscribe;
+  /** Each clock change: play, pause, seek, speed, end or reset. Not seek-safe; read the `clock` store for state. */
+  onClock(handler: (change: ClockChange) => void): Unsubscribe;
+  /** Each Tick's Script Time, ten times a second while playing. Not seek-safe; use `onFrame` for motion. */
+  onTick(handler: (scriptTime: number) => void): Unsubscribe;
+  /** Each Snapshot: on connect, seek and Script edit. The place to reset anything a hook built up. */
+  onSnapshot(handler: (snapshot: Snapshot<Events>) => void): Unsubscribe;
+}
+```
+
+
+## store.ts
+
+```ts
+/** Stops a subscription or hook. */
+export type Unsubscribe = () => void;
+/**
+ * A value you can read at any time and subscribe to for changes.
+ *
+ * `subscribe` calls `fn` at once with the current value and again on every change. Both
+ * methods are bound, so `useSyncExternalStore(store.subscribe, store.get)` works as is,
+ * and `get()` returns the same object until the value changes.
+ */
+export interface Store<T> {
+  subscribe(fn: (value: T) => void): Unsubscribe;
+  get(): T;
+}
+export const readonly = <T>({ subscribe, get }: Store<T>): Store<T> => ({ subscribe, get });
+```
+
+
+## time.ts
+
+```ts
+/** The Script Time between clock changes, for smooth motion. */
+export interface Time {
+  /** The Script Time in integer ms: extrapolated while playing and never stepping back, frozen otherwise. */
+  now(): number;
+  /**
+   * Calls `fn` with `now()` at once, on every animation frame while playing, and once on
+   * any clock change.
+   */
+  onFrame(fn: (scriptTime: number) => void): Unsubscribe;
+}
+```
+
+
+## source.ts
+
+```ts
+/** What a Source tells the Client it is following. */
+export interface SourceListener {
+  event(event: StreamEvent): void;
+  /** The stream dropped and the Source is trying to get it back. */
+  lost(): void;
+}
+/**
+ * Where a Client gets the Performance from: the desktop app's event stream by default, or
+ * a Simulator. It also sets the Client's time base, so a manual-clock Simulator can make
+ * `now()` and `onFrame` deterministic.
+ */
+export interface Source {
+  /** Starts delivering the stream to `listener`, until the returned function stops it. */
+  open(listener: SourceListener): Unsubscribe;
+  /** The Script in the `/_ttp/v1/script` shape. */
+  script(): Promise<unknown>;
+  /** Wall time in ms. */
+  now(): number;
+  /** Calls `callback` on the next animation frame, unless cancelled first. */
+  frame(callback: () => void): Unsubscribe;
+}
+```
+
+
+## simulator.ts
+
+```ts
+/** How a Simulator's wall time passes. */
+export interface SimulateOptions {
+  /** `real` follows the page's clock and frames; `manual` stands still until `advance(ms)`. Defaults to `real`. */
+  clock?: "real" | "manual";
+}
+/**
+ * The Performance clock run in the page over a Script, for building a Presentation App with no
+ * desktop app: pass it to `connect({ source })` and drive it like the Teleprompter.
+ */
+export interface Simulator<Events extends EventMap = EventMap> extends Source {
+  /** Plays from where the clock is; does nothing while playing or ended. */
+  play(): void;
+  /** Stops the clock where it is. */
+  pause(): void;
+  /** Jumps to `scriptTime` within the Script and sends a Snapshot; `ready` and `ended` become `paused`. */
+  seek(scriptTime: number): void;
+  /** Takes `factor` to the nearest 0.05 step from 0.50× to 2.00×. */
+  setSpeed(factor: number): void;
+  /** Back to start: `ready` at Script Time 0, nothing fired, speed kept. */
+  reset(): void;
+  /** Closes the Presentation: every Client hears `closed` and the Simulator stops for good. */
+  close(): void;
+  /** The Script in the `/_ttp/v1/script` shape. */
+  script(): Promise<Script<Events>>;
+  /**
+   * Follows the Teleprompter's Performance keys pressed on `target`, `window` by default:
+   * Space, PageDown or → to play and pause; PageUp or ← to the Sentence start; ⌥←/⌥→ by
+   * Word; ⇧←/⇧→ by Named Event; `[`/`]` by paragraph; ↑/↓ for speed ±0.05; `0` for 1.0×;
+   * and Home twice within 2 s back to start. Keys typed into a field, or held with ⌘ or
+   * Ctrl, are left to the page, as are the display keys (B, `.`, E, M, Esc), which have
+   * nothing to show here. Returns a function that stops following them.
+   */
+  keyboard(target?: EventTarget): Unsubscribe;
+}
+/** A Simulator whose wall time moves only when told to, for deterministic tests. */
+export interface ManualSimulator<Events extends EventMap = EventMap> extends Simulator<Events> {
+  /** Moves wall time on by `ms`, runs the clock once, then runs any animation frames due. */
+  advance(ms: number): void;
+}
+/** Simulates the Performance over a Script in the `/_ttp/v1/script` shape. */
+export function simulate<Events extends EventMap = EventMap>(
+  script: SimulatedScript<Events>,
+  options: { clock: "manual" },
+): ManualSimulator<Events>;
+/** Simulates the Performance over a Script, on the page's own clock unless `{ clock: "manual" }`. */
+export function simulate<Events extends EventMap = EventMap>(
+  script: SimulatedScript<Events>,
+  options?: SimulateOptions,
+): Simulator<Events>;
+```
+
+
+## timeline.ts
+
+```ts
+/** What `simulate()` plays: the Script in the `/_ttp/v1/script` shape, its versions and end optional. */
+export interface SimulatedScript<Events extends EventMap = EventMap> {
+  /** In Script order, each at its absolute `start`. */
+  words: ScriptWord[];
+  /** Each at the Script Time it fires; any before 0 fire at 0. */
+  namedEvents: NamedEvent<Events>[];
+  /** Defaults to the end of the last Word or the last Named Event, whichever is later. */
+  scriptEnd?: number;
+  /** Defaults to 1. */
+  scriptVersion?: number;
+}
+```
+
+
+## protocol.ts
+
+```ts
+/** The event stream protocol version this Client speaks. */
+export const PROTOCOL_VERSION = 1;
+/**
+ * A hand-written map from Named Event name to the type of its `data`, such as
+ * `{ slide: { index: number }; flash: null }`.
+ */
+export type EventMap = Record<string, unknown>;
+/** The names of the Named Events in `Events`: any `string` without a map. */
+export type EventName<Events extends EventMap> = Extract<keyof Events, string>;
+/** A Named Event fired at a Script Time, typed by its name when `Events` is given. */
+export type NamedEvent<Events extends EventMap = EventMap, Name extends EventName<Events> = EventName<Events>> = {
+  [N in Name]: { id: string; name: N; data: Events[N]; scriptTime: number };
+}[Name];
+/** A Word of the Script, at its absolute Script Time `start`. */
+export interface Word {
+  id: string;
+  text: string;
+  start: number;
+  duration: number;
+}
+/** Which of its four conditions the Performance clock is in. */
+export type ClockState = "ready" | "playing" | "paused" | "ended";
+/** The Performance clock. All times are integer ms of Script Time. */
+export interface Clock {
+  state: ClockState;
+  scriptTime: number;
+  speed: number;
+}
+/** Why the clock changed. Voice-following will add causes, so expect others. */
+export type ClockCause = "play" | "pause" | "seek" | "speed" | "end" | "reset" | (string & {});
+/** A change of the clock, and why. */
+export interface ClockChange extends Clock {
+  cause: ClockCause;
+}
+/** A complete picture of where the Performance is, sent on connect, seek and Script edit. */
+export interface Snapshot<Events extends EventMap = EventMap> {
+  protocolVersion: number;
+  scriptVersion: number;
+  clock: Clock;
+  currentWord: Word | null;
+  passedEvents: NamedEvent<Events>[];
+}
+/** A Word of the Script, and whether the line or paragraph breaks after it. */
+export interface ScriptWord extends Word {
+  breakAfter?: "line" | "paragraph";
+}
+/** The read-only Script served at `/_ttp/v1/script`. */
+export interface Script<Events extends EventMap = EventMap> {
+  protocolVersion: number;
+  scriptVersion: number;
+  /** The end of the last Word or the last Named Event, whichever is later. */
+  scriptEnd: number;
+  /** In Script order, which is start order. */
+  words: ScriptWord[];
+  /** In firing order. */
+  namedEvents: NamedEvent<Events>[];
+}
+/** One event of the stream, as a Source delivers it. */
+export type StreamEvent =
+  | ({ type: "snapshot" } & Snapshot)
+  | ({ type: "clock" } & ClockChange)
+  | { type: "tick"; scriptTime: number }
+  | ({ type: "word" } & Word)
+  | ({ type: "namedEvent" } & NamedEvent)
+  | { type: "closed"; reason: string };
+```
+
+
+# Protocol
+
+
+For clients that don't use `@time-to-present/client`: a non-JS display, a native app, a
+script. Time to Present serves a read-only event stream and the Script over HTTP on
+`localhost:4747` (the editor's toolbar shows the port if 4747 was taken). Only the
+Teleprompter and editor control the clock; clients only follow it.
+
+| Path | What it is |
+| --- | --- |
+| `GET /_ttp/v1/events` | Server-Sent Events: the stream |
+| `GET /_ttp/v1/script` | The Script as JSON |
+| `GET /` and the rest | The open Presentation's `app/` folder (`/_ttp/` itself is reserved) |
+
+Both `/_ttp/v1/` paths answer `503` while no Presentation is open.
+
+## Connecting
+
+Open `/_ttp/v1/events` as an `EventSource`. The SSE `event:` field is the event `type` and
+`data:` is a JSON object that also carries `type`. The server sends `retry: 1000` and
+keep-alive comments. If the connection drops, reconnect: every connection starts with a Snapshot,
+so nothing is replayed and nothing needs resuming. Ignore the SSE `id`; it is for debugging.
+
+Check `protocolVersion` in the first Snapshot. If it isn't the version you implement, stop and
+tell the user to install matching software.
+
+## Events
+
+All times are integer ms of Script Time. `speed` is a factor from 0.50 to 2.00.
+
+| `type` | Fields | Sent |
+| --- | --- | --- |
+| `snapshot` | `protocolVersion`, `scriptVersion`, `clock`, `currentWord`, `passedEvents` | On connect, after every seek, and after a Script edit |
+| `clock` | `state`, `scriptTime`, `speed`, `cause` | On every clock change |
+| `tick` | `scriptTime` | Ten times a second while playing |
+| `word` | `id`, `text`, `start`, `duration` | As each Word starts |
+| `namedEvent` | `id`, `name`, `data`, `scriptTime` | As each Named Event fires |
+| `closed` | `reason` | The Presentation closed; the server then ends the stream |
+
+`clock.state` is `ready`, `playing`, `paused` or `ended`. `cause` is `play`, `pause`, `seek`,
+`speed`, `end` or `reset`; later versions add causes (voice-following), so treat unknown
+ones as a plain clock change. `currentWord` is the Word being spoken, else the last started,
+else `null`. `passedEvents` are every Named Event at or before the clock, in firing order.
+A Named Event's `data` is whatever JSON the author gave it, or `null`.
+
+```
+event: snapshot
+data: {"type":"snapshot","protocolVersion":1,"scriptVersion":1,"clock":{"state":"playing","scriptTime":1000,"speed":1.0},"currentWord":{"id":"w3","text":"three.","start":1000,"duration":300},"passedEvents":[{"id":"e1","name":"slide","data":{"index":1},"scriptTime":0}]}
+
+event: namedEvent
+data: {"type":"namedEvent","id":"e3","name":"flash","data":null,"scriptTime":1500}
+```
+
+## Seek safety
+
+A seek sends one Snapshot and nothing else: skipped Named Events and Words are never
+replayed. So derive state from the Snapshot, not from the live events alone:
+
+1. On each `snapshot`, rebuild your state from `passedEvents` in order, from your initial state.
+2. On each `namedEvent`, step that state forward.
+
+Anything done only in response to a live `namedEvent` is wrong after a seek or a late join.
+Use live events only for one-shot effects (an animation) and play them only when the
+change came from a live event rather than a Snapshot.
+
+## Time between events
+
+Don't wait for ticks to move smoothly. Keep the last `scriptTime` and the local time you got it
+(from a `clock`, `tick` or `snapshot`), and while `state` is `playing` extrapolate
+`scriptTime + (localNow - at) * speed`. Never step back while playing; re-anchor on every
+clock, tick and Snapshot. Pause on `closed`.
+
+## Closed
+
+On `closed` the clock has stopped where it was and the stream ends. Keep your last state,
+show a waiting state if you like, and reconnect as for any drop. Once a Presentation is open
+again the next connection starts with a Snapshot.
+
+## The Script
+
+`GET /_ttp/v1/script`:
+
+```json
+{
+  "protocolVersion": 1,
+  "scriptVersion": 1,
+  "scriptEnd": 1500,
+  "words": [{ "id": "w1", "text": "One", "start": 200, "duration": 300, "breakAfter": "line" }],
+  "namedEvents": [{ "id": "e1", "name": "slide", "data": { "index": 1 }, "scriptTime": 0 }]
+}
+```
+
+`words` are in Script order and `namedEvents` in firing order, at absolute Script Times.
+`breakAfter` is optional (`line` or `paragraph`). Refetch whenever a Snapshot's
+`scriptVersion` changes, which happens when the author edits the Script.
+
+
+# Folder format
+
+
+A Presentation is a plain folder:
+
+| Path | What it holds |
+| --- | --- |
+| `presentation.json` | The title, recordings and Script, versioned by a format number |
+| `recordings/` | The audio Recordings the Script's Words point at |
+| `app/` | The built Presentation App, served at `/` while you perform |
+| `app-src/` | Optional: the source of that app. A new Presentation starts with a Vite + TypeScript starter here; delete it if you build `app/` elsewhere |
+
+Time to Present only reads `app/`. `app-src/` is for you and your coding agent: build it into `../app`.
+Files in `app/_ttp/` are never served, because `/_ttp/` is the event stream's.
+See [protocol.md](protocol.md) for what the app can follow.
