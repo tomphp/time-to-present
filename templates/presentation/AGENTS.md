@@ -1,6 +1,6 @@
 # Presentation App
 
-Read `node_modules/@time-to-present/client/llms.txt` first: it indexes the client library's API and the event stream protocol.
+Read `node_modules/@time-to-present/client/llms.txt` first (install the client as `README.md` describes if it is not there yet): it indexes the client library's API and the event stream protocol.
 
 - Derive slide state with a Fold (`client.fold`), never from the raw `on…` hooks: a Fold stays right across seeks and reconnects.
 - Add every Named Event to the `Events` map in `src/events.ts`.

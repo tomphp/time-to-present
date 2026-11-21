@@ -2,13 +2,13 @@ import { connect, simulate } from "@time-to-present/client";
 import { describe, expect, it } from "vitest";
 import type { Events } from "./events";
 import { simulatedScript } from "./simulated-script";
-import { currentSlide, showSlide, slides } from "./slides";
+import { mount, slides } from "./slides";
 
 function perform() {
   const simulator = simulate<Events>(simulatedScript, { clock: "manual" });
   const root = document.createElement("main");
   const client = connect<Events>({ source: simulator });
-  currentSlide(client).subscribe(({ state, live }) => showSlide(root, state, { animate: live }));
+  mount(root, client);
   return { simulator, root };
 }
 

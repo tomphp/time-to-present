@@ -18,5 +18,13 @@ export function showSlide(root: HTMLElement, index: number, { animate }: { anima
   const { title, body } = slides[index];
   root.dataset.slide = String(index);
   root.dataset.animate = String(animate);
-  root.innerHTML = `<h1>${title}</h1><p>${body}</p>`;
+  const heading = document.createElement("h1");
+  heading.textContent = title;
+  const paragraph = document.createElement("p");
+  paragraph.textContent = body;
+  root.replaceChildren(heading, paragraph);
+}
+
+export function mount(root: HTMLElement, client: Client<Events>) {
+  return currentSlide(client).subscribe(({ state, live }) => showSlide(root, state, { animate: live }));
 }

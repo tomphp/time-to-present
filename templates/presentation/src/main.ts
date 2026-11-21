@@ -1,15 +1,15 @@
 import { connect, simulate } from "@time-to-present/client";
 import type { Events } from "./events";
 import { simulatedScript } from "./simulated-script";
-import { currentSlide, showSlide } from "./slides";
+import { mount } from "./slides";
 
-const root = document.getElementById("slides")!;
+const root = document.getElementById("slides");
+if (!root) throw new Error("index.html needs an element with id=\"slides\"");
 
-let source;
-if (import.meta.env.MODE === "sim") {
-  source = simulate<Events>(simulatedScript);
-  source.keyboard();
+function simulator() {
+  const simulated = simulate<Events>(simulatedScript);
+  simulated.keyboard();
+  return simulated;
 }
 
-const client = connect<Events>({ source });
-currentSlide(client).subscribe(({ state, live }) => showSlide(root, state, { animate: live }));
+mount(root, connect<Events>({ source: import.meta.env.MODE === "sim" ? simulator() : undefined }));
