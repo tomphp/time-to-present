@@ -24,7 +24,9 @@ type FeedSlot = Arc<Mutex<Option<Box<dyn LiveFeed>>>>;
 pub(super) struct Live {
     transcriber: Arc<dyn LiveTranscriber>,
     feed: FeedSlot,
-    models: (Sender<LiveModel>, Receiver<LiveModel>),
+    model_reports: Sender<LiveModel>,
+    model_updates: Receiver<LiveModel>,
+    model: Option<LiveModel>,
     running: Option<Running>,
 }
 
@@ -42,24 +44,34 @@ impl Live {
                 feed.push(samples);
             }
         });
+        let (model_reports, model_updates) = channel();
         Self {
             transcriber,
             feed,
-            models: channel(),
+            model_reports,
+            model_updates,
+            model: None,
             running: None,
         }
     }
 
-    pub fn prepare_model(&self) {
-        let sender = self.models.0.clone();
-        self.transcriber.prepare(Box::new(move |model| {
-            let _ = sender.send(model);
-        }));
+    /// Makes sure the live model is installed, unless a download is already under way, and
+    /// returns what is known of it so far.
+    pub fn prepare_model(&mut self) -> Option<LiveModel> {
+        if !matches!(self.model, Some(LiveModel::Fetching { .. })) {
+            let sender = self.model_reports.clone();
+            self.transcriber.prepare(Box::new(move |model| {
+                let _ = sender.send(model);
+            }));
+        }
+        self.model_update().or_else(|| self.model.clone())
     }
 
     /// The latest the live model reported since the last call, if anything.
-    pub fn model_update(&self) -> Option<LiveModel> {
-        self.models.1.try_iter().last()
+    pub fn model_update(&mut self) -> Option<LiveModel> {
+        let update = self.model_updates.try_iter().last()?;
+        self.model = Some(update.clone());
+        Some(update)
     }
 
     pub fn start(&mut self, after: Option<String>, before: Option<String>) {

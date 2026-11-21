@@ -8,9 +8,11 @@ impl Session {
     /// Opens the recording bar on the chosen input, asking for microphone access first.
     pub fn open_recording_bar(&mut self, choice: InputChoice) {
         drop(self.bar.take());
-        self.bar = Some(RecordingBar::open(&self.platform, choice, &self.taps));
-        self.live.prepare_model();
-        self.follow_live_model();
+        let mut bar = RecordingBar::open(&self.platform, choice, &self.taps);
+        if let Some(model) = self.live.prepare_model() {
+            bar.set_live_model(model);
+        }
+        self.bar = Some(bar);
         self.publish();
     }
 

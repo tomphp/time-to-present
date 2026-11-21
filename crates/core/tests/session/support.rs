@@ -234,6 +234,7 @@ type LiveSession = Arc<Mutex<Option<(LiveReport, Vec<f32>)>>>;
 pub struct FakeLiveTranscriber {
     downloading: AtomicBool,
     model_report: Mutex<Option<ModelReport>>,
+    preparations: AtomicUsize,
     session: LiveSession,
 }
 
@@ -264,6 +265,10 @@ impl FakeLiveTranscriber {
             .expect("the live model is not being prepared"))(event);
     }
 
+    pub fn preparations(&self) -> usize {
+        self.preparations.load(Ordering::SeqCst)
+    }
+
     pub fn is_live(&self) -> bool {
         self.session.lock().unwrap().is_some()
     }
@@ -290,6 +295,7 @@ impl FakeLiveTranscriber {
 
 impl LiveTranscriber for FakeLiveTranscriber {
     fn prepare(&self, mut report: ModelReport) {
+        self.preparations.fetch_add(1, Ordering::SeqCst);
         if self.downloading.load(Ordering::SeqCst) {
             *self.model_report.lock().unwrap() = Some(report);
         } else {

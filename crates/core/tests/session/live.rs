@@ -197,6 +197,31 @@ fn the_live_model_is_fetched_before_the_first_recording() {
 }
 
 #[test]
+fn reopening_the_bar_mid_download_follows_the_same_download() {
+    let harness = Harness::new();
+    harness.live.needs_download();
+    let mut session = harness.create("Talk");
+    session.open_recording_bar(InputChoice::default());
+    harness
+        .live
+        .model(LiveModel::Fetching { percent: Some(40) });
+    session.poll().unwrap();
+    session.close_recording_bar().unwrap();
+
+    session.open_recording_bar(InputChoice::default());
+    let live_model = |session: &Session| session.state().recording_bar.unwrap().live_model;
+    assert_eq!(
+        live_model(&session),
+        LiveModel::Fetching { percent: Some(40) }
+    );
+    assert_eq!(harness.live.preparations(), 1);
+
+    harness.live.model(LiveModel::Ready);
+    session.poll().unwrap();
+    assert_eq!(live_model(&session), LiveModel::Ready);
+}
+
+#[test]
 fn a_live_model_that_cannot_be_fetched_does_not_stop_a_recording() {
     let harness = Harness::new();
     harness.live.needs_download();

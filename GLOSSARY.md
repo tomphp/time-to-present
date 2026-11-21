@@ -90,7 +90,7 @@ Playing the Script from the cursor on the shared clock, with highlight and sound
 A temporary mark on a Named Event that the app re-anchored automatically (after a delete, merge, cut or Re-record), so you can review it. It lasts for the session and is never saved.
 
 **Edit lock**:
-The editor is read-only while the Performance clock is playing, whoever started it: every Script command is refused until the clock pauses or ends. Unlike a Pending Passage, it covers the whole Script.
+The editor is read-only while the Performance clock is playing, whoever started it, and while a Recording is being captured: every Script command is refused until the clock pauses or ends and the Recording stops. Unlike a Pending Passage, it covers the whole Script.
 
 ### Performance and protocol
 

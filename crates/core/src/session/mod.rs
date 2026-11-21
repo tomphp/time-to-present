@@ -117,13 +117,13 @@ impl Session {
     /// Applies one edit (a Batch counts as one) as a single undo step, or leaves the Script
     /// untouched if any part of it fails or nothing changes.
     pub fn edit(&mut self, edit: Edit) -> Result<(), EditError> {
-        self.writable()?;
+        self.refuse_while_locked()?;
         self.change(|script, ids| Ok(((), script.apply(edit, ids)?)))
     }
 
     /// Takes the Words out onto the clipboard with their Named Events, as one undo step.
     pub fn cut(&mut self, words: &[String]) -> Result<(), EditError> {
-        self.writable()?;
+        self.refuse_while_locked()?;
         let passage = self.change(|script, _| Ok((script.cut(words)?, Vec::new())))?;
         self.clipboard.hold_cut(passage);
         Ok(())
@@ -144,7 +144,7 @@ impl Session {
         replacing: &[String],
         text: &str,
     ) -> Result<(), EditError> {
-        self.writable()?;
+        self.refuse_while_locked()?;
         let script = &self.presentation.script;
         let held = self.clipboard.paste(text, script, &mut self.ids);
         let pastes_held = held.is_some();
@@ -205,7 +205,7 @@ impl Session {
         if !edit.is_draggable() {
             return Err(EditError::NotDraggable);
         }
-        self.writable()?;
+        self.refuse_while_locked()?;
         let mut changed = base
             .clone()
             .unwrap_or_else(|| self.presentation.script.clone());
@@ -227,7 +227,7 @@ impl Session {
 
     /// Undoes the last step, and with it the Moved badges that step set.
     pub fn undo(&mut self) -> Result<(), EditError> {
-        self.writable()?;
+        self.refuse_while_locked()?;
         if let Some(undone) = self.history.undo(&mut self.presentation.script) {
             self.moved.retain(|id| !undone.contains(id));
             self.changed();
@@ -236,7 +236,7 @@ impl Session {
     }
 
     pub fn redo(&mut self) -> Result<(), EditError> {
-        self.writable()?;
+        self.refuse_while_locked()?;
         if let Some(redone) = self.history.redo(&mut self.presentation.script) {
             self.moved.extend(redone.iter().cloned());
             self.changed();
@@ -261,9 +261,8 @@ impl Session {
     }
 
     /// Call it about every 100 ms: it runs the clock, follows the live model and the Live
-    /// Transcript, lands what the Transcriptions have
-    /// reported, then saves the Presentation once the autosave delay has passed since the last
-    /// change.
+    /// Transcript, lands what the Transcriptions have reported, then saves the Presentation once
+    /// the autosave delay has passed since the last change.
     pub fn poll(&mut self) -> Result<(), StoreError> {
         self.advance_clock();
         self.follow_live();
@@ -357,9 +356,9 @@ impl Session {
         Ok(())
     }
 
-    /// The edit lock: the Script is read-only while recording, and while the clock plays as it
-    /// stands now rather than at the last poll.
-    fn writable(&mut self) -> Result<(), EditError> {
+    /// The edit lock: the Script is read-only while recording, and while the clock plays. The
+    /// clock is judged as it stands now rather than at the last poll.
+    fn refuse_while_locked(&mut self) -> Result<(), EditError> {
         if self.is_recording() {
             return Err(EditError::ReadOnlyWhileRecording);
         }
