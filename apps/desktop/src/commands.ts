@@ -22,6 +22,7 @@ export const copy = (words: string[]) => invoke<void>("copy", { words });
 export const paste = (after: string | null, replacing: string[], text: string) =>
   invoke<SessionState>("paste", { after, replacing, text });
 export const drag = (drag: string, edit: Edit) => invoke<SessionState>("drag", { drag, edit });
+export const nudge = (run: string, edit: Edit) => invoke<SessionState>("nudge", { run, edit });
 export const recordingWaveform = (recording: string) => invoke<Waveform>("recording_waveform", { recording });
 export const undo = () => invoke<SessionState>("undo");
 export const redo = () => invoke<SessionState>("redo");

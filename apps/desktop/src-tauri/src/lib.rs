@@ -207,6 +207,14 @@ fn drag(state: State<'_, App>, drag: String, edit: Edit) -> CommandResult<Sessio
 }
 
 #[tauri::command]
+fn nudge(state: State<'_, App>, run: String, edit: Edit) -> CommandResult<SessionState> {
+    with_session(&state, |session| {
+        session.nudge(&run, edit)?;
+        Ok::<_, EditError>(session.state())
+    })
+}
+
+#[tauri::command]
 async fn recording_waveform(state: State<'_, App>, recording: String) -> CommandResult<Waveform> {
     let file = with_session(&state, |session| {
         session
@@ -345,6 +353,7 @@ pub fn run() {
             copy,
             paste,
             drag,
+            nudge,
             recording_waveform,
             undo,
             redo,

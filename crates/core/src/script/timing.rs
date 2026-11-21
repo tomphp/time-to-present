@@ -24,6 +24,18 @@ pub fn trim_end(word: &mut Word, by: Ms) {
     word.audio_end = word.audio_end.map(|end| end + by);
 }
 
+/// Scales the Words at `selected` (ascending), and their Gaps except the first one's.
+pub fn retime(words: &mut [Word], selected: &[usize], percent: f64) {
+    let scale = |ms: Ms| (ms as f64 * percent / 100.0).round() as Ms;
+    for (position, &index) in selected.iter().enumerate() {
+        let word = &mut words[index];
+        if position > 0 {
+            word.gap = scale(word.gap);
+        }
+        word.duration = scale(word.duration).max(SHORTEST_WORD);
+    }
+}
+
 fn audio_length(word: &Word) -> Ms {
     word.audio_start
         .zip(word.audio_end)

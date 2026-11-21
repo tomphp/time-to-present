@@ -61,6 +61,14 @@ pub enum Edit {
         word: String,
         by: Ms,
     },
+    SetOffset {
+        event: String,
+        offset: Ms,
+    },
+    Retime {
+        words: Vec<String>,
+        percent: f64,
+    },
     Batch {
         edits: Vec<Edit>,
     },
@@ -82,6 +90,8 @@ pub enum EditError {
     UnnamedEvent,
     #[error("no Words are selected")]
     NothingSelected,
+    #[error("a percentage must be above zero")]
+    InvalidPercent,
     #[error("only a Move or Trim can be dragged")]
     NotATimingEdit,
 }
@@ -160,6 +170,28 @@ impl Script {
                     .find(|named| named.id == event)
                     .ok_or(EditError::UnknownEvent(event))?;
                 events::rename(event, name, data)?;
+            }
+            Edit::SetOffset { event, offset } => {
+                self.named_events
+                    .iter_mut()
+                    .find(|named| named.id == event)
+                    .ok_or(EditError::UnknownEvent(event))?
+                    .offset = offset;
+            }
+            Edit::Retime { words, percent } => {
+                if words.is_empty() {
+                    return Err(EditError::NothingSelected);
+                }
+                if percent.is_nan() || percent <= 0.0 {
+                    return Err(EditError::InvalidPercent);
+                }
+                let mut selected = Vec::new();
+                for id in &words {
+                    selected.push(self.index_of(id)?);
+                }
+                selected.sort_unstable();
+                selected.dedup();
+                timing::retime(&mut self.words, &selected, percent);
             }
             Edit::Batch { edits } => {
                 let mut reanchored = Vec::new();

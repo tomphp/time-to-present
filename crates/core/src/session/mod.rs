@@ -172,6 +172,27 @@ impl Session {
         Ok(())
     }
 
+    /// Applies a Move or Trim as part of the run of nudges named `run`, so that a run of them,
+    /// with nothing else changing the Script between, is one undo step.
+    pub fn nudge(&mut self, run: &str, edit: Edit) -> Result<(), EditError> {
+        if !edit.is_timing() {
+            return Err(EditError::NotATimingEdit);
+        }
+        let run = format!("nudge:{run}");
+        let mut nudged = self.presentation.script.clone();
+        nudged.apply(edit, &mut self.ids)?;
+        if nudged == self.presentation.script {
+            return Ok(());
+        }
+        if self.history.drag_start(&run).is_none() {
+            self.history
+                .record_drag(self.presentation.script.clone(), &run);
+        }
+        self.presentation.script = nudged;
+        self.changed();
+        Ok(())
+    }
+
     /// Undoes the last step, and with it the Moved badges that step set.
     pub fn undo(&mut self) {
         if let Some(undone) = self.history.undo(&mut self.presentation.script) {

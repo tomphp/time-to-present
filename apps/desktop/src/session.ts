@@ -72,6 +72,8 @@ export type Edit =
   | { kind: "move"; word: string; by: number }
   | { kind: "trimStart"; word: string; by: number }
   | { kind: "trimEnd"; word: string; by: number }
+  | { kind: "setOffset"; event: string; offset: number }
+  | { kind: "retime"; words: string[]; percent: number }
   | { kind: "batch"; edits: Edit[] };
 
 export interface Waveform {

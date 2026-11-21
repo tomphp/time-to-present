@@ -44,6 +44,18 @@
       <button type="submit">Save</button>
       <button type="button" data-cancel>Cancel</button>
     </form>
+    <form id="inspector" aria-label="Timing" hidden>
+      <span data-word>
+        <label>Gap ms <input name="gap" inputmode="numeric" autocomplete="off" /></label>
+        <label>Duration ms <input name="duration" inputmode="numeric" autocomplete="off" /></label>
+        <label>Retime % <input name="percent" inputmode="decimal" value="100" autocomplete="off" /></label>
+        <button type="submit">Retime</button>
+      </span>
+      <span data-event>
+        <label>Offset ms <input name="offset" inputmode="numeric" autocomplete="off" /></label>
+      </span>
+      <p role="alert" hidden></p>
+    </form>
     <article id="script" aria-label="Script"></article>
     <section id="timeline" aria-label="Script Time timeline"></section>
     <script type="module" src="/src/editor.ts"></script>

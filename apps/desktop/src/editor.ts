@@ -1,9 +1,11 @@
-import { copy, cut, drag, edit, onSessionState, paste, recordingWaveform, redo, renamePresentation, selectEvent, undo } from "./commands";
+import { copy, cut, drag, edit, nudge, onSessionState, paste, recordingWaveform, redo, renamePresentation, selectEvent, undo } from "./commands";
 import { mountEventEditor } from "./event-editor";
+import { mountInspector } from "./inspector";
 import { eventNames, nextMoved } from "./named-events";
 import { renderRecordingBar } from "./recording-bar";
 import { sharedSelection } from "./selection";
 import type { SessionState } from "./session";
+import { nudgeOf } from "./timing-controls";
 import { mountTextPane } from "./text-pane";
 import { mountTimeline } from "./timeline";
 
@@ -12,7 +14,10 @@ let savedTitle = "";
 let current: SessionState | null = null;
 let selected: string | null = null;
 
-const selection = sharedSelection((ids) => timeline.select(ids));
+const selection = sharedSelection((ids) => {
+  timeline.select(ids);
+  showInspector();
+});
 
 const pane = mountTextPane(
   document.querySelector<HTMLElement>("#script")!,
@@ -44,6 +49,8 @@ const timeline = mountTimeline(
   },
 );
 
+const inspector = mountInspector(document.querySelector<HTMLFormElement>("#inspector")!, { edit });
+
 const error = document.querySelector<HTMLParagraphElement>("#error")!;
 
 title.addEventListener("change", async () => {
@@ -66,10 +73,30 @@ document.addEventListener("keydown", (event) => {
   if (next) select(next);
 });
 
+document.addEventListener(
+  "keydown",
+  (event) => {
+    const field = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
+    const word = selection.ids()[0];
+    const timing = !field && !event.metaKey && !event.ctrlKey && word && nudgeOf(event, word);
+    if (!timing) return;
+    event.preventDefault();
+    event.stopPropagation();
+    void nudge(timing.run, timing.edit).catch(console.error);
+  },
+  true,
+);
+
+function showInspector() {
+  const event = current?.namedEvents.find((named) => named.id === selected) ?? null;
+  inspector.render(current?.words ?? [], selection.ids(), event);
+}
+
 /** Selecting a Named Event opens it in the event editor and clears its Moved badge. */
 function select(id: string | null) {
   selected = id;
   pane.selectEvent(id);
+  showInspector();
   const event = current?.namedEvents.find((named) => named.id === id);
   if (!event) return;
   eventEditor.open({ kind: "existing", event });
@@ -84,6 +111,7 @@ function render(state: SessionState) {
   if (selected && !state.namedEvents.some((event) => event.id === selected)) eventEditor.close();
   selection.update(state.words);
   pane.render(state);
+  showInspector();
   timeline.render(state.words, state.scriptEnd, selection.ids());
   renderRecordingBar(state.recordingBar);
 }

@@ -59,6 +59,25 @@ body.editor {
   background: #e0a000;
 }
 
+#inspector {
+  display: flex;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+#inspector input {
+  width: 5em;
+}
+
+#inspector [hidden] {
+  display: none;
+}
+
+#inspector [role="alert"] {
+  margin: 0;
+  color: #c62828;
+}
+
 #event-editor {
   display: grid;
   grid-template-columns: 1fr 2fr auto auto;
