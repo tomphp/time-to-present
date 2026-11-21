@@ -12,6 +12,7 @@ mod format;
 mod history;
 mod inputs;
 mod insert;
+mod live;
 mod lock;
 mod merge;
 mod meter;

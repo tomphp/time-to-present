@@ -5,9 +5,16 @@ use serde::{Deserialize, Serialize};
 use crate::models::Progress;
 use crate::time::Ms;
 
+mod live;
+mod live_sidecar;
+mod process;
 mod queue;
 mod sidecar;
 
+pub use live::{
+    LiveEvent, LiveFeed, LiveModel, LiveReport, LiveRevision, LiveTranscriber, ModelReport,
+};
+pub use live_sidecar::SidecarLiveTranscriber;
 pub(crate) use queue::{JobId, TranscriptionQueue};
 pub use sidecar::SidecarTranscriber;
 

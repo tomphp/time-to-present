@@ -8,7 +8,7 @@ import { scriptWord } from "./test-words";
 const words = [scriptWord("w1", "Hello,"), scriptWord("w2", "world."), scriptWord("w3", "Typed")];
 
 const state = (pendingPassages: PendingPassage[], scriptWords = words) =>
-  ({ words: scriptWords, namedEvents: [], movedEvents: [], pendingPassages }) as unknown as SessionState;
+  ({ words: scriptWords, namedEvents: [], movedEvents: [], pendingPassages, liveTranscript: null }) as unknown as SessionState;
 
 const transcribing = (percent: number): PendingPassage => ({
   recordingId: "r2",

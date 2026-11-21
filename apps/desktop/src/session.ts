@@ -35,7 +35,21 @@ export interface SessionState {
   recordingBar: RecordingBarState | null;
   pendingPassages: PendingPassage[];
   locked: boolean;
+  liveTranscript: LiveTranscript | null;
 }
+
+/** The rough words heard so far in the running Recording, shown where it will land; never Script Words. */
+export interface LiveTranscript {
+  after: string | null;
+  before: string | null;
+  words: string[];
+  failure: string | null;
+}
+
+export type LiveModel =
+  | { kind: "fetching"; percent: number | null }
+  | { kind: "ready" }
+  | { kind: "failed"; reason: string };
 
 /** The caret between Words where a Recording lands: before a Word, or at the end. */
 export interface InsertionPoint {
@@ -73,6 +87,7 @@ export interface RecordingBarState {
   input: { choice: InputChoice; device: Input } | null;
   notice: string | null;
   recording: boolean;
+  liveModel: LiveModel;
 }
 
 export interface Meter {

@@ -5,6 +5,7 @@ use super::pipeline::{Pipeline, RecordingWriter};
 use super::{Access, ActiveInput, CaptureError, Input, InputChoice, RecordingBarState, Taps};
 use crate::platform::Platform;
 use crate::store::Recording;
+use crate::transcription::LiveModel;
 
 /// The open recording bar: the chosen input metering live, and the Recording, if one is running.
 pub struct RecordingBar {
@@ -14,6 +15,7 @@ pub struct RecordingBar {
     notice: Option<String>,
     live: Option<Live>,
     recording: Option<ActiveRecording>,
+    live_model: LiveModel,
 }
 
 struct Live {
@@ -36,6 +38,7 @@ impl RecordingBar {
             notice: None,
             live: None,
             recording: None,
+            live_model: LiveModel::Fetching { percent: None },
         };
         if bar.access == Access::Granted
             && let Err(error) = bar.select(platform, choice, taps)
@@ -94,6 +97,9 @@ impl RecordingBar {
         if self.recording.is_some() {
             return Err(CaptureError::AlreadyRecording);
         }
+        if matches!(self.live_model, LiveModel::Fetching { .. }) {
+            return Err(CaptureError::LiveModelFetching);
+        }
         let pipeline = self.live()?;
         let sample_rate = self
             .active
@@ -142,7 +148,12 @@ impl RecordingBar {
             input: self.active.clone(),
             notice: self.notice.clone(),
             recording: self.is_recording(),
+            live_model: self.live_model.clone(),
         }
+    }
+
+    pub fn set_live_model(&mut self, model: LiveModel) {
+        self.live_model = model;
     }
 
     fn live(&self) -> Result<&Arc<Mutex<Pipeline>>, CaptureError> {

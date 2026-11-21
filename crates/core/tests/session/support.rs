@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use tempfile::TempDir;
@@ -11,7 +11,8 @@ use ttp_core::session::{Session, SessionState};
 use ttp_core::store::StoreError;
 use ttp_core::time::{Ms, TimeSource};
 use ttp_core::transcription::{
-    HeardWord, Report, RunningJob, Transcriber, TranscriptionEvent, TranscriptionJob,
+    HeardWord, LiveEvent, LiveFeed, LiveModel, LiveReport, LiveRevision, LiveTranscriber,
+    ModelReport, Report, RunningJob, Transcriber, TranscriptionEvent, TranscriptionJob,
 };
 
 pub const BUILT_IN: &str = "MacBook Pro Microphone";
@@ -225,12 +226,90 @@ impl Transcriber for FakeTranscriber {
     }
 }
 
+type LiveSession = Arc<Mutex<Option<(LiveReport, Vec<f32>)>>>;
+
+/// A LiveTranscriber the test drives: the live model is installed unless the test says it
+/// needs downloading, and the running session keeps what it heard for the test to read.
+#[derive(Default)]
+pub struct FakeLiveTranscriber {
+    downloading: AtomicBool,
+    model_report: Mutex<Option<ModelReport>>,
+    session: LiveSession,
+}
+
+struct FakeFeed(LiveSession);
+
+impl LiveFeed for FakeFeed {
+    fn push(&mut self, samples: &[f32]) {
+        let mut session = self.0.lock().unwrap();
+        session.as_mut().unwrap().1.extend_from_slice(samples);
+    }
+}
+
+impl Drop for FakeFeed {
+    fn drop(&mut self) {
+        *self.0.lock().unwrap() = None;
+    }
+}
+
+impl FakeLiveTranscriber {
+    pub fn needs_download(&self) {
+        self.downloading.store(true, Ordering::SeqCst);
+    }
+
+    pub fn model(&self, event: LiveModel) {
+        let mut report = self.model_report.lock().unwrap();
+        (report
+            .as_mut()
+            .expect("the live model is not being prepared"))(event);
+    }
+
+    pub fn is_live(&self) -> bool {
+        self.session.lock().unwrap().is_some()
+    }
+
+    pub fn heard(&self) -> Vec<f32> {
+        let session = self.session.lock().unwrap();
+        session.as_ref().expect("no live session").1.clone()
+    }
+
+    pub fn report(&self, event: LiveEvent) {
+        let mut session = self.session.lock().unwrap();
+        (session.as_mut().expect("no live session").0)(event);
+    }
+
+    pub fn revise(&self, from: usize, stable: usize, words: &[&str]) {
+        let timed: Vec<_> = words.iter().map(|&text| (text, 0, 0)).collect();
+        self.report(LiveEvent::Revised(LiveRevision {
+            from,
+            stable,
+            words: heard(&timed),
+        }));
+    }
+}
+
+impl LiveTranscriber for FakeLiveTranscriber {
+    fn prepare(&self, mut report: ModelReport) {
+        if self.downloading.load(Ordering::SeqCst) {
+            *self.model_report.lock().unwrap() = Some(report);
+        } else {
+            report(LiveModel::Ready);
+        }
+    }
+
+    fn start(&self, report: LiveReport) -> Box<dyn LiveFeed> {
+        *self.session.lock().unwrap() = Some((report, Vec::new()));
+        Box::new(FakeFeed(self.session.clone()))
+    }
+}
+
 pub struct Harness {
     temp: TempDir,
     time: Arc<ManualTime>,
     pub audio: Arc<FakeAudio>,
     pub app_nap: Arc<FakeAppNap>,
     pub transcriber: Arc<FakeTranscriber>,
+    pub live: Arc<FakeLiveTranscriber>,
 }
 
 impl Harness {
@@ -241,6 +320,7 @@ impl Harness {
             audio: Arc::new(FakeAudio::new()),
             app_nap: Arc::default(),
             transcriber: Arc::default(),
+            live: Arc::default(),
         }
     }
 
@@ -272,6 +352,7 @@ impl Harness {
             audio: self.audio.clone(),
             app_nap: self.app_nap.clone(),
             transcriber: self.transcriber.clone(),
+            live: self.live.clone(),
         }
     }
 

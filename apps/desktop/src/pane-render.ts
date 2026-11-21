@@ -1,8 +1,9 @@
 import { indexOf, type Slot } from "./caret";
+import { liveTranscriptElement } from "./live-transcript";
 import { chipsByAnchor } from "./named-events";
 import { passagesByPosition, pendingElement } from "./pending-passage";
 import { scriptLayout } from "./script-view";
-import { SCRIPT_START, type PendingPassage, type ScriptWord, type TimedEvent } from "./session";
+import { SCRIPT_START, type LiveTranscript, type PendingPassage, type ScriptWord, type TimedEvent } from "./session";
 
 export const SLOT_TEXT = "​";
 
@@ -16,8 +17,8 @@ const NO_CHIPS: Chips = { events: [], moved: [], selected: null };
 
 /**
  * Renders the Script as paragraphs of Word spans, each after the chips of the Named Events
- * anchored to it and any Pending Passage waiting to land before it, with the open slot (if
- * any) where a typed Word would go.
+ * anchored to it and any Pending Passage waiting to land before it, then the Live Transcript
+ * if it is there, with the open slot (if any) where a typed Word would go.
  */
 export function renderScript(
   root: HTMLElement,
@@ -25,12 +26,17 @@ export function renderScript(
   slot: Slot | null,
   chips = NO_CHIPS,
   pending: PendingPassage[] = [],
+  live: LiveTranscript | null = null,
 ) {
   const slotBeforeWord = slot && words[indexOf(words, slot.slotAfter) + 1]?.id;
   const byAnchor = chipsByAnchor(chips.events);
   const chipsFor = (anchor: string) => (byAnchor.get(anchor) ?? []).map((event) => chipElement(event, chips));
   const byPosition = passagesByPosition(words, pending);
-  const pendingBefore = (id: string | null) => (byPosition.get(id) ?? []).flatMap((passage) => [pendingElement(passage), " "]);
+  const liveAt = passagesByPosition(words, live ? [live] : []);
+  const pendingBefore = (id: string | null) => [
+    ...(byPosition.get(id) ?? []).flatMap((passage) => [pendingElement(passage), " "]),
+    ...(liveAt.get(id) ?? []).flatMap((transcript) => [liveTranscriptElement(transcript), " "]),
+  ];
   const paragraphs = scriptLayout(words).map((lines) => {
     const paragraph = document.createElement("p");
     lines.forEach((line, lineIndex) => {

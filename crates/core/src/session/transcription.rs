@@ -19,6 +19,14 @@ impl InsertionPoint {
         let before = self.before.as_deref().and_then(|id| script.position(id));
         before.unwrap_or(script.words.len())
     }
+
+    /// The ids of the Words either side of the point.
+    pub(super) fn neighbours_in(&self, script: &Script) -> (Option<String>, Option<String>) {
+        let index = self.index_in(script);
+        let after = index.checked_sub(1).map(|i| script.words[i].id.clone());
+        let before = script.words.get(index).map(|word| word.id.clone());
+        (after, before)
+    }
 }
 
 /// A stopped Recording whose Transcription has not landed, anchored to the Words either side.
@@ -193,10 +201,7 @@ impl Session {
     }
 
     pub(super) fn queue_transcription(&mut self, recording: &Recording, at: InsertionPoint) {
-        let script = &self.presentation.script;
-        let index = at.index_in(script);
-        let after = index.checked_sub(1).map(|i| script.words[i].id.clone());
-        let before = script.words.get(index).map(|word| word.id.clone());
+        let (after, before) = at.neighbours_in(&self.presentation.script);
         let job = self.transcriptions.enqueue(self.job_for(recording));
         self.pending.push(Pending {
             recording: recording.clone(),

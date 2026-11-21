@@ -103,6 +103,18 @@ body.editor {
   font-size: 0.9em;
 }
 
+#script .live-transcript {
+  color: #777;
+  font-style: italic;
+  user-select: none;
+}
+
+#script .live-transcript .live-failure {
+  color: #b00020;
+  font-style: normal;
+  font-size: 0.85em;
+}
+
 #event-editor {
   display: grid;
   grid-template-columns: 1fr 2fr auto auto;

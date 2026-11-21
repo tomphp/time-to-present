@@ -8,7 +8,16 @@ import {
   startRecording,
   stopRecording,
 } from "./commands";
-import { channelOptions, escapeAction, formatElapsed, inputOptions, meterFill, shortcut } from "./recording-bar-view";
+import {
+  barNotice,
+  canStart,
+  channelOptions,
+  escapeAction,
+  formatElapsed,
+  inputOptions,
+  meterFill,
+  shortcut,
+} from "./recording-bar-view";
 import { find } from "./dom";
 import { act } from "./report-error";
 import type { InsertionPoint, RecordingBarState } from "./session";
@@ -57,8 +66,9 @@ function renderRecordingBar(state: RecordingBarState | null) {
   const granted = state.access === "granted";
   denied.hidden = granted;
   controls.hidden = !granted;
-  notice.hidden = state.notice === null;
-  notice.textContent = state.notice ?? "";
+  const message = barNotice(state);
+  notice.hidden = message === null;
+  notice.textContent = message ?? "";
   options(device, inputOptions(state));
   options(
     channel,
@@ -69,7 +79,7 @@ function renderRecordingBar(state: RecordingBarState | null) {
     })),
   );
   device.disabled = channel.disabled = state.recording;
-  start.disabled = state.recording || state.input === null;
+  start.disabled = !canStart(state);
   stop.disabled = cancel.disabled = !state.recording;
   close.disabled = state.recording;
   if (state.recording && !wasRecording) {

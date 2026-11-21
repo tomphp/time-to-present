@@ -2,6 +2,7 @@ import { collapsed, endOf, indexOf, isSlot, lastId, resolveCaret, type CaretTarg
 import { caretAfterPaste, passageText, pasteAt, selectedWords } from "./clipboard";
 import { currentCaret, placeCaret, placeRange, selectedRange } from "./dom-caret";
 import { chipDropEdit, eventAnchorAt, sameChips, type ChipDrop, type EventAt } from "./named-events";
+import { refreshLiveTranscript, sameLivePlacement } from "./live-transcript";
 import { renderScript } from "./pane-render";
 import { insertionPointAt, refreshPending, samePending, samePlacement } from "./pending-passage";
 import { sameLayout } from "./script-view";
@@ -22,7 +23,10 @@ export interface EventHooks {
   selectEvent(id: string): void;
 }
 
-export type PaneScript = Pick<SessionState, "words" | "namedEvents" | "movedEvents" | "pendingPassages" | "locked">;
+export type PaneScript = Pick<
+  SessionState,
+  "words" | "namedEvents" | "movedEvents" | "pendingPassages" | "locked" | "liveTranscript"
+>;
 
 const INPUT_TYPES: Record<string, Input | undefined> = {
   deleteContentBackward: { type: "deleteBackward" },
@@ -44,7 +48,14 @@ export function mountTextPane(
   events: EventHooks,
   onSelect: (range: Range) => void,
 ) {
-  let script: PaneScript = { words: [], namedEvents: [], movedEvents: [], pendingPassages: [], locked: false };
+  let script: PaneScript = {
+    words: [],
+    namedEvents: [],
+    movedEvents: [],
+    pendingPassages: [],
+    locked: false,
+    liveTranscript: null,
+  };
   let locked = false;
   let words: ScriptWord[] = [];
   let selectedEvent: string | null = null;
@@ -70,8 +81,10 @@ export function mountTextPane(
       slot,
       { events: next.namedEvents, moved: next.movedEvents, selected: selectedEvent },
       next.pendingPassages,
+      next.liveTranscript,
     );
     if (caret) placeCaret(root, caret);
+    if (next.liveTranscript) refreshLiveTranscript(root, next.liveTranscript);
   }
 
   /** Where a Recording lands: the caret, or where it last was once the focus has moved on. */
@@ -81,15 +94,20 @@ export function mountTextPane(
   }
 
   /**
-   * Renders new Session state, leaving the DOM and its selection alone when only timing or
-   * Transcription progress changed.
+   * Renders new Session state, leaving the DOM and its selection alone when only timing,
+   * Transcription progress or what the Live Transcript has heard changed.
    */
   function render(next: PaneScript) {
     setLocked(next.locked);
     const sameShape =
-      !pending && sameLayout(words, next.words) && sameChips(script, next) && samePlacement(script.pendingPassages, next.pendingPassages);
+      !pending &&
+      sameLayout(words, next.words) &&
+      sameChips(script, next) &&
+      samePlacement(script.pendingPassages, next.pendingPassages) &&
+      sameLivePlacement(script.liveTranscript, next.liveTranscript);
     if (!sameShape) return repaint(next);
     if (!samePending(script.pendingPassages, next.pendingPassages)) refreshPending(root, next.pendingPassages);
+    if (next.liveTranscript && next.liveTranscript !== script.liveTranscript) refreshLiveTranscript(root, next.liveTranscript);
     script = next;
     words = next.words;
   }

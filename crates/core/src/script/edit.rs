@@ -101,6 +101,8 @@ pub enum EditError {
     NotDraggable,
     #[error("the Script can't be edited while the clock is playing")]
     ClockPlaying,
+    #[error("the Script is read-only while recording")]
+    ReadOnlyWhileRecording,
 }
 
 impl Edit {

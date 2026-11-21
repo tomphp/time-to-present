@@ -12,7 +12,7 @@ use ttp_core::session::{Session, SessionState};
 use ttp_core::settings::Settings;
 use ttp_core::store::StoreError;
 use ttp_core::time::MonotonicTime;
-use ttp_core::transcription::SidecarTranscriber;
+use ttp_core::transcription::{SidecarLiveTranscriber, SidecarTranscriber};
 use ttp_core::waveform::{self, Waveform};
 use ttp_server::{Server, ServerStatus, SharedSession};
 
@@ -287,7 +287,8 @@ fn save_open_session(
     }
 }
 
-/// Runs the clock, lands Transcriptions and autosaves, as the Session asks to be polled regularly.
+/// Runs the clock, follows the Live Transcript, lands Transcriptions and autosaves, as the
+/// Session asks to be polled regularly.
 fn poll_session(app: AppHandle) {
     loop {
         std::thread::sleep(POLL_INTERVAL);
@@ -373,6 +374,7 @@ pub fn run() {
                     audio: Arc::new(audio::CpalSource::new()),
                     app_nap: Arc::new(macos::ProcessActivity),
                     transcriber: Arc::new(SidecarTranscriber::new(sidecar_path()?, models.clone())),
+                    live: Arc::new(SidecarLiveTranscriber::new(sidecar_path()?, models.clone())),
                 },
                 session,
                 server,

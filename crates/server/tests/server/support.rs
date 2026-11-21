@@ -13,7 +13,10 @@ use ttp_core::platform::{AppNap, Platform};
 use ttp_core::session::Session;
 use ttp_core::settings::ServerSettings;
 use ttp_core::time::{Ms, TimeSource};
-use ttp_core::transcription::{Report, RunningJob, Transcriber, TranscriptionJob};
+use ttp_core::transcription::{
+    LiveFeed, LiveReport, LiveTranscriber, ModelReport, Report, RunningJob, Transcriber,
+    TranscriptionJob,
+};
 use ttp_server::{Server, SharedSession};
 
 use crate::sse::{Events, PATIENCE};
@@ -62,6 +65,18 @@ impl Transcriber for NeverTranscribes {
     }
 }
 
+struct NeverHearsLive;
+
+impl LiveTranscriber for NeverHearsLive {
+    fn prepare(&self, _: ModelReport) {
+        unreachable!("the server never records")
+    }
+
+    fn start(&self, _: LiveReport) -> Box<dyn LiveFeed> {
+        unreachable!("the server never records")
+    }
+}
+
 pub fn loopback(port: u16) -> ServerSettings {
     ServerSettings {
         address: Ipv4Addr::LOCALHOST.into(),
@@ -94,6 +109,7 @@ impl Harness {
             audio: Arc::new(NoAudio),
             app_nap: Arc::new(AwakeAnyway),
             transcriber: Arc::new(NeverTranscribes),
+            live: Arc::new(NeverHearsLive),
         }
     }
 

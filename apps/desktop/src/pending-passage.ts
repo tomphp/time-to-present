@@ -59,16 +59,22 @@ export function describePending(status: PendingStatus): string {
   }
 }
 
+/** Anchored between Words, as a Pending Passage or the Live Transcript is. */
+export interface Anchored {
+  after: string | null;
+  before: string | null;
+}
+
 /**
- * Each Pending Passage keyed by the Word it shows before: its next Word while that exists,
+ * Each passage keyed by the Word it shows before: its next Word while that exists,
  * else the Word after its previous one, else null for the end of the Script.
  */
-export function passagesByPosition(words: ScriptWord[], pending: PendingPassage[]) {
+export function passagesByPosition<T extends Anchored>(words: ScriptWord[], anchored: T[]) {
   const ids = words.map((word) => word.id);
-  const byPosition = new Map<string | null, PendingPassage[]>();
-  for (const passage of pending) {
-    const before = passage.before !== null && ids.includes(passage.before) ? passage.before : afterPrevious(ids, passage.after);
-    byPosition.set(before, [...(byPosition.get(before) ?? []), passage]);
+  const byPosition = new Map<string | null, T[]>();
+  for (const item of anchored) {
+    const before = item.before !== null && ids.includes(item.before) ? item.before : afterPrevious(ids, item.after);
+    byPosition.set(before, [...(byPosition.get(before) ?? []), item]);
   }
   return byPosition;
 }

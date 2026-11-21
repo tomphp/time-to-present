@@ -1,4 +1,4 @@
-import type { RecordingBarState } from "./session";
+import type { LiveModel, RecordingBarState } from "./session";
 
 export const CONFIRM_CANCEL_AFTER_MS = 3_000;
 const METER_FLOOR_DB = -60;
@@ -35,4 +35,26 @@ export function inputOptions({ inputs, input }: RecordingBarState) {
 
 export function channelOptions({ input }: RecordingBarState) {
   return Array.from({ length: input?.device.channels ?? 0 }, (_, index) => index + 1);
+}
+
+/** A Recording waits for the live model to be fetched, but not on one that could not be. */
+export function canStart({ recording, input, liveModel }: RecordingBarState) {
+  return !recording && input !== null && liveModel.kind !== "fetching";
+}
+
+/** What the bar has to tell the presenter, if anything. */
+export function barNotice({ notice, liveModel }: RecordingBarState): string | null {
+  const notices = [notice, liveModelNotice(liveModel)].filter((text) => text !== null);
+  return notices.length ? notices.join(" ") : null;
+}
+
+export function liveModelNotice(model: LiveModel): string | null {
+  switch (model.kind) {
+    case "ready":
+      return null;
+    case "fetching":
+      return model.percent === null ? "Fetching the live speech model…" : `Fetching the live speech model… ${model.percent}%`;
+    case "failed":
+      return `No Live Transcript: ${model.reason}`;
+  }
 }

@@ -15,11 +15,14 @@ use crate::transcription::TranscriptionQueue;
 mod clipboard;
 mod clock;
 mod history;
+mod live;
 mod recording;
 mod transcription;
 
 use clipboard::Clipboard;
 use history::History;
+use live::Live;
+pub use live::LiveTranscript;
 use transcription::Pending;
 pub use transcription::{InsertionPoint, PendingPassage, PendingPassageError, PendingStatus};
 
@@ -42,6 +45,7 @@ pub struct Session {
     bar: Option<RecordingBar>,
     taps: Arc<Taps>,
     recording_at: Option<InsertionPoint>,
+    live: Live,
     transcriptions: TranscriptionQueue,
     pending: Vec<Pending>,
     unsaved_since: Option<Ms>,
@@ -61,6 +65,7 @@ pub struct SessionState {
     pub recording_bar: Option<RecordingBarState>,
     pub pending_passages: Vec<PendingPassage>,
     pub locked: bool,
+    pub live_transcript: Option<LiveTranscript>,
 }
 
 impl Session {
@@ -71,6 +76,7 @@ impl Session {
 
     pub fn open(folder: &Path, platform: Platform) -> Result<Self, StoreError> {
         let presentation = store::open(folder)?;
+        let taps = Arc::<Taps>::default();
         Ok(Self {
             folder: folder.to_path_buf(),
             ids: Ids::after(&presentation.script),
@@ -83,7 +89,8 @@ impl Session {
             listeners: Vec::new(),
             stream_listeners: Vec::new(),
             bar: None,
-            taps: Arc::default(),
+            live: Live::new(platform.live.clone(), &taps),
+            taps,
             recording_at: None,
             transcriptions: TranscriptionQueue::new(platform.transcriber.clone()),
             pending: Vec::new(),
@@ -110,13 +117,13 @@ impl Session {
     /// Applies one edit (a Batch counts as one) as a single undo step, or leaves the Script
     /// untouched if any part of it fails or nothing changes.
     pub fn edit(&mut self, edit: Edit) -> Result<(), EditError> {
-        self.refuse_while_playing()?;
+        self.writable()?;
         self.change(|script, ids| Ok(((), script.apply(edit, ids)?)))
     }
 
     /// Takes the Words out onto the clipboard with their Named Events, as one undo step.
     pub fn cut(&mut self, words: &[String]) -> Result<(), EditError> {
-        self.refuse_while_playing()?;
+        self.writable()?;
         let passage = self.change(|script, _| Ok((script.cut(words)?, Vec::new())))?;
         self.clipboard.hold_cut(passage);
         Ok(())
@@ -137,7 +144,7 @@ impl Session {
         replacing: &[String],
         text: &str,
     ) -> Result<(), EditError> {
-        self.refuse_while_playing()?;
+        self.writable()?;
         let script = &self.presentation.script;
         let held = self.clipboard.paste(text, script, &mut self.ids);
         let pastes_held = held.is_some();
@@ -198,7 +205,7 @@ impl Session {
         if !edit.is_draggable() {
             return Err(EditError::NotDraggable);
         }
-        self.refuse_while_playing()?;
+        self.writable()?;
         let mut changed = base
             .clone()
             .unwrap_or_else(|| self.presentation.script.clone());
@@ -220,7 +227,7 @@ impl Session {
 
     /// Undoes the last step, and with it the Moved badges that step set.
     pub fn undo(&mut self) -> Result<(), EditError> {
-        self.refuse_while_playing()?;
+        self.writable()?;
         if let Some(undone) = self.history.undo(&mut self.presentation.script) {
             self.moved.retain(|id| !undone.contains(id));
             self.changed();
@@ -229,7 +236,7 @@ impl Session {
     }
 
     pub fn redo(&mut self) -> Result<(), EditError> {
-        self.refuse_while_playing()?;
+        self.writable()?;
         if let Some(redone) = self.history.redo(&mut self.presentation.script) {
             self.moved.extend(redone.iter().cloned());
             self.changed();
@@ -253,11 +260,13 @@ impl Session {
         flushed
     }
 
-    /// Call it about every 100 ms: it runs the clock, lands what the Transcriptions have
+    /// Call it about every 100 ms: it runs the clock, follows the live model and the Live
+    /// Transcript, lands what the Transcriptions have
     /// reported, then saves the Presentation once the autosave delay has passed since the last
     /// change.
     pub fn poll(&mut self) -> Result<(), StoreError> {
         self.advance_clock();
+        self.follow_live();
         self.land_transcriptions();
         match self.unsaved_since {
             Some(since) if self.platform.time.now() - since >= AUTOSAVE_DELAY => self.flush(),
@@ -296,7 +305,8 @@ impl Session {
             script_end: self.presentation.script.end(),
             recording_bar: self.bar.as_ref().map(RecordingBar::state),
             pending_passages: self.pending.iter().map(Pending::state).collect(),
-            locked: self.clock.is_playing(),
+            locked: self.clock.is_playing() || self.is_recording(),
+            live_transcript: self.live.transcript(),
         }
     }
 
@@ -326,6 +336,10 @@ impl Session {
         Ok(changed)
     }
 
+    fn is_recording(&self) -> bool {
+        self.bar.as_ref().is_some_and(RecordingBar::is_recording)
+    }
+
     fn moved_events(&self) -> Vec<String> {
         let events = self.presentation.script.named_events.iter();
         events
@@ -343,8 +357,12 @@ impl Session {
         Ok(())
     }
 
-    /// The edit lock, judged on the clock as it stands now rather than at the last poll.
-    fn refuse_while_playing(&mut self) -> Result<(), EditError> {
+    /// The edit lock: the Script is read-only while recording, and while the clock plays as it
+    /// stands now rather than at the last poll.
+    fn writable(&mut self) -> Result<(), EditError> {
+        if self.is_recording() {
+            return Err(EditError::ReadOnlyWhileRecording);
+        }
         self.advance_clock();
         if self.clock.is_playing() {
             return Err(EditError::ClockPlaying);

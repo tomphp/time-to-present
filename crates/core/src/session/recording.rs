@@ -9,6 +9,8 @@ impl Session {
     pub fn open_recording_bar(&mut self, choice: InputChoice) {
         drop(self.bar.take());
         self.bar = Some(RecordingBar::open(&self.platform, choice, &self.taps));
+        self.live.prepare_model();
+        self.follow_live_model();
         self.publish();
     }
 
@@ -28,12 +30,17 @@ impl Session {
         Ok(())
     }
 
-    /// Starts a Recording that will land at the Insertion Point.
+    /// Starts a Recording that will land at the Insertion Point, with its Live Transcript there.
     pub fn start_recording(&mut self, at: InsertionPoint) -> Result<(), CaptureError> {
         let recording = store::new_recording(&self.folder, &self.presentation)?;
         let path = self.folder.join(&recording.file);
         let bar = self.bar.as_mut().ok_or(CaptureError::BarClosed)?;
-        bar.start(&self.platform, recording, path)?;
+        let (after, before) = at.neighbours_in(&self.presentation.script);
+        self.live.start(after, before);
+        if let Err(error) = bar.start(&self.platform, recording, path) {
+            self.live.stop();
+            return Err(error);
+        }
         self.recording_at = Some(at);
         self.publish();
         Ok(())
@@ -43,6 +50,7 @@ impl Session {
     /// as a Pending Passage, leaving the Words as they are.
     pub fn stop_recording(&mut self) -> Result<Recording, CaptureError> {
         let bar = self.bar.as_mut().ok_or(CaptureError::BarClosed)?;
+        self.live.stop();
         let recording = bar.stop()?;
         let at = self.recording_at.take().unwrap_or_default();
         let mut registered = self.presentation.clone();
@@ -56,10 +64,26 @@ impl Session {
     /// Stops the Recording and deletes its WAV, leaving no trace.
     pub fn cancel_recording(&mut self) -> Result<(), CaptureError> {
         let bar = self.bar.as_mut().ok_or(CaptureError::BarClosed)?;
+        self.live.stop();
         let cancelled = bar.cancel();
         self.recording_at = None;
         self.publish();
         cancelled
+    }
+
+    pub(super) fn follow_live(&mut self) {
+        let model_changed = self.follow_live_model();
+        if self.live.follow() || model_changed {
+            self.publish();
+        }
+    }
+
+    fn follow_live_model(&mut self) -> bool {
+        let (Some(bar), Some(model)) = (self.bar.as_mut(), self.live.model_update()) else {
+            return false;
+        };
+        bar.set_live_model(model);
+        true
     }
 
     /// For reading a Recording's waveform without holding the Session.

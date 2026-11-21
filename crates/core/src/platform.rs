@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::capture::AudioSource;
 use crate::time::TimeSource;
-use crate::transcription::Transcriber;
+use crate::transcription::{LiveTranscriber, Transcriber};
 
 /// Holds off App Nap until the returned activity assertion is dropped.
 pub trait AppNap: Send + Sync {
@@ -16,4 +16,5 @@ pub struct Platform {
     pub audio: Arc<dyn AudioSource>,
     pub app_nap: Arc<dyn AppNap>,
     pub transcriber: Arc<dyn Transcriber>,
+    pub live: Arc<dyn LiveTranscriber>,
 }

@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  barNotice,
+  canStart,
   channelOptions,
   escapeAction,
   formatElapsed,
   inputOptions,
+  liveModelNotice,
   meterFill,
   shortcut,
 } from "./recording-bar-view";
@@ -18,6 +21,33 @@ const bar = (device: string | null, recording = false): RecordingBarState => ({
   input: { choice: { device, channel: 1 }, device: device === null ? builtIn : motu },
   notice: null,
   recording,
+  liveModel: { kind: "ready" },
+});
+
+describe("the live model", () => {
+  it("must be fetched before a Recording can start", () => {
+    expect(canStart(bar(null))).toBe(true);
+    expect(canStart({ ...bar(null), liveModel: { kind: "fetching", percent: 40 } })).toBe(false);
+    expect(canStart(bar(null, true))).toBe(false);
+    expect(canStart({ ...bar(null), input: null })).toBe(false);
+  });
+
+  it("does not stop a Recording when it could not be fetched", () => {
+    expect(canStart({ ...bar(null), liveModel: { kind: "failed", reason: "offline" } })).toBe(true);
+  });
+
+  it("shows its download progress, or why there will be no Live Transcript", () => {
+    expect(liveModelNotice({ kind: "ready" })).toBeNull();
+    expect(liveModelNotice({ kind: "fetching", percent: null })).toBe("Fetching the live speech model…");
+    expect(liveModelNotice({ kind: "fetching", percent: 40 })).toBe("Fetching the live speech model… 40%");
+    expect(liveModelNotice({ kind: "failed", reason: "offline" })).toBe("No Live Transcript: offline");
+  });
+
+  it("joins its notice to the bar's own", () => {
+    const fetching = { ...bar(null), notice: "MOTU M2 is not connected.", liveModel: { kind: "fetching", percent: 5 } } as const;
+    expect(barNotice(fetching)).toBe("MOTU M2 is not connected. Fetching the live speech model… 5%");
+    expect(barNotice(bar(null))).toBeNull();
+  });
 });
 
 describe("formatElapsed", () => {

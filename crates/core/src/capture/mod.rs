@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::time::Ms;
+use crate::transcription::LiveModel;
 
 mod bar;
 mod pipeline;
@@ -70,6 +71,7 @@ pub struct RecordingBarState {
     pub input: Option<ActiveInput>,
     pub notice: Option<String>,
     pub recording: bool,
+    pub live_model: LiveModel,
 }
 
 /// The input's peak level since the previous Meter, and how long the Recording has run, if one is.
@@ -90,6 +92,8 @@ pub enum CaptureError {
     NoInput,
     #[error("a Recording is already running")]
     AlreadyRecording,
+    #[error("the live speech model is still downloading")]
+    LiveModelFetching,
     #[error("no Recording is running")]
     NotRecording,
     #[error("could not open the audio input: {0}")]

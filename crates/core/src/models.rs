@@ -111,6 +111,10 @@ impl ModelManager {
         Ok(path)
     }
 
+    pub fn is_installed(&self, name: &str) -> bool {
+        self.spec(name).is_ok_and(|spec| self.path(spec).is_file())
+    }
+
     pub fn installed(&self) -> Result<Vec<InstalledModel>, ModelError> {
         let mut installed = Vec::new();
         for spec in &self.catalog {
