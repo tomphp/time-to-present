@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Start, editor, settings and Teleprompter windows",
   "windows": ["start", "editor", "settings", "teleprompter"],
-  "permissions": ["core:default", "core:window:allow-set-fullscreen", "dialog:allow-open"]
+  "permissions": ["core:default", "dialog:allow-open", "app-windows"]
 }

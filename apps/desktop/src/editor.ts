@@ -8,19 +8,20 @@ import {
   edit,
   nudge,
   onSessionState,
-  openTeleprompter,
   paste,
   recordingWaveform,
   redo,
   renamePresentation,
   retryTranscription,
   selectEvent,
+  startPerformance,
   undo,
 } from "./commands";
 import { mountEventEditor } from "./event-editor";
 import { mountInspector } from "./inspector";
 import { eventNames, nextMoved } from "./named-events";
 import { onPendingAction } from "./pending-passage";
+import { mountPerformMenu } from "./perform-menu";
 import { mountPreview } from "./preview-controls";
 import { mountRecordingBar } from "./recording-bar";
 import { act, showError } from "./report-error";
@@ -107,7 +108,8 @@ title.addEventListener("keydown", (event) => {
   if (event.key === "Enter") title.blur();
 });
 
-const perform = act(openTeleprompter);
+const perform = act(startPerformance);
+mountPerformMenu();
 
 document.querySelector("#perform")!.addEventListener("click", perform);
 

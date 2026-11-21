@@ -11,6 +11,28 @@
       <button id="remove-unused" type="button">Remove unused recordings</button>
       <button id="record" type="button" title="Record (⌘R)">Record</button>
       <button id="perform" type="button" title="Perform (⌘⇧P)">Perform</button>
+      <details id="perform-menu" class="menu">
+        <summary aria-label="Performance Layout" title="Performance Layout"></summary>
+        <div class="menu-panel">
+          <label
+            >Layout
+            <select id="perform-layout">
+              <option value="twoWindows">Two windows</option>
+              <option value="teleprompterOnly">Teleprompter only</option>
+            </select>
+          </label>
+          <label>Teleprompter display <select id="teleprompter-display"></select></label>
+          <label>Presentation display <select id="presentation-display"></select></label>
+          <label
+            >Presentation size
+            <select id="presentation-size">
+              <option value="1280x720">1280×720</option>
+              <option value="1920x1080">1920×1080</option>
+              <option value="fit">Fit</option>
+            </select>
+          </label>
+        </div>
+      </details>
       <div id="clock" class="clock" aria-label="Performance clock">
         <button id="play-pause" type="button">Play</button>
         <button id="preview" type="button" title="Preview from the cursor">Preview</button>

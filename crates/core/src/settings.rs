@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use crate::capture::InputChoice;
+use crate::perform::PerformanceSettings;
 
 const RECENT_LIMIT: usize = 10;
 const DEFAULT_PORT: u16 = 4747;
@@ -28,6 +29,7 @@ struct Values {
     bind_address: IpAddr,
     #[serde(rename = "approachCue")]
     approach_cue: ApproachCue,
+    performance: PerformanceSettings,
     #[serde(flatten)]
     other: Map<String, Value>,
 }
@@ -40,6 +42,7 @@ impl Default for Values {
             port: DEFAULT_PORT,
             bind_address: Ipv4Addr::LOCALHOST.into(),
             approach_cue: ApproachCue::default(),
+            performance: PerformanceSettings::default(),
             other: Map::new(),
         }
     }
@@ -117,6 +120,18 @@ impl Settings {
 
     pub fn set_input(&mut self, choice: InputChoice) -> Result<(), SettingsError> {
         self.values.input = choice;
+        self.save()
+    }
+
+    pub fn performance(&self) -> &PerformanceSettings {
+        &self.values.performance
+    }
+
+    pub fn set_performance(
+        &mut self,
+        performance: PerformanceSettings,
+    ) -> Result<(), SettingsError> {
+        self.values.performance = performance;
         self.save()
     }
 

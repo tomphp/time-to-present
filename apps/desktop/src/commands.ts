@@ -4,10 +4,13 @@ import type { ApproachCueSettings } from "./approach-cue";
 import type { Clip } from "./audio-schedule";
 import type { RecordingTarget } from "./recording-target";
 import type {
+  Display,
   Edit,
+  ForwardedKey,
   InputChoice,
   InsertionPoint,
   Meter,
+  PerformanceSettings,
   ServerStatus,
   SessionState,
   Snapshot,
@@ -110,7 +113,20 @@ export const pause = () => invoke<void>("pause");
 export const seek = (scriptTime: number) => invoke<void>("seek", { scriptTime });
 export const setSpeed = (speed: number) => invoke<void>("set_speed", { speed });
 export const reset = () => invoke<void>("reset");
-export const openTeleprompter = () => invoke<void>("open_teleprompter");
+export const startPerformance = () => invoke<void>("perform");
+export const displays = () => invoke<Display[]>("displays");
+export const performanceSettings = () => invoke<PerformanceSettings>("performance_settings");
+export const setPerformanceSettings = (performance: PerformanceSettings) =>
+  invoke<void>("set_performance_settings", { performance });
+export const leaveFullscreen = () => invoke<void>("leave_fullscreen");
+
+export function onPerformanceKey(handle: (key: ForwardedKey) => void) {
+  void listen<ForwardedKey>("performance-key", (event) => handle(event.payload));
+}
+
+export function onAppFocus(handle: (focused: boolean) => void) {
+  void listen<boolean>("app-focus", (event) => handle(event.payload));
+}
 
 export const setApproachCue = (cue: ApproachCueSettings) => invoke<void>("set_approach_cue", { cue });
 

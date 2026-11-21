@@ -173,3 +173,29 @@ export type StreamEvent =
   | ({ type: "word" } & WordPayload)
   | ({ type: "namedEvent" } & EventPayload)
   | { type: "closed"; reason: string };
+
+export type PerformanceLayout = "twoWindows" | "teleprompterOnly";
+
+export type PresentationSize = "1280x720" | "1920x1080" | "fit";
+
+export interface PerformanceSettings {
+  layout: PerformanceLayout;
+  teleprompterDisplay: string | null;
+  presentationDisplay: string | null;
+  presentationSize: PresentationSize;
+}
+
+export interface Display {
+  name: string;
+  primary: boolean;
+}
+
+/** A key pressed in the Presentation Window and forwarded by the core. */
+export interface ForwardedKey {
+  key: string;
+  meta: boolean;
+  ctrl: boolean;
+  alt: boolean;
+  shift: boolean;
+  repeat: boolean;
+}

@@ -1,0 +1,59 @@
+# With a remote-callable command declared, Tauri checks every app command against the ACL.
+
+[[permission]]
+identifier = "app-windows"
+description = "The commands the app's own windows call."
+commands.allow = [
+  "new_presentation",
+  "open_folder",
+  "recent_presentations",
+  "rename_presentation",
+  "ensure_model",
+  "installed_models",
+  "remove_model",
+  "open_settings",
+  "session_state",
+  "server_status",
+  "open_in_browser",
+  "edit",
+  "cut",
+  "copy",
+  "paste",
+  "drag",
+  "nudge",
+  "recording_waveform",
+  "recording_clip",
+  "undo",
+  "redo",
+  "select_event",
+  "open_recording_bar",
+  "select_input",
+  "select_channel",
+  "close_recording_bar",
+  "start_recording",
+  "start_re_recording",
+  "stop_recording",
+  "cancel_recording",
+  "retry_transcription",
+  "discard_transcription",
+  "remove_unused_recordings",
+  "play",
+  "preview",
+  "pause",
+  "snapshot",
+  "seek",
+  "set_speed",
+  "reset",
+  "approach_cue",
+  "set_approach_cue",
+  "perform",
+  "displays",
+  "performance_settings",
+  "set_performance_settings",
+  "leave_fullscreen",
+]
+
+[[permission]]
+identifier = "forward-key"
+description = "Lets the Presentation Window's page forward the keys pressed in it."
+commands.allow = ["forward_key"]

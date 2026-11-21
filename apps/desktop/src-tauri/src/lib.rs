@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use serde::Serialize;
 use tauri::ipc::Response;
-use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use ttp_core::clip;
 use ttp_core::clock::TICK_INTERVAL;
 use ttp_core::models::{InstalledModel, ModelManager, Progress, whisper_catalog};
@@ -20,9 +20,12 @@ use ttp_server::{Server, ServerStatus, SharedSession};
 
 mod audio;
 mod clock;
+mod displays;
+mod fullscreen;
 mod macos;
 mod perform;
 mod recording;
+mod window_set;
 
 const POLL_INTERVAL: Duration = Duration::from_millis(TICK_INTERVAL as u64);
 const SIDECAR: &str = "ttp-stt-sidecar";
@@ -156,7 +159,9 @@ fn remove_model(state: State<'_, App>, name: String) -> CommandResult<()> {
 
 #[tauri::command]
 fn open_settings(app: AppHandle) -> CommandResult<()> {
-    bring_up_window(&app, SETTINGS_WINDOW, "Settings", (480.0, 360.0))
+    bring_up_window(&app, SETTINGS_WINDOW, "Settings", (480.0, 360.0))?
+        .set_focus()
+        .map_err(message)
 }
 
 /// Brings an open window to the front, or opens the `<label>.html` page in a new one.
@@ -165,17 +170,16 @@ fn bring_up_window(
     label: &str,
     title: &str,
     (width, height): (f64, f64),
-) -> CommandResult<()> {
+) -> CommandResult<WebviewWindow> {
     if let Some(window) = app.get_webview_window(label) {
         window.unminimize().map_err(message)?;
         window.show().map_err(message)?;
-        return window.set_focus().map_err(message);
+        return Ok(window);
     }
     WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("{label}.html").into()))
         .title(title)
         .inner_size(width, height)
         .build()
-        .map(drop)
         .map_err(message)
 }
 
@@ -423,6 +427,8 @@ pub fn run() {
                 settings: Mutex::new(settings),
                 models,
             });
+            app.manage(fullscreen::Fullscreen::default());
+            app.manage(perform::Focused::default());
             let handle = app.handle().clone();
             std::thread::spawn(move || poll_session(handle));
             tauri::async_runtime::spawn(watch_server(app.handle().clone()));
@@ -472,7 +478,12 @@ pub fn run() {
             clock::reset,
             perform::approach_cue,
             perform::set_approach_cue,
-            perform::open_teleprompter
+            perform::perform,
+            displays::displays,
+            perform::performance_settings,
+            perform::set_performance_settings,
+            perform::leave_fullscreen,
+            perform::forward_key
         ])
         .build(tauri::generate_context!())
         .expect("error while building Time to Present")

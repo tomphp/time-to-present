@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use tempfile::TempDir;
 use ttp_core::capture::InputChoice;
+use ttp_core::perform::{PerformanceLayout, PerformanceSettings, PresentationSize};
 use ttp_core::settings::{ApproachCue, Settings};
 
 fn settings_in(dir: &TempDir) -> Settings {
@@ -176,4 +177,31 @@ fn the_approach_cue_switch_and_long_gap_threshold_are_remembered_on_this_machine
         saved["approachCue"],
         serde_json::json!({"enabled": false, "longGap": 2500})
     );
+}
+
+#[test]
+fn performing_defaults_to_two_windows_on_displays_chosen_for_them() {
+    let dir = TempDir::new().unwrap();
+
+    let performance = settings_in(&dir).performance().clone();
+
+    assert_eq!(performance.layout, PerformanceLayout::TwoWindows);
+    assert_eq!(performance.teleprompter_display, None);
+    assert_eq!(performance.presentation_display, None);
+    assert_eq!(performance.presentation_size, PresentationSize::Hd1080);
+}
+
+#[test]
+fn the_performance_layout_displays_and_size_are_remembered_on_this_machine() {
+    let dir = TempDir::new().unwrap();
+    let chosen = PerformanceSettings {
+        layout: PerformanceLayout::TeleprompterOnly,
+        teleprompter_display: Some("Built-in Retina Display".into()),
+        presentation_display: Some("Projector".into()),
+        presentation_size: PresentationSize::Fit,
+    };
+
+    settings_in(&dir).set_performance(chosen.clone()).unwrap();
+
+    assert_eq!(*settings_in(&dir).performance(), chosen);
 }

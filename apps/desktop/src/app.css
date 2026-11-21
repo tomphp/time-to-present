@@ -154,6 +154,32 @@ body.editor {
   align-items: center;
 }
 
+.menu {
+  position: relative;
+}
+
+.menu summary {
+  cursor: default;
+  list-style: "▾";
+}
+
+.menu-panel {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  gap: 0.5rem;
+  min-width: 16rem;
+  padding: 0.75rem;
+  background: Canvas;
+  border: 1px solid GrayText;
+  border-radius: 0.5rem;
+}
+
+.menu-panel label {
+  display: grid;
+  gap: 0.25rem;
+}
+
 #recording-bar {
   display: grid;
   gap: 0.5rem;
@@ -332,6 +358,11 @@ body.teleprompter {
   --accent: #ffd54f;
   font-size: 48px;
   line-height: var(--line);
+}
+
+body.teleprompter #pane {
+  position: fixed;
+  inset: 0;
 }
 
 body.teleprompter #stage {

@@ -1,6 +1,19 @@
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { approachCue, type ApproachCueSettings, type Cue } from "./approach-cue";
-import { onApproachCue, onServerStatus, onSessionState, onStreamEvent, openInBrowser, pause, play, reset, seek, setSpeed } from "./commands";
+import {
+  leaveFullscreen,
+  onAppFocus,
+  onApproachCue,
+  onPerformanceKey,
+  onServerStatus,
+  onSessionState,
+  onStreamEvent,
+  openInBrowser,
+  pause,
+  play,
+  reset,
+  seek,
+  setSpeed,
+} from "./commands";
 import { find } from "./dom";
 import {
   applyAction,
@@ -54,7 +67,8 @@ const SCROLL_EASE = "transform 200ms ease";
 const column = find<HTMLElement>("#column");
 const paused = find<HTMLParagraphElement>("#paused");
 const stage = find<HTMLDivElement>("#stage");
-const display = `${screen.width}x${screen.height}@${devicePixelRatio}`;
+const pane = find<HTMLElement>("#pane");
+const screenKey = () => `${screen.width}x${screen.height}@${devicePixelRatio}`;
 const FLASH = "fired";
 
 let options = loadOptions(localStorage);
@@ -228,8 +242,8 @@ function scrollFreelyBy(delta: number) {
   free = scrollFreely(free, followed, delta, { min: -target.offsetTop, max: column.offsetHeight - target.offsetTop });
 }
 
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") return void getCurrentWindow().setFullscreen(false).catch(console.error);
+function onKey(event: KeyboardEvent) {
+  if (event.key === "Escape") return void leaveFullscreen().catch(console.error);
   const action = displayAction(event);
   if (action) {
     event.preventDefault();
@@ -246,14 +260,14 @@ document.addEventListener("keydown", (event) => {
     if (toggle === "play" && playNeedsConfirmation(followed.state, connectedApps, noAppWarned)) noAppWarned = true;
     else void (toggle === "play" ? play() : pause()).catch(console.error);
   } else if (navigate(event)) event.preventDefault();
-});
+}
 
 function applyOptions() {
-  const mirror = mirrorFor(options, display);
+  const mirror = mirrorFor(options, screenKey());
   document.body.classList.toggle("markers-hidden", !options.markers);
   document.body.style.fontSize = `${options.fontSize}px`;
   document.body.style.setProperty("--reading-line", String(options.readingLine));
-  stage.style.transform = mirrorTransform(mirror);
+  pane.style.transform = mirrorTransform(mirror);
   scroll = null;
 }
 
@@ -267,7 +281,7 @@ function flash(id: string) {
 
 function perform(action: DisplayAction) {
   if (action === "blank") return void stage.classList.toggle("blanked");
-  options = applyAction(options, action, display);
+  options = applyAction(options, action, screenKey());
   saveOptions(localStorage, options);
   applyOptions();
 }
@@ -276,8 +290,12 @@ document.addEventListener("wheel", (event) => scrollFreelyBy(event.deltaY), { pa
 
 new ResizeObserver(() => (scroll = null)).observe(column);
 
-window.addEventListener("focus", () => (focused = true));
-window.addEventListener("blur", () => (focused = false));
+window.addEventListener("resize", applyOptions);
+document.addEventListener("keydown", onKey);
+onPerformanceKey(({ key, meta, ctrl, alt, shift, repeat }) =>
+  onKey(new KeyboardEvent("keydown", { key, metaKey: meta, ctrlKey: ctrl, altKey: alt, shiftKey: shift, repeat })),
+);
+onAppFocus((appFocused) => (focused = appFocused));
 bar.copy.addEventListener("click", () => void navigator.clipboard.writeText(bar.url.textContent ?? "").catch(console.error));
 bar.open.addEventListener("click", () => void openInBrowser().catch(console.error));
 

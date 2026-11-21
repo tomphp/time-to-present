@@ -6,27 +6,29 @@
     <link rel="stylesheet" href="/src/app.css" />
   </head>
   <body class="teleprompter">
-    <div id="stage">
-      <span id="reading-line" aria-hidden="true">▸</span>
-      <article id="column" aria-label="Script"></article>
-      <p id="paused" hidden>PAUSED</p>
-    </div>
-    <footer id="bar">
-      <p id="bar-warning" hidden></p>
-      <div id="bar-main">
-        <span id="bar-state"></span>
-        <span id="bar-elapsed"></span>
-        <span id="bar-remaining"></span>
-        <div id="bar-progress"><div id="bar-fill"></div></div>
-        <span id="bar-speed"></span>
-        <span id="bar-ended" hidden></span>
-        <span id="bar-url"></span>
-        <button id="bar-copy" type="button">Copy</button>
-        <button id="bar-open" type="button">Open in browser</button>
-        <span id="bar-apps"></span>
+    <main id="pane">
+      <div id="stage">
+        <span id="reading-line" aria-hidden="true">▸</span>
+        <article id="column" aria-label="Script"></article>
+        <p id="paused" hidden>PAUSED</p>
       </div>
-      <p id="bar-notice" hidden></p>
-    </footer>
+      <footer id="bar">
+        <p id="bar-warning" hidden></p>
+        <div id="bar-main">
+          <span id="bar-state"></span>
+          <span id="bar-elapsed"></span>
+          <span id="bar-remaining"></span>
+          <div id="bar-progress"><div id="bar-fill"></div></div>
+          <span id="bar-speed"></span>
+          <span id="bar-ended" hidden></span>
+          <span id="bar-url"></span>
+          <button id="bar-copy" type="button">Copy</button>
+          <button id="bar-open" type="button">Open in browser</button>
+          <span id="bar-apps"></span>
+        </div>
+        <p id="bar-notice" hidden></p>
+      </footer>
+    </main>
     <script type="module" src="/src/teleprompter.ts"></script>
   </body>
 </html>
