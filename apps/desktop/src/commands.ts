@@ -100,6 +100,7 @@ export function onMeter(render: (meter: Meter) => void) {
 
 export const snapshot = () => invoke<Snapshot>("snapshot");
 export const preview = (from: number | null) => invoke<void>("preview", { from });
+export const play = () => invoke<void>("play");
 export const pause = () => invoke<void>("pause");
 export const seek = (scriptTime: number) => invoke<void>("seek", { scriptTime });
 export const setSpeed = (speed: number) => invoke<void>("set_speed", { speed });

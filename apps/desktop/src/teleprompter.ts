@@ -1,8 +1,9 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { onSessionState, onStreamEvent, pause, play } from "./commands";
+import { onSessionState, onStreamEvent, pause, play, reset, seek, setSpeed } from "./commands";
 import { find } from "./dom";
 import { sameLayout, scriptLayout } from "./script-view";
-import type { ScriptWord } from "./session";
+import type { ScriptWord, TimedEvent } from "./session";
+import { navigation } from "./teleprompter-seek";
 import {
   currentWord,
   followClock,
@@ -21,6 +22,8 @@ const column = find<HTMLElement>("#column");
 const paused = find<HTMLParagraphElement>("#paused");
 
 let words: ScriptWord[] = [];
+let events: TimedEvent[] = [];
+let armedHome: number | null = null;
 let spans: HTMLSpanElement[] = [];
 let followed = UNFOLLOWED;
 let current: number | null = null;
@@ -75,18 +78,33 @@ function frame() {
   requestAnimationFrame(frame);
 }
 
+function navigate(event: KeyboardEvent) {
+  const now = performance.now();
+  const position = { words, events, scriptTime: scriptTimeAt(followed, now), speed: followed.speed };
+  const command = navigation(event, position, armedHome, now);
+  armedHome = command === "armHome" ? now : null;
+  if (!command || command === "armHome") return command !== null;
+  if (command === "reset") void reset().catch(console.error);
+  else if ("seek" in command) void seek(command.seek).catch(console.error);
+  else void setSpeed(command.speed).catch(console.error);
+  return true;
+}
+
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") return void getCurrentWindow().setFullscreen(false).catch(console.error);
-  if (event.repeat || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
-  const command = keyCommand(event.key, followed.state);
-  if (!command) return;
-  event.preventDefault();
-  void (command === "play" ? play() : pause()).catch(console.error);
+  if (event.repeat || !followed.state) return;
+  const modified = event.metaKey || event.ctrlKey || event.altKey || event.shiftKey;
+  const command = modified ? null : keyCommand(event.key, followed.state);
+  if (command) void (command === "play" ? play() : pause()).catch(console.error);
+  if (command || navigate(event)) event.preventDefault();
 });
 
 new ResizeObserver(() => (scroll = null)).observe(column);
 
-onSessionState((state) => renderScript(state.words));
+onSessionState((state) => {
+  events = state.namedEvents;
+  renderScript(state.words);
+});
 void onStreamEvent((event) => {
   followed = followClock(followed, event, performance.now());
   paused.hidden = followed.state !== "paused";
