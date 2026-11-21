@@ -47,6 +47,7 @@ const timeline = mountTimeline(
     const range = selection.fromTimeline(word, extend);
     if (range) pane.select(range);
   },
+  select,
 );
 
 const inspector = mountInspector(document.querySelector<HTMLFormElement>("#inspector")!, { edit });
@@ -113,7 +114,7 @@ function render(state: SessionState) {
   selection.update(state.words);
   pane.render(state);
   showInspector();
-  timeline.render(state.words, state.scriptEnd, selection.ids());
+  timeline.render(state.words, state.namedEvents, state.movedEvents, state.scriptEnd, selection.ids());
   renderRecordingBar(state.recordingBar);
 }
 

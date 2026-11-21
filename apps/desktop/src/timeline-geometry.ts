@@ -1,4 +1,4 @@
-import type { Edit, ScriptWord, Waveform } from "./session";
+import { SCRIPT_START, type Edit, type ScriptWord, type Waveform } from "./session";
 
 const PX_PER_SECOND = 200;
 const EDGE_PX = 6;
@@ -61,6 +61,21 @@ export const dragEdit = ({ word, grip }: Hit, dx: number): Edit => ({
   word,
   by: Math.round(msAt(dx)),
 });
+
+/**
+ * The edit re-anchoring a flag at Script Time `time` for a whole drag so far, `dx` pixels from where
+ * it began: to the nearest Word start, either side, keeping the signed offset from it.
+ */
+export function flagDragEdit(words: ScriptWord[], { id, time }: { id: string; time: number }, dx: number): Edit {
+  const target = Math.max(0, time + Math.round(msAt(dx)));
+  let nearest: ScriptWord | undefined;
+  for (const word of words) {
+    if (!nearest || Math.abs(word.start - target) < Math.abs(nearest.start - target)) nearest = word;
+  }
+  return nearest
+    ? { kind: "moveEvent", event: id, anchor: nearest.id, offset: target - nearest.start }
+    : { kind: "moveEvent", event: id, anchor: SCRIPT_START, offset: target };
+}
 
 /**
  * The height, 0 to 1, of each of `columns` bars drawing the Word's own audio at Script Time

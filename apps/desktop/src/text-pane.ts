@@ -1,7 +1,7 @@
 import { collapsed, endOf, indexOf, isSlot, lastId, resolveCaret, type CaretTarget, type Range, type Slot } from "./caret";
 import { caretAfterPaste, passageText, pasteAt, selectedWords } from "./clipboard";
 import { currentCaret, placeCaret, placeRange, selectedRange } from "./dom-caret";
-import { eventAnchorAt, sameChips, type EventAt } from "./named-events";
+import { chipDropEdit, eventAnchorAt, sameChips, type ChipDrop, type EventAt } from "./named-events";
 import { renderScript } from "./pane-render";
 import { sameLayout } from "./script-view";
 import type { Edit, ScriptWord, SessionState } from "./session";
@@ -181,7 +181,42 @@ export function mountTextPane(
     return ids;
   }
 
+  const DRAG_THRESHOLD_PX = 4;
+  let chipDragged = false;
+
+  /** The Word under the point and the side of it the point is on. */
+  function dropAt(x: number, y: number): ChipDrop | null {
+    const hit = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-word-id]");
+    if (!hit || !root.contains(hit)) return null;
+    const { left, width } = hit.getBoundingClientRect();
+    return { word: hit.dataset.wordId!, side: x < left + width / 2 ? "before" : "after" };
+  }
+
+  root.addEventListener("pointerdown", (down) => {
+    const chip = (down.target as Element).closest<HTMLElement>("[data-event-id]");
+    if (!chip || down.button !== 0) return;
+    let dragging = false;
+    const move = (event: PointerEvent) => {
+      dragging ||= Math.hypot(event.clientX - down.clientX, event.clientY - down.clientY) > DRAG_THRESHOLD_PX;
+      chip.classList.toggle("dragging", dragging);
+    };
+    const up = (event: PointerEvent) => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+      chip.classList.remove("dragging");
+      chipDragged = dragging;
+      const drop = dragging ? dropAt(event.clientX, event.clientY) : null;
+      if (drop) commands.edit(chipDropEdit(words, chip.dataset.eventId!, drop)).catch(console.error);
+    };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+  });
+
   root.addEventListener("click", (event) => {
+    if (chipDragged) {
+      chipDragged = false;
+      return;
+    }
     const chip = (event.target as Element).closest<HTMLElement>("[data-event-id]");
     if (chip) {
       lastCaret = currentCaret(root) ?? lastCaret;

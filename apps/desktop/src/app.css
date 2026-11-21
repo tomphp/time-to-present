@@ -211,3 +211,27 @@ body.editor {
   display: block;
   pointer-events: none;
 }
+
+#timeline .flag {
+  z-index: 1;
+  position: absolute;
+  top: 0;
+  box-sizing: border-box;
+  height: 1.4rem;
+  padding: 0 0.4rem;
+  border-left: 2px solid #1565c0;
+  background: color-mix(in srgb, #1565c0 18%, transparent);
+  font-size: 0.7rem;
+  line-height: 1.4rem;
+  white-space: nowrap;
+  cursor: grab;
+}
+
+#timeline .flag.moved {
+  border-left-color: #e0a000;
+}
+
+#script .event-chip.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}

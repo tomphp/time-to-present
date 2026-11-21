@@ -143,8 +143,8 @@ impl Session {
 
     /// Applies `edit` as all that `drag` has done so far, to the Script as it was when the drag
     /// began, so the drag is one undo step. Any other change to the Script, undo or redo ends
-    /// the drag, and its steps that land after that are ignored. Only a Move or Trim can be
-    /// dragged.
+    /// the drag, and its steps that land after that are ignored. Only a Move, Trim or
+    /// Named Event move can be dragged.
     pub fn drag(&mut self, drag: &str, edit: Edit) -> Result<(), EditError> {
         if self.history.drag_ended(drag) {
             return Ok(());
@@ -171,8 +171,8 @@ impl Session {
         base: Option<Script>,
         edit: Edit,
     ) -> Result<(), EditError> {
-        if !edit.is_timing() {
-            return Err(EditError::NotATimingEdit);
+        if !edit.is_draggable() {
+            return Err(EditError::NotDraggable);
         }
         let mut changed = base
             .clone()

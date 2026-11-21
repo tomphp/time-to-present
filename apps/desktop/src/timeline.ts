@@ -1,7 +1,7 @@
 import { latestOnly } from "./latest-only";
-import type { Edit, ScriptWord, SessionState, Waveform } from "./session";
+import type { Edit, ScriptWord, SessionState, TimedEvent, Waveform } from "./session";
 import { timelineBlock } from "./timeline-block";
-import { dragEdit, hitTest, secondTicks, timelineBlocks, xOf, type Block, type Hit } from "./timeline-geometry";
+import { dragEdit, flagDragEdit, hitTest, secondTicks, timelineBlocks, xOf, type Block, type Hit } from "./timeline-geometry";
 
 export interface TimelineCommands {
   drag(drag: string, edit: Edit): Promise<SessionState>;
@@ -13,12 +13,14 @@ const CURSORS = { body: "grab", start: "ew-resize", end: "ew-resize" };
 
 /**
  * The Script Time timeline: a block per Word at its Script Time. Clicking a block picks it,
- * dragging its body Moves it and dragging an edge Trims it, each drag one Session drag.
+ * dragging its body Moves it and dragging an edge Trims it, each drag one Session drag. A flag
+ * per Named Event sits at its Script Time; clicking one picks it and dragging it re-anchors it.
  */
 export function mountTimeline(
   root: HTMLElement,
   commands: TimelineCommands,
   pick: (word: string, extend: boolean) => void,
+  pickEvent: (event: string) => void,
 ) {
   const track = document.createElement("div");
   track.className = "track";
@@ -28,14 +30,19 @@ export function mountTimeline(
 
   const blocks = new Map<string, ReturnType<typeof timelineBlock>>();
   const waveforms = new Map<string, Waveform | "loading" | "failed">();
+  const flags = new Map<string, HTMLElement>();
   let words: ScriptWord[] = [];
+  let events: TimedEvent[] = [];
   let laidOut: Block[] = [];
   let scriptEnd = 0;
   let selected = new Set<string>();
-  let drag: { hit: Hit; startX: number; send: (edit: Edit) => void } | null = null;
+  let movedEvents = new Set<string>();
+  let drag: { startX: number; edit: (dx: number) => Edit; send: (edit: Edit) => void } | null = null;
 
-  function render(next: ScriptWord[], end: number, ids: string[]) {
+  function render(next: ScriptWord[], nextEvents: TimedEvent[], moved: string[], end: number, ids: string[]) {
     words = next;
+    events = nextEvents;
+    movedEvents = new Set(moved);
     laidOut = timelineBlocks(words);
     scriptEnd = end;
     select(ids);
@@ -55,6 +62,7 @@ export function mountTimeline(
       block.element.remove();
       blocks.delete(id);
     }
+    paintFlags();
     words.forEach((word, index) => {
       let block = blocks.get(word.id);
       if (!block) {
@@ -64,6 +72,27 @@ export function mountTimeline(
       }
       block.update(word, laidOut[index], selected.has(word.id), waveformFor(word));
     });
+  }
+
+  function paintFlags() {
+    const kept = new Set(events.map((event) => event.id));
+    for (const [id, flag] of flags) {
+      if (kept.has(id)) continue;
+      flag.remove();
+      flags.delete(id);
+    }
+    for (const event of events) {
+      let flag = flags.get(event.id);
+      if (!flag) {
+        flag = document.createElement("div");
+        flag.dataset.eventId = event.id;
+        flags.set(event.id, flag);
+        track.append(flag);
+      }
+      flag.className = movedEvents.has(event.id) ? "flag moved" : "flag";
+      flag.style.left = `${xOf(event.time)}px`;
+      flag.textContent = event.name;
+    }
   }
 
   function paintTicks() {
@@ -105,19 +134,36 @@ export function mountTimeline(
 
   track.addEventListener("mousedown", (event) => event.preventDefault());
 
+  const send = () => {
+    const id = crypto.randomUUID();
+    return latestOnly((edit: Edit) => commands.drag(id, edit).catch(console.error));
+  };
+
+  function dragFlag(event: PointerEvent, id: string) {
+    const flagged = events.find((named) => named.id === id);
+    if (!flagged) return;
+    pickEvent(id);
+    track.setPointerCapture(event.pointerId);
+    drag = { startX: event.clientX, edit: (dx) => flagDragEdit(words, flagged, dx), send: send() };
+  }
+
   track.addEventListener("pointerdown", (event) => {
+    const flag = (event.target as Element).closest<HTMLElement>("[data-event-id]");
+    if (flag && event.button === 0) {
+      event.preventDefault();
+      return dragFlag(event, flag.dataset.eventId!);
+    }
     const hit = event.button === 0 ? hitAt(event) : null;
     if (!hit) return;
     event.preventDefault();
     pick(hit.word, event.shiftKey);
     if (event.shiftKey) return;
     track.setPointerCapture(event.pointerId);
-    const id = crypto.randomUUID();
-    drag = { hit, startX: event.clientX, send: latestOnly((edit: Edit) => commands.drag(id, edit).catch(console.error)) };
+    drag = { startX: event.clientX, edit: (dx) => dragEdit(hit, dx), send: send() };
   });
 
   track.addEventListener("pointermove", (event) => {
-    if (drag) return drag.send(dragEdit(drag.hit, event.clientX - drag.startX));
+    if (drag) return drag.send(drag.edit(event.clientX - drag.startX));
     const hit = hitAt(event);
     track.style.cursor = hit ? CURSORS[hit.grip] : "";
   });

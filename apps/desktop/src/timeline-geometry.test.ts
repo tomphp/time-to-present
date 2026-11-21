@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { scriptWord } from "./test-words";
-import { dragEdit, hitTest, msAt, secondTicks, timelineBlocks, waveformBars, xOf } from "./timeline-geometry";
+import { dragEdit, flagDragEdit, hitTest, msAt, secondTicks, timelineBlocks, waveformBars, xOf } from "./timeline-geometry";
 
 const words = [
   scriptWord("w1", "Hello,", { start: 400, duration: 300 }),
@@ -97,5 +97,30 @@ describe("waveformBars", () => {
 
     expect(waveformBars(waveform, longer, 4)).toEqual([0.9, 0.9, 0, 0]);
     expect(waveformBars(waveform, pastTheEnd, 4)).toEqual([0.6, 0.6, 0, 0]);
+  });
+});
+
+describe("flagDragEdit", () => {
+  const flag = { id: "e1", time: 800 };
+
+  it("re-anchors to the nearest Word start with the signed offset left over", () => {
+    expect(flagDragEdit(words, flag, 10)).toEqual({ kind: "moveEvent", event: "e1", anchor: "w2", offset: 150 });
+    expect(flagDragEdit(words, flag, -30)).toEqual({ kind: "moveEvent", event: "e1", anchor: "w2", offset: -50 });
+  });
+
+  it("can land on either side of a Word, so a flag just before one anchors to it with a negative offset", () => {
+    expect(flagDragEdit(words, flag, 80)).toEqual({ kind: "moveEvent", event: "e1", anchor: "w3", offset: -50 });
+  });
+
+  it("picks the earlier Word when two starts are equally near", () => {
+    expect(flagDragEdit(words, { id: "e1", time: 975 }, 0)).toMatchObject({ anchor: "w2", offset: 275 });
+  });
+
+  it("never drags a flag before the Script start", () => {
+    expect(flagDragEdit(words, flag, -1000)).toEqual({ kind: "moveEvent", event: "e1", anchor: "w1", offset: -400 });
+  });
+
+  it("anchors to the Script start when there are no Words", () => {
+    expect(flagDragEdit([], flag, 10)).toEqual({ kind: "moveEvent", event: "e1", anchor: "scriptStart", offset: 850 });
   });
 });

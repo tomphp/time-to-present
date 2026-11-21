@@ -24,6 +24,19 @@ export function eventAnchorAt(words: ScriptWord[], caret: Caret): EventAt {
   return { anchor: last.id, offset: last.duration };
 }
 
+export interface ChipDrop {
+  word: string;
+  side: "before" | "after";
+}
+
+/** The edit putting an event before the Word it is dropped before, or at the last Word's end. */
+export function chipDropEdit(words: ScriptWord[], event: string, { word, side }: ChipDrop): Edit {
+  const index = indexOf(words, word) + (side === "after" ? 1 : 0);
+  const before = words[index];
+  const [anchor, offset] = before ? [before.id, 0] : [words[index - 1].id, words[index - 1].duration];
+  return { kind: "moveEvent", event, anchor, offset };
+}
+
 export const eventNames = (events: TimedEvent[]) => [...new Set(events.map((event) => event.name))].sort();
 
 /** The name already used that what was typed is the start of, unless it is a name already. */

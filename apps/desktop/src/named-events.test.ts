@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   chipsByAnchor,
+  chipDropEdit,
   completeName,
   eventAnchorAt,
   eventEdit,
@@ -185,5 +186,24 @@ describe("eventEdit", () => {
 
   it("refuses data that is not JSON", () => {
     expect(eventEdit(draft, "slide", "{")).toEqual({ error: expect.stringContaining("not valid JSON") });
+  });
+});
+
+describe("chipDropEdit", () => {
+  it("anchors the event to the Word it is dropped before, with offset 0", () => {
+    expect(chipDropEdit(words, "e1", { word: "w2", side: "before" })).toEqual({
+      kind: "moveEvent",
+      event: "e1",
+      anchor: "w2",
+      offset: 0,
+    });
+  });
+
+  it("anchors to the Word after the one it is dropped after", () => {
+    expect(chipDropEdit(words, "e1", { word: "w1", side: "after" })).toMatchObject({ anchor: "w2", offset: 0 });
+  });
+
+  it("anchors to the last Word's end when dropped after it", () => {
+    expect(chipDropEdit(words, "e1", { word: "w2", side: "after" })).toMatchObject({ anchor: "w2", offset: 450 });
   });
 });

@@ -69,6 +69,7 @@ export type Edit =
   | { kind: "insertWord"; after: string | null; text: string }
   | { kind: "insertEvent"; anchor: string; offset: number; name: string; data?: unknown }
   | { kind: "setEvent"; event: string; name: string; data?: unknown }
+  | { kind: "moveEvent"; event: string; anchor: string; offset: number }
   | { kind: "move"; word: string; by: number }
   | { kind: "trimStart"; word: string; by: number }
   | { kind: "trimEnd"; word: string; by: number }

@@ -186,7 +186,7 @@ fn only_a_timing_edit_can_be_dragged() {
     let before = session.state();
 
     let merge = Edit::Merge { word: "w2".into() };
-    assert_eq!(session.drag("d1", merge), Err(EditError::NotATimingEdit));
+    assert_eq!(session.drag("d1", merge), Err(EditError::NotDraggable));
 
     assert_eq!(session.state(), before);
 }

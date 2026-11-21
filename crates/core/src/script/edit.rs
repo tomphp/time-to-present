@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use serde_json::Value;
 
-use super::{Anchor, BreakAfter, Ids, Script, Word};
+use super::{Anchor, BreakAfter, Ids, NamedEvent, Script, Word};
 use super::{estimate, events, plain_text, timing, transform};
 use crate::time::Ms;
 
@@ -49,6 +49,11 @@ pub enum Edit {
         name: String,
         data: Option<Value>,
     },
+    MoveEvent {
+        event: String,
+        anchor: Anchor,
+        offset: Ms,
+    },
     Move {
         word: String,
         by: Ms,
@@ -92,15 +97,18 @@ pub enum EditError {
     NothingSelected,
     #[error("a percentage must be above zero")]
     InvalidPercent,
-    #[error("only a Move or Trim can be dragged or nudged")]
-    NotATimingEdit,
+    #[error("only a Move, Trim or Named Event move can be dragged")]
+    NotDraggable,
 }
 
 impl Edit {
-    pub fn is_timing(&self) -> bool {
+    pub fn is_draggable(&self) -> bool {
         matches!(
             self,
-            Edit::Move { .. } | Edit::TrimStart { .. } | Edit::TrimEnd { .. }
+            Edit::Move { .. }
+                | Edit::TrimStart { .. }
+                | Edit::TrimEnd { .. }
+                | Edit::MoveEvent { .. }
         )
     }
 }
@@ -164,12 +172,19 @@ impl Script {
                 self.named_events.push(event);
             }
             Edit::SetEvent { event, name, data } => {
-                let event = self
-                    .named_events
-                    .iter_mut()
-                    .find(|named| named.id == event)
-                    .ok_or(EditError::UnknownEvent(event))?;
-                events::rename(event, name, data)?;
+                events::rename(self.event_mut(&event)?, name, data)?;
+            }
+            Edit::MoveEvent {
+                event,
+                anchor,
+                offset,
+            } => {
+                if let Anchor::Word(id) = &anchor {
+                    self.index_of(id)?;
+                }
+                let event = self.event_mut(&event)?;
+                event.anchor = anchor;
+                event.offset = offset;
             }
             Edit::SetOffset { event, offset } => {
                 self.named_events
@@ -238,6 +253,13 @@ impl Script {
             .iter()
             .position(|word| word.id == id)
             .ok_or_else(|| EditError::UnknownWord(id.to_string()))
+    }
+
+    fn event_mut(&mut self, id: &str) -> Result<&mut NamedEvent, EditError> {
+        self.named_events
+            .iter_mut()
+            .find(|event| event.id == id)
+            .ok_or_else(|| EditError::UnknownEvent(id.to_string()))
     }
 
     fn word_mut(&mut self, id: &str) -> Result<&mut Word, EditError> {
