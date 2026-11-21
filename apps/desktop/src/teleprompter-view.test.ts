@@ -196,6 +196,15 @@ describe("the end of a Performance", () => {
     expect(isOver(followedAt(4_000), 9_000)).toBe(false);
   });
 
+  it("stays over when the ended clock is heard again", () => {
+    const endedClock = { state: "ended", speed: 2, scriptTime: 5_850 } as const;
+    const snapshot = rehearsal.stream[0].event as Extract<StreamEvent, { type: "snapshot" }>;
+    const sped = followClock(followedAt(5_100), { type: "clock", cause: "speed", ...endedClock }, 6_050);
+    const reheard = followClock(sped, { ...snapshot, clock: endedClock }, 6_080);
+
+    expect(isOver(reheard, 6_100)).toBe(true);
+  });
+
   it("dims the last Word once over", () => {
     expect(wordLook(words.length - 1, words.length)).toBe("spoken");
   });

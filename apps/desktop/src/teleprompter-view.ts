@@ -19,9 +19,9 @@ export const UNFOLLOWED: Followed = { state: null, speed: 1, anchor: { scriptTim
 export function followClock(followed: Followed, event: StreamEvent, at: number): Followed {
   switch (event.type) {
     case "snapshot":
-      return { ...heard(event.clock, at), jumps: followed.jumps + 1 };
+      return { ...heard(followed, event.clock, at), jumps: followed.jumps + 1 };
     case "clock":
-      return { ...heard(event, at), jumps: followed.jumps + (event.cause === "reset" ? 1 : 0) };
+      return { ...heard(followed, event, at), jumps: followed.jumps + (event.cause === "reset" ? 1 : 0) };
     case "tick":
       return { ...followed, anchor: { scriptTime: event.scriptTime, at }, floor: scriptTimeAt(followed, at) };
     case "word":
@@ -32,12 +32,14 @@ export function followClock(followed: Followed, event: StreamEvent, at: number):
   }
 }
 
-const heard = ({ state, speed, scriptTime }: ClockView, at: number) => ({
+const heard = (followed: Followed, { state, speed, scriptTime }: ClockView, at: number) => ({
   state,
   speed,
-  anchor: { scriptTime, at },
+  anchor: { scriptTime, at: stillEnded(followed, state) ? followed.anchor.at : at },
   floor: scriptTime,
 });
+
+const stillEnded = (followed: Followed, state: ClockState) => followed.state === "ended" && state === "ended";
 
 /** Script Time at wall time `at`: extrapolated while playing and never stepping back, frozen otherwise. */
 export function scriptTimeAt({ state, speed, anchor, floor }: Followed, at: number) {
