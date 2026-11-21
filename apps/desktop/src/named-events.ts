@@ -33,8 +33,9 @@ export interface ChipDrop {
 export function chipDropEdit(words: ScriptWord[], event: string, { word, side }: ChipDrop): Edit {
   const index = indexOf(words, word) + (side === "after" ? 1 : 0);
   const before = words[index];
-  const [anchor, offset] = before ? [before.id, 0] : [words[index - 1].id, words[index - 1].duration];
-  return { kind: "moveEvent", event, anchor, offset };
+  if (before) return { kind: "moveEvent", event, anchor: before.id, offset: 0 };
+  const last = words[words.length - 1];
+  return { kind: "moveEvent", event, anchor: last.id, offset: last.duration };
 }
 
 export const eventNames = (events: TimedEvent[]) => [...new Set(events.map((event) => event.name))].sort();

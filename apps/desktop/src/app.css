@@ -231,6 +231,11 @@ body.editor {
   border-left-color: #e0a000;
 }
 
+#script .event-chip {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 #script .event-chip.dragging {
   opacity: 0.5;
   cursor: grabbing;

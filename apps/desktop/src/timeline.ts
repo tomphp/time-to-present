@@ -9,6 +9,7 @@ export interface TimelineCommands {
 }
 
 const TRAILING_PX = 200;
+const FLAG_DRAG_PX = 3;
 const CURSORS = { body: "grab", start: "ew-resize", end: "ew-resize" };
 
 /**
@@ -37,7 +38,7 @@ export function mountTimeline(
   let scriptEnd = 0;
   let selected = new Set<string>();
   let movedEvents = new Set<string>();
-  let drag: { startX: number; edit: (dx: number) => Edit; send: (edit: Edit) => void } | null = null;
+  let drag: { minPx?: number; startX: number; edit: (dx: number) => Edit; send: (edit: Edit) => void } | null = null;
 
   function render(next: ScriptWord[], nextEvents: TimedEvent[], moved: string[], end: number, ids: string[]) {
     words = next;
@@ -144,14 +145,15 @@ export function mountTimeline(
     if (!flagged) return;
     pickEvent(id);
     track.setPointerCapture(event.pointerId);
-    drag = { startX: event.clientX, edit: (dx) => flagDragEdit(words, flagged, dx), send: send() };
+    drag = { startX: event.clientX, edit: (dx) => flagDragEdit(words, flagged, dx), send: send(), minPx: FLAG_DRAG_PX };
   }
 
   track.addEventListener("pointerdown", (event) => {
     const flag = (event.target as Element).closest<HTMLElement>("[data-event-id]");
     if (flag && event.button === 0) {
       event.preventDefault();
-      return dragFlag(event, flag.dataset.eventId!);
+      dragFlag(event, flag.dataset.eventId!);
+      return;
     }
     const hit = event.button === 0 ? hitAt(event) : null;
     if (!hit) return;
@@ -163,7 +165,11 @@ export function mountTimeline(
   });
 
   track.addEventListener("pointermove", (event) => {
-    if (drag) return drag.send(drag.edit(event.clientX - drag.startX));
+    if (drag) {
+      const dx = event.clientX - drag.startX;
+      if (Math.abs(dx) >= (drag.minPx ?? 0)) drag.send(drag.edit(dx));
+      return;
+    }
     const hit = hitAt(event);
     track.style.cursor = hit ? CURSORS[hit.grip] : "";
   });

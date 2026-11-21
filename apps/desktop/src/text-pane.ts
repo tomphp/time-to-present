@@ -195,21 +195,28 @@ export function mountTextPane(
   root.addEventListener("pointerdown", (down) => {
     const chip = (down.target as Element).closest<HTMLElement>("[data-event-id]");
     if (!chip || down.button !== 0) return;
+    chipDragged = false;
     let dragging = false;
     const move = (event: PointerEvent) => {
       dragging ||= Math.hypot(event.clientX - down.clientX, event.clientY - down.clientY) > DRAG_THRESHOLD_PX;
       chip.classList.toggle("dragging", dragging);
     };
-    const up = (event: PointerEvent) => {
+    const end = () => {
       document.removeEventListener("pointermove", move);
       document.removeEventListener("pointerup", up);
+      document.removeEventListener("pointercancel", cancel);
       chip.classList.remove("dragging");
+    };
+    const cancel = () => end();
+    const up = (event: PointerEvent) => {
+      end();
       chipDragged = dragging;
       const drop = dragging ? dropAt(event.clientX, event.clientY) : null;
       if (drop) commands.edit(chipDropEdit(words, chip.dataset.eventId!, drop)).catch(console.error);
     };
     document.addEventListener("pointermove", move);
     document.addEventListener("pointerup", up);
+    document.addEventListener("pointercancel", cancel);
   });
 
   root.addEventListener("click", (event) => {

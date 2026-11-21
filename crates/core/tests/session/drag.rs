@@ -180,7 +180,7 @@ fn undoing_a_drag_keeps_the_moved_badges_of_the_edit_before_it() {
 }
 
 #[test]
-fn only_a_timing_edit_can_be_dragged() {
+fn only_a_timing_edit_or_an_event_move_can_be_dragged() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);
     let before = session.state();

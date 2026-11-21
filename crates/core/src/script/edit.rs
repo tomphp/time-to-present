@@ -165,9 +165,7 @@ impl Script {
                 name,
                 data,
             } => {
-                if let Anchor::Word(id) = &anchor {
-                    self.index_of(id)?;
-                }
+                self.check_anchor(&anchor)?;
                 let event = events::named(ids.next_event(), name, data, anchor, offset)?;
                 self.named_events.push(event);
             }
@@ -179,9 +177,7 @@ impl Script {
                 anchor,
                 offset,
             } => {
-                if let Anchor::Word(id) = &anchor {
-                    self.index_of(id)?;
-                }
+                self.check_anchor(&anchor)?;
                 let event = self.event_mut(&event)?;
                 event.anchor = anchor;
                 event.offset = offset;
@@ -253,6 +249,13 @@ impl Script {
             .iter()
             .position(|word| word.id == id)
             .ok_or_else(|| EditError::UnknownWord(id.to_string()))
+    }
+
+    fn check_anchor(&self, anchor: &Anchor) -> Result<(), EditError> {
+        match anchor {
+            Anchor::Word(id) => self.index_of(id).map(drop),
+            Anchor::ScriptStart => Ok(()),
+        }
     }
 
     fn event_mut(&mut self, id: &str) -> Result<&mut NamedEvent, EditError> {
