@@ -79,6 +79,10 @@ export function applyAction(options: DisplayOptions, action: DisplayAction, disp
   }
 }
 
+const REPEATABLE: DisplayAction[] = ["fontLarger", "fontSmaller", "readingLineUp", "readingLineDown"];
+
+export const isRepeatable = (action: DisplayAction) => REPEATABLE.includes(action);
+
 export const mirrorFor = (options: DisplayOptions, display: string) => options.mirrors[display] ?? NOT_MIRRORED;
 
 const withMirror = (options: DisplayOptions, display: string, mirror: Mirror): DisplayOptions => ({
@@ -89,9 +93,18 @@ const withMirror = (options: DisplayOptions, display: string, mirror: Mirror): D
 export const mirrorTransform = ({ horizontal, vertical }: Mirror) =>
   `scale(${horizontal ? -1 : 1}, ${vertical ? -1 : 1})`;
 
+const within = (value: unknown, { min, max }: { min: number; max: number }, fallback: number) =>
+  typeof value === "number" && value >= min && value <= max ? value : fallback;
+
 export function loadOptions(storage: Pick<Storage, "getItem">): DisplayOptions {
   try {
-    return { ...DEFAULT_OPTIONS, ...JSON.parse(storage.getItem(STORAGE_KEY) ?? "{}") };
+    const stored = JSON.parse(storage.getItem(STORAGE_KEY) ?? "{}");
+    return {
+      markers: typeof stored.markers === "boolean" ? stored.markers : DEFAULT_OPTIONS.markers,
+      fontSize: within(stored.fontSize, FONT_SIZES, DEFAULT_OPTIONS.fontSize),
+      readingLine: within(stored.readingLine, READING_LINE, DEFAULT_OPTIONS.readingLine),
+      mirrors: typeof stored.mirrors === "object" && stored.mirrors !== null ? stored.mirrors : {},
+    };
   } catch {
     return DEFAULT_OPTIONS;
   }

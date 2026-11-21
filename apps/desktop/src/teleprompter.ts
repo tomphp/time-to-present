@@ -9,6 +9,8 @@ import {
   mirrorTransform,
   saveOptions,
   displayAction,
+  isRepeatable,
+  type DisplayAction,
 } from "./display-options";
 import { formatElapsed } from "./recording-bar-view";
 import {
@@ -44,7 +46,6 @@ import {
 
 const SCROLL_EASE = "transform 200ms ease";
 
-const readingLine = find<HTMLSpanElement>("#reading-line");
 const column = find<HTMLElement>("#column");
 const paused = find<HTMLParagraphElement>("#paused");
 const stage = find<HTMLDivElement>("#stage");
@@ -100,13 +101,14 @@ function renderScript(next: ScriptWord[], nextEvents: TimedEvent[]) {
   layoutKey = key;
   if (unchanged && spans.length > 0) return;
   let index = 0;
+  const markersBefore = (at: number) => placements.filter(({ before }) => before === at).map(marker);
   const paragraphs = scriptLayout(next).map((paragraph) => {
     const element = document.createElement("p");
     paragraph.forEach((line, row) => {
       if (row > 0) element.append(document.createElement("br"));
       line.forEach((word, position) => {
         if (position > 0) element.append(" ");
-        element.append(...placements.filter(({ before }) => before === index).map(marker));
+        element.append(...markersBefore(index));
         const span = document.createElement("span");
         span.textContent = word.text;
         element.append(span);
@@ -115,7 +117,7 @@ function renderScript(next: ScriptWord[], nextEvents: TimedEvent[]) {
     });
     return element;
   });
-  paragraphs.at(-1)?.append(...placements.filter(({ before }) => before === index).map(marker));
+  paragraphs.at(-1)?.append(...markersBefore(index));
   column.replaceChildren(...paragraphs);
   spans = [...column.querySelectorAll("span")];
   current = null;
@@ -133,8 +135,7 @@ function follow(target: HTMLSpanElement) {
   const next = scrollTo(scroll, target.offsetTop, followed.jumps);
   if (next === scroll) return;
   scroll = next;
-  const { top, height } = readingLine.getBoundingClientRect();
-  const offset = top + height / 2 - (target.offsetTop + target.offsetHeight / 2);
+  const offset = options.readingLine * innerHeight - (target.offsetTop + target.offsetHeight / 2);
   column.style.transition = next.animate ? SCROLL_EASE : "none";
   column.style.transform = `translateY(${offset}px)`;
 }
@@ -195,7 +196,7 @@ document.addEventListener("keydown", (event) => {
   const action = displayAction(event);
   if (action) {
     event.preventDefault();
-    if (!event.repeat || action.startsWith("font") || action.startsWith("reading")) perform(action);
+    if (!event.repeat || isRepeatable(action)) perform(action);
     return;
   }
   if (!followed.state || (event.repeat && event.key === "Home")) return;
@@ -223,11 +224,11 @@ function flash(id: string) {
   const element = column.querySelector<HTMLElement>(`[data-event="${id}"]`);
   if (!element) return;
   element.classList.remove(FLASH);
-  void element.offsetWidth;
+  element.getBoundingClientRect();
   element.classList.add(FLASH);
 }
 
-function perform(action: NonNullable<ReturnType<typeof displayAction>>) {
+function perform(action: DisplayAction) {
   if (action === "blank") return void stage.classList.toggle("blanked");
   options = applyAction(options, action, display);
   saveOptions(localStorage, options);

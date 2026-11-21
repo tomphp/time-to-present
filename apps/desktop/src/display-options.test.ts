@@ -3,6 +3,7 @@ import {
   applyAction,
   DEFAULT_OPTIONS,
   displayAction,
+  isRepeatable,
   loadOptions,
   markerPlacements,
   mirrorFor,
@@ -36,6 +37,13 @@ describe("display keys", () => {
 });
 
 describe("applying display actions", () => {
+  it("repeats only font size and Reading Line steps while a key is held", () => {
+    expect(isRepeatable("fontLarger")).toBe(true);
+    expect(isRepeatable("readingLineDown")).toBe(true);
+    expect(isRepeatable("markers")).toBe(false);
+    expect(isRepeatable("blank")).toBe(false);
+  });
+
   it("toggles markers", () => {
     const hidden = applyAction(DEFAULT_OPTIONS, "markers", "a");
     expect(hidden.markers).toBe(false);
@@ -80,6 +88,11 @@ describe("remembering options", () => {
     const options = applyAction(applyAction(DEFAULT_OPTIONS, "markers", "glass"), "mirror", "glass");
     saveOptions(storage, options);
     expect(loadOptions(storage)).toEqual(options);
+  });
+
+  it("ignores stored values of the wrong type or out of range", () => {
+    const stored = JSON.stringify({ markers: "yes", fontSize: "big", readingLine: 7, mirrors: 3 });
+    expect(loadOptions({ getItem: () => stored })).toEqual(DEFAULT_OPTIONS);
   });
 
   it("falls back to defaults when nothing or garbage is stored", () => {

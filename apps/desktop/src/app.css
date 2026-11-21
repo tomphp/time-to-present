@@ -333,6 +333,12 @@ body.teleprompter {
   line-height: var(--line);
 }
 
+body.teleprompter #stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
 body.teleprompter #stage.blanked {
   visibility: hidden;
 }
