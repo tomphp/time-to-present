@@ -106,7 +106,6 @@ export function mountTextPane(
     repaint(script);
   }
 
-  /** The edit lock: read-only while the clock is playing, whoever started it. */
   function setLocked(next: boolean) {
     locked = next;
     root.contentEditable = locked ? "false" : "true";
@@ -222,7 +221,7 @@ export function mountTextPane(
 
   root.addEventListener("pointerdown", (down) => {
     const chip = (down.target as Element).closest<HTMLElement>("[data-event-id]");
-    if (!chip || down.button !== 0) return;
+    if (!chip || down.button !== 0 || locked) return;
     chipDragged = false;
     let dragging = false;
     const move = (event: PointerEvent) => {
@@ -239,7 +238,7 @@ export function mountTextPane(
     const up = (event: PointerEvent) => {
       end();
       chipDragged = dragging;
-      const drop = dragging ? dropAt(event.clientX, event.clientY) : null;
+      const drop = dragging && !locked ? dropAt(event.clientX, event.clientY) : null;
       if (drop) commands.edit(chipDropEdit(words, chip.dataset.eventId!, drop)).catch(console.error);
     };
     document.addEventListener("pointermove", move);

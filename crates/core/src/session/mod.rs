@@ -60,7 +60,6 @@ pub struct SessionState {
     pub script_end: Ms,
     pub recording_bar: Option<RecordingBarState>,
     pub pending_passages: Vec<PendingPassage>,
-    /// The edit lock: Script commands are refused while the clock is playing.
     pub locked: bool,
 }
 

@@ -48,12 +48,12 @@ describe("the edit lock on the timeline", () => {
     expect(root.classList.contains("locked")).toBe(true);
   });
 
-  it("picks a Named Event's flag but never drags it while locked", () => {
+  it("neither picks nor drags a Named Event's flag while locked", () => {
     const { commands, pickEvent } = mount(true);
 
     dragFlag();
 
-    expect(pickEvent).toHaveBeenCalledWith("e1");
+    expect(pickEvent).not.toHaveBeenCalled();
     expect(commands.drag).not.toHaveBeenCalled();
   });
 

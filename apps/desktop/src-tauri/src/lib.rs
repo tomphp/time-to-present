@@ -20,7 +20,7 @@ mod clock;
 mod macos;
 mod recording;
 
-const TICK: Duration = Duration::from_millis(TICK_INTERVAL as u64);
+const POLL_INTERVAL: Duration = Duration::from_millis(TICK_INTERVAL as u64);
 const SIDECAR: &str = "ttp-stt-sidecar";
 
 const SESSION_STATE: &str = "session-state";
@@ -280,9 +280,9 @@ fn save_open_session(
 }
 
 /// Runs the clock, lands Transcriptions and autosaves, as the Session asks to be polled regularly.
-fn tick(app: AppHandle) {
+fn poll_session(app: AppHandle) {
     loop {
-        std::thread::sleep(TICK);
+        std::thread::sleep(POLL_INTERVAL);
         save_open_session(&app, "polling the Session", Session::poll);
     }
 }
@@ -357,7 +357,7 @@ pub fn run() {
                 models,
             });
             let handle = app.handle().clone();
-            std::thread::spawn(move || tick(handle));
+            std::thread::spawn(move || poll_session(handle));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

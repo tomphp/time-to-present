@@ -16,7 +16,7 @@ const CURSORS = { body: "grab", start: "ew-resize", end: "ew-resize" };
  * The Script Time timeline: a block per Word at its Script Time. Clicking a block picks it,
  * dragging its body Moves it and dragging an edge Trims it, each drag one Session drag. A flag
  * per Named Event sits at its Script Time; clicking one picks it and dragging it re-anchors it.
- * Under the edit lock a click still picks, but nothing drags.
+ * Under the edit lock a click still picks a Word, but nothing drags and no flag is picked.
  */
 export function mountTimeline(
   root: HTMLElement,
@@ -147,9 +147,8 @@ export function mountTimeline(
 
   function dragFlag(event: PointerEvent, id: string) {
     const flagged = events.find((named) => named.id === id);
-    if (!flagged) return;
+    if (!flagged || locked) return;
     pickEvent(id);
-    if (locked) return;
     track.setPointerCapture(event.pointerId);
     drag = { startX: event.clientX, edit: (dx) => flagDragEdit(words, flagged, dx), send: send(), minPx: FLAG_DRAG_PX };
   }

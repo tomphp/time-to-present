@@ -205,3 +205,44 @@ fn a_transcription_heard_while_the_clock_is_playing_lands_once_it_stops() {
     assert_eq!(session.state().words[3].word.text, "Thanks");
     assert!(stream.take().iter().any(|event| matches!(event, StreamEvent::Snapshot(_))));
 }
+
+#[test]
+fn held_transcriptions_land_in_the_order_their_recordings_were_made() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    record_at_end(&harness, &mut session);
+    record_at_end(&harness, &mut session);
+    session.play();
+    harness.transcriber.hear(&[("one", 100, 400)]);
+    session.poll().unwrap();
+    harness.transcriber.hear(&[("two", 100, 400)]);
+    session.poll().unwrap();
+    assert_eq!(session.state().pending_passages.len(), 2);
+
+    session.pause();
+    session.poll().unwrap();
+
+    let state = session.state();
+    let texts: Vec<&str> = state.words[3..]
+        .iter()
+        .map(|word| word.word.text.as_str())
+        .collect();
+    assert_eq!(texts, ["one", "two"]);
+}
+
+#[test]
+fn a_held_transcription_can_be_discarded_and_never_lands() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    record_at_end(&harness, &mut session);
+    session.play();
+    harness.transcriber.hear(&[("Thanks", 100, 400)]);
+    session.poll().unwrap();
+
+    session.discard_transcription("r2").unwrap();
+    session.pause();
+    session.poll().unwrap();
+
+    assert!(session.state().pending_passages.is_empty());
+    assert_eq!(session.state().words.len(), 3);
+}

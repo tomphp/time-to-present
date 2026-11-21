@@ -51,12 +51,40 @@ function clipboardEvent(type: string, text = "typed") {
 const command = (key: string, init: KeyboardEventInit = {}) =>
   new KeyboardEvent("keydown", { key, metaKey: true, bubbles: true, cancelable: true, ...init });
 
+const pointer = (type: string, clientX: number) => new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX });
+
+function dragChip() {
+  const w1 = root.querySelector<HTMLElement>('[data-word-id="w1"]')!;
+  w1.getBoundingClientRect = () => ({ left: 0, width: 40 }) as DOMRect;
+  document.elementFromPoint = () => w1;
+  root.querySelector<HTMLElement>('[data-event-id="e1"]')!.dispatchEvent(pointer("pointerdown", 100));
+  document.dispatchEvent(pointer("pointermove", 50));
+  document.dispatchEvent(pointer("pointerup", 10));
+}
+
 describe("the edit lock on the text pane", () => {
   it("renders the pane read-only from the state", () => {
     mountPane(true);
 
     expect(root.contentEditable).toBe("false");
     expect(root.classList.contains("locked")).toBe(true);
+  });
+
+  it("never drags a chip while locked", () => {
+    const { commands } = mountPane(true);
+
+    dragChip();
+
+    expect(commands.edit).not.toHaveBeenCalled();
+    expect(root.querySelector(".dragging")).toBeNull();
+  });
+
+  it("drags a chip onto a Word when unlocked", () => {
+    const { commands } = mountPane(false);
+
+    dragChip();
+
+    expect(commands.edit).toHaveBeenCalledWith({ kind: "moveEvent", event: "e1", anchor: "w1", offset: 0 });
   });
 
   it("locks and unlocks a pane whose Script has not changed", () => {

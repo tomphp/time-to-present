@@ -120,8 +120,11 @@ impl Session {
     }
 
     fn land_held(&mut self) {
-        while let Some(index) = self.pending.iter().position(|pending| pending.heard.is_some()) {
-            let heard = self.pending[index].heard.take().unwrap_or_default();
+        let next_held = |pending: &mut Vec<Pending>| {
+            let mut held = pending.iter_mut().enumerate();
+            held.find_map(|(index, pending)| pending.heard.take().map(|heard| (index, heard)))
+        };
+        while let Some((index, heard)) = next_held(&mut self.pending) {
             self.land(index, &heard);
         }
     }
