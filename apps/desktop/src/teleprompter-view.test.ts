@@ -170,6 +170,14 @@ describe("free scrolling", () => {
     expect(heldFreeScroll(free, sought)).toBeNull();
   });
 
+  it("snaps back on a reset", () => {
+    const paused = followedAt(2_500);
+    const free = scrollFreely(null, paused, 120, range);
+    const reset = followClock(paused, { type: "clock", cause: "reset", state: "ready", speed: 1, scriptTime: 0 }, 2_600);
+
+    expect(heldFreeScroll(free, reset)).toBeNull();
+  });
+
   it("never moves the clock", () => {
     const paused = followedAt(2_500);
     scrollFreely(null, paused, 120, range);
