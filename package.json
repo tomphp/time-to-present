@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "apps/desktop",
-    "packages/client"
+    "packages/client",
+    "templates/presentation"
   ],
   "scripts": {
     "test": "cargo test && npm test --workspaces --if-present",

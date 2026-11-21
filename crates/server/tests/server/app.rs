@@ -1,3 +1,6 @@
+use std::path::Path;
+use std::process::Command;
+
 use crate::support::{Harness, write};
 
 #[tokio::test]
@@ -97,4 +100,34 @@ async fn files_under_app_ttp_are_shadowed_by_the_reserved_prefix_and_warned_abou
     );
     let warning = harness.server.status().shadow_warning.unwrap();
     assert!(warning.contains("app/_ttp/"), "{warning}");
+}
+
+#[tokio::test]
+async fn the_built_template_is_served_from_app() {
+    let harness = Harness::start().await;
+    let folder = harness.open_hello();
+    let template = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/presentation");
+    let vite = template.join("../../node_modules/.bin/vite");
+    let status = Command::new(&vite)
+        .args(["build", "--logLevel", "error", "--outDir"])
+        .arg(folder.join("app"))
+        .arg("--emptyOutDir")
+        .current_dir(&template)
+        .status()
+        .unwrap_or_else(|error| panic!("run `npm install` to get {}: {error}", vite.display()));
+    assert!(status.success());
+
+    let root = harness.get("/").await;
+    assert_eq!(root.status(), 200);
+    let page = root.text().await.unwrap();
+    assert!(page.contains(r#"id="slides""#), "{page}");
+    let bundle = page
+        .split(r#"src=""#)
+        .nth(1)
+        .and_then(|rest| rest.split('"').next())
+        .expect("the page loads a script");
+    assert_eq!(
+        harness.get(bundle.trim_start_matches('.')).await.status(),
+        200
+    );
 }

@@ -31,6 +31,7 @@ fn a_new_presentation_folder_holds_presentation_json_empty_recordings_and_the_te
     );
     assert_eq!(fs::read_dir(folder.join("recordings")).unwrap().count(), 0);
     assert!(folder.join("app-src/README.md").is_file());
+    assert!(folder.join("app-src/src/main.ts").is_file());
 }
 
 #[test]

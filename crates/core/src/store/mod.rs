@@ -157,7 +157,11 @@ pub fn save(folder: &Path, presentation: &Presentation) -> Result<(), StoreError
 fn write_template(app_source: &Path) -> Result<(), StoreError> {
     std::fs::create_dir(app_source)?;
     for (name, contents) in template::FILES {
-        std::fs::write(app_source.join(name), contents)?;
+        let path = app_source.join(name);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(path, contents)?;
     }
     Ok(())
 }
