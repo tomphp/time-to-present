@@ -16,7 +16,7 @@ async function pickFolder(title: string) {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const title = new FormData(form).get("title") as string;
+  const title = String(new FormData(form).get("title") ?? "");
   const parent = await pickFolder("Choose where to make the Presentation folder");
   if (parent) await newPresentation(parent, title).catch(showError);
 });

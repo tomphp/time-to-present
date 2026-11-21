@@ -46,13 +46,16 @@ fn session_state(state: State<'_, App>) -> Option<SessionState> {
     state.session.lock().unwrap().as_ref().map(Session::state)
 }
 
-fn show(app: &AppHandle, state: &App, session: Session) -> CommandResult<SessionState> {
-    let published = session.state();
+fn show(app: &AppHandle, state: &App, mut session: Session) -> CommandResult<SessionState> {
+    let publisher = app.clone();
+    session.subscribe(move |published| {
+        let _ = publisher.emit(SESSION_STATE, published);
+    });
+    let opened = session.state();
     *state.session.lock().unwrap() = Some(session);
-    app.emit(SESSION_STATE, &published).map_err(message)?;
     if app.get_webview_window(EDITOR_WINDOW).is_none() {
         WebviewWindowBuilder::new(app, EDITOR_WINDOW, WebviewUrl::App("editor.html".into()))
-            .title(&published.title)
+            .title(&opened.title)
             .inner_size(900.0, 700.0)
             .build()
             .map_err(message)?;
@@ -60,7 +63,7 @@ fn show(app: &AppHandle, state: &App, session: Session) -> CommandResult<Session
     if let Some(start) = app.get_webview_window(START_WINDOW) {
         start.close().map_err(message)?;
     }
-    Ok(published)
+    Ok(opened)
 }
 
 pub fn run() {

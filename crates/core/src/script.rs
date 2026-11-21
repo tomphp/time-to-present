@@ -79,37 +79,41 @@ pub struct Script {
 
 impl Script {
     pub fn timed_words(&self) -> Vec<TimedWord> {
-        let mut previous_end = 0;
-        self.words
-            .iter()
-            .map(|word| {
-                let start = previous_end + word.gap;
-                previous_end = start + word.duration;
-                TimedWord {
-                    word: word.clone(),
-                    start,
-                }
+        self.word_starts()
+            .map(|(word, start)| TimedWord {
+                word: word.clone(),
+                start,
             })
             .collect()
     }
 
     pub fn end(&self) -> Ms {
-        let words = self.timed_words();
-        let last_word_end = words.last().map_or(0, |w| w.start + w.word.duration);
+        let starts: Vec<(&Word, Ms)> = self.word_starts().collect();
+        let last_word_end = starts
+            .last()
+            .map_or(0, |(word, start)| start + word.duration);
         let last_event = self
             .named_events
             .iter()
-            .filter_map(|event| self.event_time(event, &words))
+            .filter_map(|event| event_time(event, &starts))
             .max()
             .unwrap_or(0);
         last_word_end.max(last_event)
     }
 
-    fn event_time(&self, event: &NamedEvent, words: &[TimedWord]) -> Option<Ms> {
-        let anchor_time = match &event.anchor {
-            Anchor::ScriptStart => 0,
-            Anchor::Word(id) => words.iter().find(|w| &w.word.id == id)?.start,
-        };
-        Some(anchor_time + event.offset)
+    fn word_starts(&self) -> impl Iterator<Item = (&Word, Ms)> {
+        self.words.iter().scan(0, |previous_end, word| {
+            let start = *previous_end + word.gap;
+            *previous_end = start + word.duration;
+            Some((word, start))
+        })
     }
+}
+
+fn event_time(event: &NamedEvent, starts: &[(&Word, Ms)]) -> Option<Ms> {
+    let anchor_time = match &event.anchor {
+        Anchor::ScriptStart => 0,
+        Anchor::Word(id) => starts.iter().find(|(word, _)| &word.id == id)?.1,
+    };
+    Some(anchor_time + event.offset)
 }

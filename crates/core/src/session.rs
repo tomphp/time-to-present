@@ -7,9 +7,12 @@ use crate::script::TimedWord;
 use crate::store::{self, Presentation, StoreError};
 use crate::time::{Ms, TimeSource};
 
+type Listener = Box<dyn Fn(&SessionState) + Send>;
+
 pub struct Session {
     folder: PathBuf,
     presentation: Presentation,
+    listeners: Vec<Listener>,
     #[expect(dead_code, reason = "the Performance clock runs on it")]
     time: Arc<dyn TimeSource>,
 }
@@ -38,8 +41,14 @@ impl Session {
         Ok(Self {
             folder: folder.to_path_buf(),
             presentation,
+            listeners: Vec::new(),
             time,
         })
+    }
+
+    pub fn subscribe(&mut self, listener: impl Fn(&SessionState) + Send + 'static) {
+        listener(&self.state());
+        self.listeners.push(Box::new(listener));
     }
 
     pub fn state(&self) -> SessionState {
