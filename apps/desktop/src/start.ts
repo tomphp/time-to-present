@@ -1,5 +1,5 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { newPresentation, openFolder, recentPresentations } from "./commands";
+import { newPresentation, openFolder, openSettings, recentPresentations } from "./commands";
 
 const form = document.querySelector<HTMLFormElement>("#new-presentation")!;
 const error = document.querySelector<HTMLParagraphElement>("#error")!;
@@ -59,6 +59,7 @@ async function showRecent() {
   }
 }
 
+document.querySelector("#open-settings")!.addEventListener("click", () => void openSettings());
 document.querySelector("#check-microphone")!.addEventListener("click", checkMicrophone);
 
 void showRecent();
@@ -86,6 +87,7 @@ async function checkMicrophone() {
   }
 }
 
+document.querySelector("#open-settings")!.addEventListener("click", () => void openSettings());
 document.querySelector("#check-microphone")!.addEventListener("click", checkMicrophone);
 
 void showRecent();

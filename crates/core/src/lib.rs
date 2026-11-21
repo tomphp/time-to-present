@@ -1,3 +1,4 @@
+pub mod models;
 pub mod script;
 pub mod session;
 pub mod settings;

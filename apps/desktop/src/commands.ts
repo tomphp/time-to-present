@@ -20,3 +20,26 @@ export function onSessionState(render: (state: SessionState) => void) {
   void listen<SessionState>("session-state", (event) => render(event.payload));
   void invoke<SessionState | null>("session_state").then((state) => state && render(state));
 }
+
+export interface InstalledModel {
+  name: string;
+  bytes: number;
+}
+
+export interface ModelProgress {
+  name: string;
+  downloaded: number;
+  total: number | null;
+}
+
+export const installedModels = () => invoke<InstalledModel[]>("installed_models");
+
+export const removeModel = (name: string) => invoke<void>("remove_model", { name });
+
+export const ensureModel = (name: string) => invoke<void>("ensure_model", { name });
+
+export const openSettings = () => invoke<void>("open_settings");
+
+export function onModelProgress(render: (progress: ModelProgress) => void) {
+  void listen<ModelProgress>("model-progress", (event) => render(event.payload));
+}

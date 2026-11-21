@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use ttp_core::models::{InstalledModel, ModelManager, Progress, whisper_catalog};
 use ttp_core::session::{Session, SessionState};
 use ttp_core::settings::Settings;
 use ttp_core::time::{MonotonicTime, TimeSource};
@@ -10,11 +11,14 @@ use ttp_core::time::{MonotonicTime, TimeSource};
 const SESSION_STATE: &str = "session-state";
 const START_WINDOW: &str = "start";
 const EDITOR_WINDOW: &str = "editor";
+const SETTINGS_WINDOW: &str = "settings";
+const MODEL_PROGRESS: &str = "model-progress";
 
 struct App {
     time: Arc<dyn TimeSource>,
     session: Mutex<Option<Session>>,
     settings: Mutex<Settings>,
+    models: Arc<ModelManager>,
 }
 
 #[derive(Serialize)]
@@ -80,6 +84,68 @@ fn rename_presentation(app: AppHandle, state: State<'_, App>, title: String) -> 
     Ok(())
 }
 
+#[derive(Clone, Serialize)]
+struct ModelProgress {
+    name: String,
+    #[serde(flatten)]
+    progress: Progress,
+}
+
+#[tauri::command]
+async fn ensure_model(app: AppHandle, state: State<'_, App>, name: String) -> CommandResult<()> {
+    let models = state.models.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut last_percent = None;
+        models
+            .ensure(&name, |progress| {
+                let percent = progress
+                    .total
+                    .map(|total| progress.downloaded * 100 / total.max(1));
+                if percent.is_none() || percent != last_percent {
+                    last_percent = percent;
+                    let _ = app.emit(
+                        MODEL_PROGRESS,
+                        ModelProgress {
+                            name: name.clone(),
+                            progress,
+                        },
+                    );
+                }
+            })
+            .map(drop)
+    })
+    .await
+    .map_err(message)?
+    .map_err(message)
+}
+
+#[tauri::command]
+fn installed_models(state: State<'_, App>) -> CommandResult<Vec<InstalledModel>> {
+    state.models.installed().map_err(message)
+}
+
+#[tauri::command]
+fn remove_model(state: State<'_, App>, name: String) -> CommandResult<()> {
+    state.models.remove(&name).map_err(message)
+}
+
+#[tauri::command]
+fn open_settings(app: AppHandle) -> CommandResult<()> {
+    if let Some(window) = app.get_webview_window(SETTINGS_WINDOW) {
+        return window.set_focus().map_err(message);
+    }
+    WebviewWindowBuilder::new(
+        &app,
+        SETTINGS_WINDOW,
+        WebviewUrl::App("settings.html".into()),
+    )
+    .title("Settings")
+    .inner_size(480.0, 360.0)
+    .build()
+    .map(drop)
+    .map_err(message)
+}
+
 #[tauri::command]
 fn session_state(state: State<'_, App>) -> Option<SessionState> {
     state.session.lock().unwrap().as_ref().map(Session::state)
@@ -125,6 +191,10 @@ pub fn run() {
                 time: Arc::new(MonotonicTime::new()),
                 session: Mutex::default(),
                 settings: Mutex::new(settings),
+                models: Arc::new(ModelManager::new(
+                    app.path().app_data_dir()?.join("models"),
+                    whisper_catalog(),
+                )),
             });
             Ok(())
         })
@@ -133,6 +203,10 @@ pub fn run() {
             open_folder,
             recent_presentations,
             rename_presentation,
+            ensure_model,
+            installed_models,
+            remove_model,
+            open_settings,
             session_state
         ])
         .run(tauri::generate_context!())
