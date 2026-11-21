@@ -24,6 +24,7 @@ mod publish;
 mod recording;
 mod rename;
 mod retime;
+mod script;
 mod split;
 mod support;
 mod timing;

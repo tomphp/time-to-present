@@ -279,3 +279,9 @@ body.editor {
 #current-word {
   font-weight: 600;
 }
+
+.server {
+  color: GrayText;
+  user-select: text;
+  -webkit-user-select: text;
+}

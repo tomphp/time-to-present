@@ -282,6 +282,10 @@ impl Session {
             .snapshot(&self.timeline, self.platform.time.now())
     }
 
+    pub fn folder(&self) -> &Path {
+        &self.folder
+    }
+
     pub fn state(&self) -> SessionState {
         SessionState {
             folder: self.folder.clone(),

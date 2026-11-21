@@ -1,11 +1,16 @@
 use super::Session;
-use crate::clock::{Clock, StreamEvent, Timeline};
+use crate::clock::{Clock, ScriptView, StreamEvent, Timeline};
 use crate::time::Ms;
 
 impl Session {
     /// Receives every event the Session broadcasts from now on, in Script Time order.
     pub fn subscribe_stream(&mut self, listener: impl Fn(&StreamEvent) + Send + 'static) {
         self.stream_listeners.push(Box::new(listener));
+    }
+
+    /// The Script as Presentation Apps read it, at the version the stream last announced.
+    pub fn script(&self) -> ScriptView {
+        ScriptView::of(&self.presentation.script, &self.timeline)
     }
 
     pub fn play(&mut self) {

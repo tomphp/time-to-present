@@ -1,4 +1,5 @@
 use std::fs;
+use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
 
 use tempfile::TempDir;
@@ -117,4 +118,29 @@ fn the_chosen_input_is_remembered_on_this_machine() {
     settings_in(&dir).set_input(choice.clone()).unwrap();
 
     assert_eq!(*settings_in(&dir).input(), choice);
+}
+
+#[test]
+fn the_server_defaults_to_port_4747_on_the_loopback_address() {
+    let dir = TempDir::new().unwrap();
+
+    let server = settings_in(&dir).server();
+
+    assert_eq!(server.port, 4747);
+    assert_eq!(server.address, IpAddr::from(Ipv4Addr::LOCALHOST));
+}
+
+#[test]
+fn the_server_port_and_bind_address_come_from_this_machines_settings() {
+    let dir = TempDir::new().unwrap();
+    fs::write(
+        dir.path().join("settings.json"),
+        r#"{"port": 5000, "bindAddress": "0.0.0.0"}"#,
+    )
+    .unwrap();
+
+    let server = settings_in(&dir).server();
+
+    assert_eq!(server.port, 5000);
+    assert_eq!(server.address, IpAddr::from(Ipv4Addr::UNSPECIFIED));
 }

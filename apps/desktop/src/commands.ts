@@ -1,6 +1,16 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Edit, InputChoice, InsertionPoint, Meter, SessionState, Snapshot, StreamEvent, Waveform } from "./session";
+import type {
+  Edit,
+  InputChoice,
+  InsertionPoint,
+  Meter,
+  ServerStatus,
+  SessionState,
+  Snapshot,
+  StreamEvent,
+  Waveform,
+} from "./session";
 import { connectStream } from "./stream";
 
 export const newPresentation = (parent: string, title: string) =>
@@ -32,6 +42,11 @@ export const selectEvent = (event: string) => invoke<SessionState>("select_event
 export function onSessionState(render: (state: SessionState) => void) {
   void listen<SessionState>("session-state", (event) => render(event.payload));
   void invoke<SessionState | null>("session_state").then((state) => state && render(state));
+}
+
+export function onServerStatus(render: (status: ServerStatus) => void) {
+  void listen<ServerStatus>("server-status", (event) => render(event.payload));
+  void invoke<ServerStatus>("server_status").then(render);
 }
 
 export interface InstalledModel {

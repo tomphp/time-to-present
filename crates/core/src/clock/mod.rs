@@ -1,7 +1,9 @@
+mod script_view;
 mod speed;
 mod stream;
 mod timeline;
 
+pub use script_view::{ScriptView, ScriptWord};
 pub use speed::Speed;
 pub use stream::{
     Cause, ClockState, ClockView, EventPayload, PROTOCOL_VERSION, Snapshot, StreamEvent,

@@ -125,6 +125,13 @@ export interface EventPayload {
   scriptTime: number;
 }
 
+export interface ServerStatus {
+  url: string;
+  portNotice: string | null;
+  shadowWarning: string | null;
+  connectedApps: number;
+}
+
 export interface Snapshot {
   protocolVersion: number;
   scriptVersion: number;

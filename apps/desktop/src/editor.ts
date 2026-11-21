@@ -22,6 +22,7 @@ import { onPendingAction } from "./pending-passage";
 import { mountRecordingBar } from "./recording-bar";
 import { act, showError } from "./report-error";
 import { sharedSelection } from "./selection";
+import { mountServerStatus } from "./server-status";
 import type { SessionState } from "./session";
 import { nudgeOf } from "./timing-controls";
 import { mountTextPane } from "./text-pane";
@@ -146,3 +147,4 @@ function render(state: SessionState) {
 
 onSessionState(render);
 mountClockControl();
+mountServerStatus();

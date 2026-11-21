@@ -14,6 +14,7 @@ use ttp_core::store::StoreError;
 use ttp_core::time::MonotonicTime;
 use ttp_core::transcription::SidecarTranscriber;
 use ttp_core::waveform::{self, Waveform};
+use ttp_server::{Server, ServerStatus, SharedSession};
 
 mod audio;
 mod clock;
@@ -30,10 +31,12 @@ const EDITOR_WINDOW: &str = "editor";
 const SETTINGS_WINDOW: &str = "settings";
 const MODEL_PROGRESS: &str = "model-progress";
 const RECORDING_METER: &str = "recording-meter";
+const SERVER_STATUS: &str = "server-status";
 
 struct App {
     platform: Platform,
-    session: Mutex<Option<Session>>,
+    session: SharedSession,
+    server: Server,
     settings: Mutex<Settings>,
     models: Arc<ModelManager>,
 }
@@ -170,6 +173,11 @@ fn session_state(state: State<'_, App>) -> Option<SessionState> {
 }
 
 #[tauri::command]
+fn server_status(state: State<'_, App>) -> ServerStatus {
+    state.server.status()
+}
+
+#[tauri::command]
 fn edit(state: State<'_, App>, edit: Edit) -> CommandResult<SessionState> {
     with_session(&state, |session| {
         session.edit(edit)?;
@@ -287,6 +295,18 @@ fn poll_session(app: AppHandle) {
     }
 }
 
+/// Tells the windows how the server stands whenever a Presentation App connects or leaves.
+async fn watch_server(app: AppHandle) {
+    let mut connected = app.state::<App>().server.watch_connected_apps();
+    while connected.changed().await.is_ok() {
+        emit_server_status(&app);
+    }
+}
+
+fn emit_server_status(app: &AppHandle) {
+    let _ = app.emit(SERVER_STATUS, app.state::<App>().server.status());
+}
+
 /// Tauri puts the `externalBin` sidecar next to the app's own executable.
 fn sidecar_path() -> Result<PathBuf, std::io::Error> {
     let executable = std::env::current_exe()?;
@@ -310,11 +330,10 @@ fn show(app: &AppHandle, state: &App, mut session: Session) -> CommandResult<Ses
     if let Err(error) = state.settings.lock().unwrap().add_recent(&opened.folder) {
         eprintln!("could not update the Recent list: {error}");
     }
-    if let Some(previous) = state.session.lock().unwrap().replace(session)
-        && let Err(error) = previous.close()
-    {
+    if let Err(error) = state.server.open(session) {
         eprintln!("saving the previous Presentation failed: {error}");
     }
+    emit_server_status(app);
     if app.get_webview_window(EDITOR_WINDOW).is_none() {
         WebviewWindowBuilder::new(app, EDITOR_WINDOW, WebviewUrl::App("editor.html".into()))
             .title(&opened.title)
@@ -341,6 +360,9 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let settings = Settings::load(app.path().app_config_dir()?.join("settings.json"));
+            let session = SharedSession::default();
+            let server =
+                tauri::async_runtime::block_on(Server::start(settings.server(), session.clone()))?;
             let models = Arc::new(ModelManager::new(
                 app.path().app_data_dir()?.join("models"),
                 whisper_catalog(),
@@ -352,12 +374,14 @@ pub fn run() {
                     app_nap: Arc::new(macos::ProcessActivity),
                     transcriber: Arc::new(SidecarTranscriber::new(sidecar_path()?, models.clone())),
                 },
-                session: Mutex::default(),
+                session,
+                server,
                 settings: Mutex::new(settings),
                 models,
             });
             let handle = app.handle().clone();
             std::thread::spawn(move || poll_session(handle));
+            tauri::async_runtime::spawn(watch_server(app.handle().clone()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -370,6 +394,7 @@ pub fn run() {
             remove_model,
             open_settings,
             session_state,
+            server_status,
             edit,
             cut,
             copy,
