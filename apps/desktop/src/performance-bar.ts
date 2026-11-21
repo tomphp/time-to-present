@@ -12,7 +12,7 @@ export function remaining(scriptTime: number, scriptEnd: number, speed: number) 
 
 const fraction = (time: number, scriptEnd: number) => (scriptEnd <= 0 ? 0 : Math.min(1, Math.max(0, time / scriptEnd)));
 
-export const progress = (scriptTime: number, scriptEnd: number) => fraction(scriptTime, scriptEnd);
+export const progress = fraction;
 
 /** Where each Named Event sits along the progress track, 0 to 1. */
 export const eventTicks = (events: Pick<TimedEvent, "time">[], scriptEnd: number) =>
@@ -43,11 +43,12 @@ export const NOT_STARTED: Run = { startedAt: null, endedAt: null };
 export function foldRun(run: Run, event: StreamEvent, at: number): Run {
   switch (event.type) {
     case "snapshot":
-      return event.clock.state === "ready" ? NOT_STARTED : { startedAt: run.startedAt ?? at, endedAt: null };
+      return event.clock.state === "ready" ? NOT_STARTED : { startedAt: run.startedAt ?? at, endedAt: run.endedAt };
     case "clock":
       if (event.cause === "reset") return NOT_STARTED;
       if (event.cause === "end") return { startedAt: run.startedAt ?? at, endedAt: at };
-      return { startedAt: run.startedAt ?? at, endedAt: null };
+      if (event.cause === "play") return { startedAt: run.startedAt ?? at, endedAt: null };
+      return run;
     case "closed":
       return NOT_STARTED;
     default:
@@ -56,8 +57,9 @@ export function foldRun(run: Run, event: StreamEvent, at: number): Run {
 }
 
 export function endedSummary(run: Run, scriptEnd: number) {
-  const total = run.startedAt === null || run.endedAt === null ? 0 : run.endedAt - run.startedAt;
-  return `Ended · ${formatElapsed(total)} (Script ${formatElapsed(scriptEnd)})`;
+  const script = `Script ${formatElapsed(scriptEnd)}`;
+  if (run.startedAt === null || run.endedAt === null) return `Ended (${script})`;
+  return `Ended · ${formatElapsed(run.endedAt - run.startedAt)} (${script})`;
 }
 
 export const connectionSummary = ({ url, connectedApps }: Pick<ServerStatus, "url" | "connectedApps">) => ({

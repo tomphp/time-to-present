@@ -81,6 +81,12 @@ describe("the end of the Performance", () => {
     expect(endedSummary(run, 725_000)).toBe("Ended · 12:41 (Script 12:05)");
   });
 
+  it("is not started by a speed change before play, nor given a total when joined after the end", () => {
+    expect(foldRun(NOT_STARTED, { ...clock("play"), cause: "speed", state: "ready" }, 5)).toEqual(NOT_STARTED);
+    const joined = foldRun(NOT_STARTED, { type: "snapshot", clock: { state: "ended", scriptTime: 0, speed: 1 } } as StreamEvent, 5);
+    expect(endedSummary(joined, 725_000)).toBe("Ended (Script 12:05)");
+  });
+
   it("starts over on reset", () => {
     expect(foldRun(foldRun(NOT_STARTED, clock("play"), 5), clock("reset"), 9)).toEqual(NOT_STARTED);
   });
