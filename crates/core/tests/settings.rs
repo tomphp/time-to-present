@@ -2,6 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use tempfile::TempDir;
+use ttp_core::capture::InputChoice;
 use ttp_core::settings::Settings;
 
 fn settings_in(dir: &TempDir) -> Settings {
@@ -96,4 +97,24 @@ fn an_unreadable_settings_file_falls_back_to_defaults() {
     fs::write(dir.path().join("settings.json"), "not json").unwrap();
 
     assert!(settings_in(&dir).recent().is_empty());
+}
+
+#[test]
+fn the_input_defaults_to_the_system_default_on_channel_1() {
+    let dir = TempDir::new().unwrap();
+
+    assert_eq!(*settings_in(&dir).input(), InputChoice::default());
+}
+
+#[test]
+fn the_chosen_input_is_remembered_on_this_machine() {
+    let dir = TempDir::new().unwrap();
+    let choice = InputChoice {
+        device: Some("MOTU M2".into()),
+        channel: 2,
+    };
+
+    settings_in(&dir).set_input(choice.clone()).unwrap();
+
+    assert_eq!(*settings_in(&dir).input(), choice);
 }

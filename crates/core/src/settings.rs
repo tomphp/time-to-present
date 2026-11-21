@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+use crate::capture::InputChoice;
+
 const RECENT_LIMIT: usize = 10;
 
 #[derive(Debug, thiserror::Error)]
@@ -17,6 +19,8 @@ pub enum SettingsError {
 struct Values {
     #[serde(default)]
     recent: Vec<PathBuf>,
+    #[serde(default)]
+    input: InputChoice,
     #[serde(flatten)]
     other: Map<String, Value>,
 }
@@ -61,6 +65,15 @@ impl Settings {
             self.save()?;
         }
         Ok(dropped)
+    }
+
+    pub fn input(&self) -> &InputChoice {
+        &self.values.input
+    }
+
+    pub fn set_input(&mut self, choice: InputChoice) -> Result<(), SettingsError> {
+        self.values.input = choice;
+        self.save()
     }
 
     fn save(&self) -> Result<(), SettingsError> {

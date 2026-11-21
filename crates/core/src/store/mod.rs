@@ -80,6 +80,29 @@ pub fn create(parent: &Path, title: &str) -> Result<PathBuf, StoreError> {
     Ok(folder)
 }
 
+/// A new Recording whose id no registered Recording or file in `recordings/` has used.
+pub fn new_recording(folder: &Path, presentation: &Presentation) -> Result<Recording, StoreError> {
+    let recordings = folder.join(RECORDINGS_DIR);
+    std::fs::create_dir_all(&recordings)?;
+    let registered = presentation
+        .recordings
+        .iter()
+        .map(|recording| recording.id.clone());
+    let on_disk = std::fs::read_dir(recordings)?
+        .filter_map(|entry| Some(entry.ok()?.path().file_stem()?.to_str()?.to_string()));
+    let next = registered
+        .chain(on_disk)
+        .filter_map(|id| id.strip_prefix('r')?.parse::<u64>().ok())
+        .max()
+        .unwrap_or(0)
+        + 1;
+    let id = format!("r{next}");
+    Ok(Recording {
+        file: format!("{RECORDINGS_DIR}/{id}.wav"),
+        id,
+    })
+}
+
 pub fn save(folder: &Path, presentation: &Presentation) -> Result<(), StoreError> {
     let path = folder.join(PRESENTATION_FILE);
     let temp = path.with_extension("json.tmp");

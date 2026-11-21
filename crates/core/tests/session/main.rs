@@ -1,6 +1,10 @@
 mod create;
+mod feed;
 mod format;
+mod inputs;
+mod meter;
 mod open;
 mod publish;
+mod recording;
 mod rename;
 mod support;

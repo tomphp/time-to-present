@@ -1,4 +1,6 @@
+pub mod capture;
 pub mod models;
+pub mod platform;
 pub mod script;
 pub mod session;
 pub mod settings;
