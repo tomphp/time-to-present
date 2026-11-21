@@ -1,5 +1,5 @@
 import { forwardKey, onPerformanceSettings, onServerStatus } from "./commands";
-import { dividerShare, letterbox, loadCombined, paneWidths, saveCombined, swapSides } from "./combined-layout";
+import { type Combined, dividerShare, letterbox, loadCombined, paneWidths, saveCombined, swapSides } from "./combined-layout";
 import { find } from "./dom";
 
 const DIVIDER_WIDTH = 10;
@@ -41,7 +41,7 @@ function loadApp() {
   else frame.removeAttribute("src");
 }
 
-function remember(next: typeof combined) {
+function remember(next: Combined) {
   combined = next;
   saveCombined(localStorage, combined);
   place();
@@ -49,7 +49,8 @@ function remember(next: typeof combined) {
 
 function drag(event: PointerEvent) {
   const left = views.getBoundingClientRect().left;
-  remember({ ...combined, share: dividerShare(event.clientX - left, views.clientWidth, combined.side) });
+  const edge = event.clientX - left - DIVIDER_WIDTH / 2;
+  remember({ ...combined, share: dividerShare(edge, views.clientWidth - DIVIDER_WIDTH, combined.side) });
 }
 
 /** The Combined Performance Layout: the Presentation App beside the Teleprompter in this one window. */
