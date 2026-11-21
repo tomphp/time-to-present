@@ -15,6 +15,13 @@ export interface Chips {
 
 const NO_CHIPS: Chips = { events: [], moved: [], selected: null };
 
+/** The Recordings not yet in the Script: those pending, the one being made, and what it Re-records. */
+export interface Recordings {
+  pending: PendingPassage[];
+  live: LiveTranscript | null;
+  reRecording: string[];
+}
+
 /**
  * Renders the Script as paragraphs of Word spans, each after the chips of the Named Events
  * anchored to it and any Pending Passage waiting to land before it, then the Live Transcript
@@ -26,9 +33,7 @@ export function renderScript(
   words: ScriptWord[],
   slot: Slot | null,
   chips = NO_CHIPS,
-  pending: PendingPassage[] = [],
-  live: LiveTranscript | null = null,
-  reRecording: string[] = [],
+  { pending = [], live = null, reRecording = [] }: Partial<Recordings> = {},
 ) {
   const struck = new Set([...reRecording, ...pending.flatMap((passage) => passage.replacing)]);
   const slotBeforeWord = slot && words[indexOf(words, slot.slotAfter) + 1]?.id;

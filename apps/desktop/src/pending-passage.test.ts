@@ -74,7 +74,7 @@ describe("rendering Pending Passages", () => {
     );
 
   it("shows a locked placeholder with its progress before its next Word", () => {
-    renderScript(root, words, null, undefined, [passage("r2", "w1", "w2", { kind: "transcribing", percent: 40 })]);
+    renderScript(root, words, null, undefined, { pending: [passage("r2", "w1", "w2", { kind: "transcribing", percent: 40 })] });
 
     expect(sequence()).toEqual(["w1", " ", "r2", " ", "w2", " ", "w3"]);
     const placeholder = root.querySelector<HTMLElement>('[data-recording-id="r2"]')!;
@@ -83,16 +83,15 @@ describe("rendering Pending Passages", () => {
   });
 
   it("falls back to after its previous Word, then to the end, as neighbours go", () => {
-    renderScript(root, words, null, undefined, [
-      passage("r2", "w1", "gone", { kind: "queued" }),
-      passage("r3", "gone", "gone", { kind: "queued" }),
-    ]);
+    renderScript(root, words, null, undefined, {
+      pending: [passage("r2", "w1", "gone", { kind: "queued" }), passage("r3", "gone", "gone", { kind: "queued" })],
+    });
 
     expect(sequence()).toEqual(["w1", " ", "r2", " ", "w2", " ", "w3", " ", "r3"]);
   });
 
   it("offers Retry and Discard on a failed one", () => {
-    renderScript(root, words, null, undefined, [passage("r2", "w3", null, { kind: "failed", reason: "No speech found" })]);
+    renderScript(root, words, null, undefined, { pending: [passage("r2", "w3", null, { kind: "failed", reason: "No speech found" })] });
 
     const placeholder = root.querySelector<HTMLElement>('[data-recording-id="r2"]')!;
     expect(placeholder.className).toBe("pending-passage failed");
@@ -110,26 +109,26 @@ describe("rendering Pending Passages", () => {
   });
 
   it("strikes through the Words a pending Re-record replaces, showing its progress after them", () => {
-    renderScript(root, words, null, undefined, [passage("r2", null, "w3", { kind: "queued" }, ["w1", "w2"])]);
+    renderScript(root, words, null, undefined, { pending: [passage("r2", null, "w3", { kind: "queued" }, ["w1", "w2"])] });
 
     expect(sequence()).toEqual(["w1", " ", "w2", " ", "r2", " ", "w3"]);
     expect(struck()).toEqual(["w1", "w2"]);
   });
 
   it("strikes through the Words being Re-recorded while capturing", () => {
-    renderScript(root, words, null, undefined, [], null, ["w2"]);
+    renderScript(root, words, null, undefined, { reRecording: ["w2"] });
 
     expect(struck()).toEqual(["w2"]);
   });
 
   it("stands alone in an empty Script", () => {
-    renderScript(root, [], null, undefined, [passage("r1", null, null, { kind: "queued" })]);
+    renderScript(root, [], null, undefined, { pending: [passage("r1", null, null, { kind: "queued" })] });
 
     expect(sequence()).toEqual(["r1"]);
   });
 
   it("runs Retry and Discard from the buttons on a failed one", () => {
-    renderScript(root, words, null, undefined, [passage("r2", "w3", null, { kind: "failed", reason: "No speech found" })]);
+    renderScript(root, words, null, undefined, { pending: [passage("r2", "w3", null, { kind: "failed", reason: "No speech found" })] });
     const actions = { retry: vi.fn(), discard: vi.fn() };
     onPendingAction(root, actions);
 
@@ -143,7 +142,7 @@ describe("rendering Pending Passages", () => {
   });
 
   it("reads a caret inside it as the start of the Word after it", () => {
-    renderScript(root, words, null, undefined, [passage("r2", "w1", "w2", { kind: "queued" })]);
+    renderScript(root, words, null, undefined, { pending: [passage("r2", "w1", "w2", { kind: "queued" })] });
     const text = root.querySelector('[data-recording-id="r2"]')!.firstChild!;
 
     document.getSelection()!.setBaseAndExtent(text, 3, text, 3);

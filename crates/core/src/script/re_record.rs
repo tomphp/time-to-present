@@ -4,8 +4,8 @@ use super::{Anchor, EditError, Script, Word};
 use crate::time::Ms;
 
 impl Script {
-    /// The given Words in Script order, each once.
-    pub fn in_script_order(&self, words: &[String]) -> Result<Vec<String>, EditError> {
+    /// The given Words in Script order, each once, so long as they are one unbroken run.
+    pub fn run_of(&self, words: &[String]) -> Result<Vec<String>, EditError> {
         if words.is_empty() {
             return Err(EditError::NothingSelected);
         }
@@ -15,6 +15,9 @@ impl Script {
         }
         positions.sort_unstable();
         positions.dedup();
+        if positions.windows(2).any(|pair| pair[1] != pair[0] + 1) {
+            return Err(EditError::NotOneRun);
+        }
         Ok(positions
             .iter()
             .map(|&i| self.words[i].id.clone())
@@ -30,7 +33,7 @@ impl Script {
         replaced: &[String],
         mut words: Vec<Word>,
     ) -> Vec<String> {
-        if let Some((last, replaced_last)) = words.last_mut().zip(self.last_of(replaced)) {
+        if let Some((last, replaced_last)) = words.last_mut().zip(self.last_replaced(replaced)) {
             last.break_after = replaced_last.break_after;
         }
         let moved = self.reanchor_by_fraction(replaced, &words);
@@ -68,7 +71,7 @@ impl Script {
         moved
     }
 
-    fn last_of(&self, ids: &[String]) -> Option<&Word> {
+    fn last_replaced(&self, ids: &[String]) -> Option<&Word> {
         self.words.iter().rev().find(|word| ids.contains(&word.id))
     }
 }

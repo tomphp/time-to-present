@@ -95,6 +95,8 @@ pub enum EditError {
     UnnamedEvent,
     #[error("no Words are selected")]
     NothingSelected,
+    #[error("the selected Words are not one unbroken run")]
+    NotOneRun,
     #[error("a percentage must be above zero")]
     InvalidPercent,
     #[error("only a Move, Trim or Named Event move can be dragged")]

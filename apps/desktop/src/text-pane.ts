@@ -7,6 +7,7 @@ import { renderScript } from "./pane-render";
 import { refreshPending, samePending, samePlacement } from "./pending-passage";
 import { insertionPointAt, recordingTargetAt } from "./recording-target";
 import { sameLayout } from "./script-view";
+import { sameIds } from "./selection";
 import type { Edit, ScriptWord, SessionState } from "./session";
 import { applyInput, type Input } from "./text-editing";
 
@@ -83,9 +84,7 @@ export function mountTextPane(
       words,
       slot,
       { events: next.namedEvents, moved: next.movedEvents, selected: selectedEvent },
-      next.pendingPassages,
-      next.liveTranscript,
-      next.reRecording,
+      { pending: next.pendingPassages, live: next.liveTranscript, reRecording: next.reRecording },
     );
     paintCurrent();
     if (caret) placeCaret(root, caret);
@@ -327,7 +326,6 @@ export function mountTextPane(
   };
 }
 
-const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((id, index) => id === b[index]);
 
 function inputFrom(event: InputEvent): Input | null {
   if (event.inputType === "insertText" && event.data) return { type: "insertText", text: event.data };

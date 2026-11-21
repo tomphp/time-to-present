@@ -285,3 +285,40 @@ fn words_a_pending_re_record_replaces_cannot_be_re_recorded_again() {
 
     assert!(matches!(overlapping, CaptureError::AlreadyReRecorded(word) if word == "w2"));
 }
+
+#[test]
+fn a_re_record_needs_one_unbroken_run_of_words() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.open_recording_bar(InputChoice::default());
+
+    let scattered = session.start_re_recording(&ids(&["w3", "w1"])).unwrap_err();
+
+    assert!(matches!(
+        scattered,
+        CaptureError::Script(EditError::NotOneRun)
+    ));
+}
+
+#[test]
+fn a_re_record_heard_while_the_clock_plays_keeps_its_range_until_the_clock_stops() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    let original = session.state();
+    re_record(&harness, &mut session, &["w2"]);
+    session.play();
+
+    harness.transcriber.hear(&[("planet.", 1_000, 1_400)]);
+    session.poll().unwrap();
+
+    let held = session.state();
+    assert_eq!(held.words, original.words);
+    assert_eq!(held.pending_passages[0].replacing, ids(&["w2"]));
+
+    session.pause();
+    session.poll().unwrap();
+    assert_eq!(texts(&session.state()), ["Hello,", "planet.", "Typed"]);
+
+    session.undo().unwrap();
+    assert_eq!(session.state().words, original.words);
+}

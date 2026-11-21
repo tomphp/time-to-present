@@ -40,7 +40,7 @@ impl Session {
 
     /// Starts a Re-record of the Words, which stay in the Script until its Transcription lands.
     pub fn start_re_recording(&mut self, words: &[String]) -> Result<(), CaptureError> {
-        let range = self.presentation.script.in_script_order(words)?;
+        let range = self.presentation.script.run_of(words)?;
         let mut pending = self.pending.iter().flat_map(Pending::replacing);
         if let Some(taken) = pending.find(|id| range.contains(id)) {
             return Err(CaptureError::AlreadyReRecorded(taken.clone()));

@@ -42,9 +42,10 @@ export function selectedIds(words: ScriptWord[], selection: WordSelection | null
 }
 
 export function sameSelection(words: ScriptWord[], a: WordSelection | null, b: WordSelection | null) {
-  const [first, second] = [selectedIds(words, a), selectedIds(words, b)];
-  return first.length === second.length && first.every((id, index) => id === second[index]);
+  return sameIds(selectedIds(words, a), selectedIds(words, b));
 }
+
+export const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((id, index) => id === b[index]);
 
 export const clickSelection = (current: WordSelection | null, word: string, extend: boolean): WordSelection => ({
   anchor: extend && current ? current.anchor : word,
