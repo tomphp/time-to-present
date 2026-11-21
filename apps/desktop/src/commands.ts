@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { InputChoice, Meter, SessionState } from "./session";
+import type { Edit, InputChoice, Meter, SessionState } from "./session";
 
 export const newPresentation = (parent: string, title: string) =>
   invoke<SessionState>("new_presentation", { parent, title });
@@ -15,6 +15,10 @@ export interface Recent {
 export const recentPresentations = () => invoke<Recent>("recent_presentations");
 
 export const renamePresentation = (title: string) => invoke<void>("rename_presentation", { title });
+
+export const edit = (edit: Edit) => invoke<void>("edit", { edit });
+export const undo = () => invoke<void>("undo");
+export const redo = () => invoke<void>("redo");
 
 export function onSessionState(render: (state: SessionState) => void) {
   void listen<SessionState>("session-state", (event) => render(event.payload));

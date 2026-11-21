@@ -21,8 +21,16 @@ body.editor {
   line-height: 1.6;
 }
 
-#script .empty {
-  color: GrayText;
+#script {
+  min-height: 3em;
+  outline: none;
+  white-space: pre-wrap;
+}
+
+#script .low-confidence {
+  text-decoration: underline wavy;
+  text-decoration-color: #e0a000;
+  text-underline-offset: 0.2em;
 }
 
 #error {

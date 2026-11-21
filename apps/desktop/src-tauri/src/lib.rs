@@ -1,10 +1,12 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use ttp_core::models::{InstalledModel, ModelManager, Progress, whisper_catalog};
 use ttp_core::platform::Platform;
+use ttp_core::script::Edit;
 use ttp_core::session::{Session, SessionState};
 use ttp_core::settings::Settings;
 use ttp_core::time::MonotonicTime;
@@ -12,6 +14,8 @@ use ttp_core::time::MonotonicTime;
 mod audio;
 mod macos;
 mod recording;
+
+const AUTOSAVE_POLL: Duration = Duration::from_millis(100);
 
 const SESSION_STATE: &str = "session-state";
 const START_WINDOW: &str = "start";
@@ -157,6 +161,46 @@ fn session_state(state: State<'_, App>) -> Option<SessionState> {
     state.session.lock().unwrap().as_ref().map(Session::state)
 }
 
+#[tauri::command]
+fn edit(state: State<'_, App>, edit: Edit) -> CommandResult<()> {
+    with_session(&state, |session| session.edit(edit).map_err(message))
+}
+
+#[tauri::command]
+fn undo(state: State<'_, App>) -> CommandResult<()> {
+    with_session(&state, |session| {
+        session.undo();
+        Ok(())
+    })
+}
+
+#[tauri::command]
+fn redo(state: State<'_, App>) -> CommandResult<()> {
+    with_session(&state, |session| {
+        session.redo();
+        Ok(())
+    })
+}
+
+fn with_session<T>(
+    state: &App,
+    f: impl FnOnce(&mut Session) -> CommandResult<T>,
+) -> CommandResult<T> {
+    let mut session = state.session.lock().unwrap();
+    f(session.as_mut().ok_or("no Presentation is open")?)
+}
+
+fn autosave(app: AppHandle) {
+    loop {
+        std::thread::sleep(AUTOSAVE_POLL);
+        if let Some(session) = app.state::<App>().session.lock().unwrap().as_mut()
+            && let Err(error) = session.tick()
+        {
+            eprintln!("autosave failed: {error}");
+        }
+    }
+}
+
 fn show(app: &AppHandle, state: &App, mut session: Session) -> CommandResult<SessionState> {
     let publisher = app.clone();
     session.subscribe(move |published| {
@@ -212,6 +256,11 @@ pub fn run() {
             });
             Ok(())
         })
+        .setup(|app| {
+            let handle = app.handle().clone();
+            std::thread::spawn(move || autosave(handle));
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             new_presentation,
             open_folder,
@@ -222,6 +271,9 @@ pub fn run() {
             remove_model,
             open_settings,
             session_state,
+            edit,
+            undo,
+            redo,
             recording::open_recording_bar,
             recording::select_input,
             recording::select_channel,

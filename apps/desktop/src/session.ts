@@ -5,6 +5,7 @@ export interface ScriptWord {
   text: string;
   start: number;
   duration: number;
+  confidence: number | null;
   breakAfter?: BreakAfter;
 }
 
@@ -40,3 +41,11 @@ export interface Meter {
   clipped: boolean;
   recorded: number | null;
 }
+
+export type Edit =
+  | { kind: "correct"; word: string; text: string }
+  | { kind: "split"; word: string; at: number }
+  | { kind: "merge"; word: string }
+  | { kind: "delete"; words: string[] }
+  | { kind: "setBreak"; word: string; breakAfter: BreakAfter | null }
+  | { kind: "insertWord"; after: string | null; text: string };

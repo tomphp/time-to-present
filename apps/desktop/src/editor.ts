@@ -1,10 +1,10 @@
-import { onSessionState, renamePresentation } from "./commands";
+import { edit, onSessionState, redo, renamePresentation, undo } from "./commands";
 import { renderRecordingBar } from "./recording-bar";
-import { scriptLayout } from "./script-view";
 import type { SessionState } from "./session";
+import { mountTextPane } from "./text-pane";
 
 const title = document.querySelector<HTMLInputElement>("#title")!;
-const script = document.querySelector<HTMLElement>("#script")!;
+const pane = mountTextPane(document.querySelector<HTMLElement>("#script")!, { edit, undo, redo });
 
 const error = document.querySelector<HTMLParagraphElement>("#error")!;
 
@@ -27,33 +27,8 @@ function render(state: SessionState) {
   savedTitle = state.title;
   document.title = state.title;
   title.value = state.title;
-  script.replaceChildren(...paragraphs(state));
+  pane.render(state.words);
   renderRecordingBar(state.recordingBar);
-}
-
-function paragraphs(state: SessionState): HTMLElement[] {
-  const layout = scriptLayout(state.words);
-  if (layout.length === 0) return [element("p", "This Script has no Words yet.", "empty")];
-  return layout.map((lines) => {
-    const paragraph = element("p");
-    lines.forEach((line, index) => {
-      if (index > 0) paragraph.append(document.createElement("br"));
-      line.forEach(({ id, text }, position) => {
-        if (position > 0) paragraph.append(" ");
-        const word = element("span", text);
-        word.dataset.wordId = id;
-        paragraph.append(word);
-      });
-    });
-    return paragraph;
-  });
-}
-
-function element(tag: string, text = "", className = "") {
-  const node = document.createElement(tag);
-  node.textContent = text;
-  if (className) node.className = className;
-  return node;
 }
 
 onSessionState(render);
