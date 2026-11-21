@@ -19,7 +19,7 @@ fn the_bar_opens_on_the_system_default_input_channel_1_by_default() {
     let bar = session.state().recording_bar.unwrap();
     let input = bar.input.unwrap();
     assert_eq!(bar.access, Access::Granted);
-    assert_eq!(input.input.name, BUILT_IN);
+    assert_eq!(input.device.name, BUILT_IN);
     assert_eq!(input.choice, choose(None, 1));
     assert_eq!(bar.notice, None);
     assert_eq!(harness.audio.opened().as_deref(), Some(BUILT_IN));
@@ -146,4 +146,20 @@ fn the_bar_cannot_close_while_recording() {
         CaptureError::AlreadyRecording
     ));
     assert!(session.state().recording_bar.unwrap().recording);
+}
+
+#[test]
+fn a_failed_choice_leaves_no_input_open_and_no_stale_notice() {
+    let harness = Harness::new();
+    let mut session = harness.create("Talk");
+    session.open_recording_bar(choose(Some(INTERFACE), 3));
+    harness.audio.unplug(BUILT_IN);
+    harness.audio.unplug(INTERFACE);
+
+    let error = session.select_input(choose(None, 1)).unwrap_err();
+
+    let bar = session.state().recording_bar.unwrap();
+    assert!(matches!(error, CaptureError::NoInput));
+    assert_eq!((bar.input, bar.notice), (None, None));
+    assert_eq!(harness.audio.opened(), None);
 }

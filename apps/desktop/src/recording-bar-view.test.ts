@@ -15,7 +15,7 @@ const motu = { name: "MOTU M2", channels: 2, sampleRate: 44100 };
 const bar = (device: string | null, recording = false): RecordingBarState => ({
   access: "granted",
   inputs: [builtIn, motu],
-  input: { choice: { device, channel: 1 }, input: device === null ? builtIn : motu },
+  input: { choice: { device, channel: 1 }, device: device === null ? builtIn : motu },
   notice: null,
   recording,
 });

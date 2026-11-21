@@ -3,6 +3,7 @@ import {
   closeRecordingBar,
   onMeter,
   openRecordingBar,
+  selectChannel,
   selectInput,
   startRecording,
   stopRecording,
@@ -90,9 +91,6 @@ export function renderRecordingBar(state: RecordingBarState | null) {
   if (!state.recording) setConfirming(false);
 }
 
-const chooseInput = act(() =>
-  selectInput({ device: device.value || null, channel: Number(channel.value) || 1 }),
-);
 
 function requestCancel() {
   const action = escapeAction(bar?.recording ?? false, recorded, !confirmCancel.hidden);
@@ -119,11 +117,8 @@ onMeter(({ peak, clipped, recorded: ms }) => {
   }
 });
 
-device.addEventListener("change", () => {
-  channel.value = "1";
-  chooseInput();
-});
-channel.addEventListener("change", chooseInput);
+device.addEventListener("change", act(() => selectInput({ device: device.value || null, channel: 1 })));
+channel.addEventListener("change", act(() => selectChannel(Number(channel.value))));
 clip.addEventListener("click", () => setClipped(false));
 start.addEventListener("click", act(startRecording));
 stop.addEventListener("click", act(stopRecording));

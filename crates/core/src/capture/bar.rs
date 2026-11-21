@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use super::pipeline::Pipeline;
+use super::pipeline::{Pipeline, RecordingWriter};
 use super::{Access, ActiveInput, CaptureError, Input, InputChoice, RecordingBarState, Taps};
 use crate::platform::Platform;
 use crate::store::Recording;
@@ -13,7 +13,7 @@ pub struct RecordingBar {
     active: Option<ActiveInput>,
     notice: Option<String>,
     live: Option<Live>,
-    take: Option<Take>,
+    recording: Option<ActiveRecording>,
 }
 
 struct Live {
@@ -21,7 +21,7 @@ struct Live {
     _stream: Box<dyn Send>,
 }
 
-struct Take {
+struct ActiveRecording {
     recording: Recording,
     path: PathBuf,
     _app_nap: Box<dyn Send>,
@@ -35,7 +35,7 @@ impl RecordingBar {
             active: None,
             notice: None,
             live: None,
-            take: None,
+            recording: None,
         };
         if bar.access == Access::Granted
             && let Err(error) = bar.select(platform, choice, taps)
@@ -54,22 +54,23 @@ impl RecordingBar {
         if self.access == Access::Denied {
             return Err(CaptureError::NoAccess);
         }
-        if self.take.is_some() {
+        if self.recording.is_some() {
             return Err(CaptureError::AlreadyRecording);
         }
         self.live = None;
         self.active = None;
+        self.notice = None;
         self.inputs = platform.audio.inputs();
         let (active, notices) = resolve(&self.inputs, platform.audio.default_input(), choice)?;
         self.notice = (!notices.is_empty()).then(|| notices.join(" "));
         let pipeline = Arc::new(Mutex::new(Pipeline::new(
-            &active.input,
+            &active.device,
             active.choice.channel,
             taps.clone(),
         )));
         let audio = pipeline.clone();
         let stream = platform.audio.open(
-            &active.input,
+            &active.device,
             Box::new(move |frames| audio.lock().unwrap().process(frames)),
         )?;
         self.live = Some(Live {
@@ -81,7 +82,7 @@ impl RecordingBar {
     }
 
     pub fn is_recording(&self) -> bool {
-        self.take.is_some()
+        self.recording.is_some()
     }
 
     pub fn start(
@@ -90,11 +91,19 @@ impl RecordingBar {
         recording: Recording,
         path: PathBuf,
     ) -> Result<(), CaptureError> {
-        if self.take.is_some() {
+        if self.recording.is_some() {
             return Err(CaptureError::AlreadyRecording);
         }
-        self.live()?.lock().unwrap().start(&path)?;
-        self.take = Some(Take {
+        let pipeline = self.live()?;
+        let sample_rate = self
+            .active
+            .as_ref()
+            .ok_or(CaptureError::NoInput)?
+            .device
+            .sample_rate;
+        let writer = RecordingWriter::create(&path, sample_rate)?;
+        pipeline.lock().unwrap().record_into(writer);
+        self.recording = Some(ActiveRecording {
             recording,
             path,
             _app_nap: platform.app_nap.hold_off("Recording"),
@@ -103,16 +112,27 @@ impl RecordingBar {
     }
 
     pub fn stop(&mut self) -> Result<Recording, CaptureError> {
-        let take = self.take.take().ok_or(CaptureError::NotRecording)?;
-        self.live()?.lock().unwrap().finish()?;
-        Ok(take.recording)
+        let (writer, active) = self.stop_writing()?;
+        writer.finalize()?;
+        Ok(active.recording)
     }
 
     pub fn cancel(&mut self) -> Result<(), CaptureError> {
-        let take = self.take.take().ok_or(CaptureError::NotRecording)?;
-        self.live()?.lock().unwrap().discard();
-        std::fs::remove_file(take.path)?;
+        let (writer, active) = self.stop_writing()?;
+        drop(writer);
+        std::fs::remove_file(active.path)?;
         Ok(())
+    }
+
+    fn stop_writing(&mut self) -> Result<(RecordingWriter, ActiveRecording), CaptureError> {
+        let writer = self
+            .live()?
+            .lock()
+            .unwrap()
+            .stop_recording()
+            .ok_or(CaptureError::NotRecording)?;
+        let active = self.recording.take().ok_or(CaptureError::NotRecording)?;
+        Ok((writer, active))
     }
 
     pub fn state(&self) -> RecordingBarState {
@@ -170,7 +190,7 @@ fn resolve(
     Ok((
         ActiveInput {
             choice: InputChoice { device, channel },
-            input: input.clone(),
+            device: input.clone(),
         },
         notices,
     ))

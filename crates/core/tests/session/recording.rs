@@ -2,7 +2,7 @@ use std::fs;
 
 use hound::{SampleFormat, WavReader, WavSpec};
 use serde_json::{Value, json};
-use ttp_core::capture::InputChoice;
+use ttp_core::capture::{CaptureError, InputChoice};
 use ttp_core::store::Recording;
 
 use crate::support::{Harness, INTERFACE};
@@ -117,7 +117,7 @@ fn a_new_recording_never_takes_the_name_of_a_wav_already_in_recordings() {
     let harness = Harness::new();
     let mut session = harness.create("Talk");
     let folder = session.state().folder;
-    fs::write(folder.join("recordings/r1.wav"), "interrupted take").unwrap();
+    fs::write(folder.join("recordings/r1.wav"), "interrupted recording").unwrap();
     session.open_recording_bar(InputChoice::default());
 
     session.start_recording().unwrap();
@@ -126,7 +126,7 @@ fn a_new_recording_never_takes_the_name_of_a_wav_already_in_recordings() {
     assert_eq!(recording.id, "r2");
     assert_eq!(
         fs::read_to_string(folder.join("recordings/r1.wav")).unwrap(),
-        "interrupted take"
+        "interrupted recording"
     );
 }
 
@@ -145,4 +145,24 @@ fn app_nap_is_held_off_only_while_recording() {
     session.start_recording().unwrap();
     session.cancel_recording().unwrap();
     assert!(!harness.app_nap.held());
+}
+
+#[test]
+fn recording_needs_the_bar_open_and_stopping_needs_a_recording() {
+    let harness = Harness::new();
+    let mut session = harness.create("Talk");
+
+    assert!(matches!(
+        session.start_recording().unwrap_err(),
+        CaptureError::BarClosed
+    ));
+    session.open_recording_bar(InputChoice::default());
+    assert!(matches!(
+        session.stop_recording().unwrap_err(),
+        CaptureError::NotRecording
+    ));
+    assert!(matches!(
+        session.cancel_recording().unwrap_err(),
+        CaptureError::NotRecording
+    ));
 }

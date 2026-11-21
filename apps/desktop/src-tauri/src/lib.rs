@@ -224,6 +224,7 @@ pub fn run() {
             session_state,
             recording::open_recording_bar,
             recording::select_input,
+            recording::select_channel,
             recording::close_recording_bar,
             recording::start_recording,
             recording::stop_recording,

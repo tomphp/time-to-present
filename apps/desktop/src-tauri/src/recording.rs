@@ -38,6 +38,19 @@ pub fn select_input(state: State<'_, App>, choice: InputChoice) -> CommandResult
         .map_err(message)
 }
 
+/// Keeps the remembered device even while it is missing and the bar has fallen back.
+#[tauri::command]
+pub fn select_channel(state: State<'_, App>, channel: u16) -> CommandResult<()> {
+    let remembered = state.settings.lock().unwrap().input().clone();
+    select_input(
+        state,
+        InputChoice {
+            channel,
+            ..remembered
+        },
+    )
+}
+
 #[tauri::command]
 pub fn close_recording_bar(state: State<'_, App>) -> CommandResult<()> {
     with_session(&state, Session::close_recording_bar)

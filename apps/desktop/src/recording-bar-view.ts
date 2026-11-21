@@ -34,5 +34,5 @@ export function inputOptions({ inputs, input }: RecordingBarState) {
 }
 
 export function channelOptions({ input }: RecordingBarState) {
-  return Array.from({ length: input?.input.channels ?? 0 }, (_, index) => index + 1);
+  return Array.from({ length: input?.device.channels ?? 0 }, (_, index) => index + 1);
 }

@@ -59,11 +59,13 @@ pub struct Pipeline {
     peak: f32,
     clipped: bool,
     metered: u32,
-    take: Option<Take>,
+    writer: Option<RecordingWriter>,
     taps: Arc<Taps>,
 }
 
-struct Take {
+/// The WAV of a running Recording and its 16 kHz feed. It is made and finalized outside the
+/// Pipeline, so the audio thread never waits on that file I/O.
+pub struct RecordingWriter {
     wav: WavWriter<BufWriter<File>>,
     frames: u64,
     feed: Resampler,
@@ -79,7 +81,7 @@ impl Pipeline {
             peak: 0.0,
             clipped: false,
             metered: 0,
-            take: None,
+            writer: None,
             taps,
         }
     }
@@ -90,43 +92,22 @@ impl Pipeline {
             .map(|frame| frame[self.channel])
             .collect();
         for &sample in &mono {
-            if let Some(take) = &mut self.take {
-                take.write(sample);
+            if let Some(writer) = &mut self.writer {
+                writer.write(sample);
             }
             self.measure(sample);
         }
-        if let Some(take) = &mut self.take {
-            self.taps.feed(&take.feed.process(&mono));
+        if let Some(writer) = &mut self.writer {
+            self.taps.feed(&writer.feed.process(&mono));
         }
     }
 
-    pub fn start(&mut self, path: &Path) -> Result<(), CaptureError> {
-        let spec = WavSpec {
-            channels: 1,
-            sample_rate: self.sample_rate,
-            bits_per_sample: 24,
-            sample_format: SampleFormat::Int,
-        };
-        self.take = Some(Take {
-            wav: WavWriter::create(path, spec)?,
-            frames: 0,
-            feed: Resampler::new(self.sample_rate, FEED_SAMPLE_RATE),
-            failure: None,
-        });
-        Ok(())
+    pub fn record_into(&mut self, writer: RecordingWriter) {
+        self.writer = Some(writer);
     }
 
-    pub fn finish(&mut self) -> Result<(), CaptureError> {
-        let take = self.take.take().ok_or(CaptureError::NotRecording)?;
-        if let Some(failure) = take.failure {
-            return Err(failure.into());
-        }
-        take.wav.finalize()?;
-        Ok(())
-    }
-
-    pub fn discard(&mut self) {
-        self.take = None;
+    pub fn stop_recording(&mut self) -> Option<RecordingWriter> {
+        self.writer.take()
     }
 
     fn measure(&mut self, sample: f32) {
@@ -137,9 +118,9 @@ impl Pipeline {
             return;
         }
         let recorded = self
-            .take
+            .writer
             .as_ref()
-            .map(|take| (take.frames * 1000 / u64::from(self.sample_rate)) as Ms);
+            .map(|writer| (writer.frames * 1000 / u64::from(self.sample_rate)) as Ms);
         self.taps.meter(Meter {
             peak: self.peak,
             clipped: self.clipped,
@@ -151,7 +132,30 @@ impl Pipeline {
     }
 }
 
-impl Take {
+impl RecordingWriter {
+    pub fn create(path: &Path, sample_rate: u32) -> Result<Self, CaptureError> {
+        let spec = WavSpec {
+            channels: 1,
+            sample_rate,
+            bits_per_sample: 24,
+            sample_format: SampleFormat::Int,
+        };
+        Ok(Self {
+            wav: WavWriter::create(path, spec)?,
+            frames: 0,
+            feed: Resampler::new(sample_rate, FEED_SAMPLE_RATE),
+            failure: None,
+        })
+    }
+
+    pub fn finalize(self) -> Result<(), CaptureError> {
+        if let Some(failure) = self.failure {
+            return Err(failure.into());
+        }
+        self.wav.finalize()?;
+        Ok(())
+    }
+
     fn write(&mut self, sample: f32) {
         let value = (sample.clamp(-1.0, 1.0) * FULL_SCALE_24_BIT).round() as i32;
         if let Err(failure) = self.wav.write_sample(value) {

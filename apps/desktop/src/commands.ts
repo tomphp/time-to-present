@@ -48,6 +48,8 @@ export const openRecordingBar = () => invoke<void>("open_recording_bar");
 
 export const selectInput = (choice: InputChoice) => invoke<void>("select_input", { choice });
 
+export const selectChannel = (channel: number) => invoke<void>("select_channel", { channel });
+
 export const closeRecordingBar = () => invoke<void>("close_recording_bar");
 
 export const startRecording = () => invoke<void>("start_recording");

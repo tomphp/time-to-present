@@ -5,7 +5,7 @@ use crate::store::{self, Recording};
 impl Session {
     /// Opens the recording bar on the chosen input, asking for microphone access first.
     pub fn open_recording_bar(&mut self, choice: InputChoice) {
-        self.bar = None;
+        drop(self.bar.take());
         self.bar = Some(RecordingBar::open(&self.platform, choice, &self.taps));
         self.publish();
     }

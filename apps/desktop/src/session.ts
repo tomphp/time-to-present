@@ -30,7 +30,7 @@ export interface InputChoice {
 export interface RecordingBarState {
   access: "granted" | "denied";
   inputs: Input[];
-  input: { choice: InputChoice; input: Input } | null;
+  input: { choice: InputChoice; device: Input } | null;
   notice: string | null;
   recording: boolean;
 }

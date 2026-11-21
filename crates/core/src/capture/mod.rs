@@ -59,7 +59,7 @@ impl Default for InputChoice {
 #[serde(rename_all = "camelCase")]
 pub struct ActiveInput {
     pub choice: InputChoice,
-    pub input: Input,
+    pub device: Input,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -72,7 +72,7 @@ pub struct RecordingBarState {
     pub recording: bool,
 }
 
-/// The input level since the last Meter, and how long the Recording has run, if one is.
+/// The input's peak level since the previous Meter, and how long the Recording has run, if one is.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct Meter {
     pub peak: f32,
