@@ -1,0 +1,45 @@
+{
+  "script": {
+    "words": [
+      {"id": "w1", "text": "One", "gap": 200, "duration": 300, "recordingId": null, "audioStart": null, "audioEnd": null, "confidence": null},
+      {"id": "w2", "text": "two", "gap": 100, "duration": 300, "recordingId": null, "audioStart": null, "audioEnd": null, "confidence": null},
+      {"id": "w3", "text": "three.", "gap": 100, "duration": 300, "recordingId": null, "audioStart": null, "audioEnd": null, "confidence": null}
+    ],
+    "namedEvents": [
+      {"id": "e1", "name": "slide", "data": {"index": 1}, "anchor": "scriptStart", "offset": 0},
+      {"id": "e2", "name": "slide", "data": {"index": 2}, "anchor": "w2", "offset": 0},
+      {"id": "e3", "name": "flash", "anchor": "w3", "offset": 500}
+    ]
+  },
+  "steps": [
+    {"action": "speed", "speed": 3.0},
+    {"action": "speed", "speed": 2.0},
+    {"action": "speed", "speed": 0.1},
+    {"action": "speed", "speed": 1.12},
+    {"action": "speed", "speed": 1.0},
+    {"action": "play"},
+    {"action": "advance", "ms": 100},
+    {"action": "speed", "speed": 1.5},
+    {"action": "advance", "ms": 100},
+    {"action": "pause"},
+    {"action": "seek", "scriptTime": 600},
+    {"action": "reset"},
+    {"action": "speed", "speed": 1.0}
+  ],
+  "stream": [
+    {"type": "clock", "state": "ready", "scriptTime": 0, "speed": 2.0, "cause": "speed"},
+    {"type": "clock", "state": "ready", "scriptTime": 0, "speed": 0.5, "cause": "speed"},
+    {"type": "clock", "state": "ready", "scriptTime": 0, "speed": 1.1, "cause": "speed"},
+    {"type": "clock", "state": "ready", "scriptTime": 0, "speed": 1.0, "cause": "speed"},
+    {"type": "clock", "state": "playing", "scriptTime": 0, "speed": 1.0, "cause": "play"},
+    {"type": "namedEvent", "id": "e1", "name": "slide", "data": {"index": 1}, "scriptTime": 0},
+    {"type": "tick", "scriptTime": 100},
+    {"type": "clock", "state": "playing", "scriptTime": 100, "speed": 1.5, "cause": "speed"},
+    {"type": "word", "id": "w1", "text": "One", "start": 200, "duration": 300},
+    {"type": "tick", "scriptTime": 250},
+    {"type": "clock", "state": "paused", "scriptTime": 250, "speed": 1.5, "cause": "pause"},
+    {"type": "snapshot", "protocolVersion": 1, "scriptVersion": 1, "clock": {"state": "paused", "scriptTime": 600, "speed": 1.5}, "currentWord": {"id": "w2", "text": "two", "start": 600, "duration": 300}, "passedEvents": [{"id": "e1", "name": "slide", "data": {"index": 1}, "scriptTime": 0}, {"id": "e2", "name": "slide", "data": {"index": 2}, "scriptTime": 600}]},
+    {"type": "clock", "state": "ready", "scriptTime": 0, "speed": 1.5, "cause": "reset"},
+    {"type": "clock", "state": "ready", "scriptTime": 0, "speed": 1.0, "cause": "speed"}
+  ]
+}

@@ -1,0 +1,617 @@
+{
+  "state": {
+    "folder": "",
+    "liveTranscript": null,
+    "locked": false,
+    "movedEvents": [],
+    "namedEvents": [
+      {
+        "anchor": "scriptStart",
+        "data": {
+          "index": 1
+        },
+        "id": "e1",
+        "name": "slide",
+        "offset": 0,
+        "time": 0
+      },
+      {
+        "anchor": "w4",
+        "data": {
+          "index": 2
+        },
+        "id": "e2",
+        "name": "slide",
+        "offset": 0,
+        "time": 2500
+      }
+    ],
+    "pendingPassages": [],
+    "previewing": false,
+    "reRecording": [],
+    "recordingBar": null,
+    "scriptEnd": 5850,
+    "title": "Rehearsal",
+    "words": [
+      {
+        "audioEnd": null,
+        "audioStart": null,
+        "confidence": null,
+        "duration": 300,
+        "gap": 500,
+        "id": "w1",
+        "recordingId": null,
+        "start": 500,
+        "text": "Good"
+      },
+      {
+        "audioEnd": null,
+        "audioStart": null,
+        "confidence": null,
+        "duration": 400,
+        "gap": 100,
+        "id": "w2",
+        "recordingId": null,
+        "start": 900,
+        "text": "morning,"
+      },
+      {
+        "audioEnd": null,
+        "audioStart": null,
+        "breakAfter": "paragraph",
+        "confidence": null,
+        "duration": 500,
+        "gap": 100,
+        "id": "w3",
+        "recordingId": null,
+        "start": 1400,
+        "text": "everyone."
+      },
+      {
+        "audioEnd": null,
+        "audioStart": null,
+        "confidence": null,
+        "duration": 300,
+        "gap": 600,
+        "id": "w4",
+        "recordingId": null,
+        "start": 2500,
+        "text": "Today"
+      },
+      {
+        "audioEnd": null,
+        "audioStart": null,
+        "confidence": null,
+        "duration": 150,
+        "gap": 100,
+        "id": "w5",
+        "recordingId": null,
+        "start": 2900,
+        "text": "we"
+      },
+      {
+        "audioEnd": null,
+        "audioStart": null,
+        "breakAfter": "line",
+        "confidence": null,
+        "duration": 400,
+        "gap": 100,
+        "id": "w6",
+        "recordingId": null,
+        "start": 3150,
+        "text": "rehearse"
+      },
+      {
+        "audioEnd": null,
+        "audioStart": null,
+        "confidence": null,
+        "duration": 200,
+        "gap": 1200,
+        "id": "w7",
+        "recordingId": null,
+        "start": 4750,
+        "text": "with"
+      },
+      {
+        "audioEnd": null,
+        "audioStart": null,
+        "confidence": null,
+        "duration": 100,
+        "gap": 100,
+        "id": "w8",
+        "recordingId": null,
+        "start": 5050,
+        "text": "a"
+      },
+      {
+        "audioEnd": null,
+        "audioStart": null,
+        "confidence": null,
+        "duration": 600,
+        "gap": 100,
+        "id": "w9",
+        "recordingId": null,
+        "start": 5250,
+        "text": "teleprompter."
+      }
+    ]
+  },
+  "stream": [
+    {
+      "at": 0,
+      "event": {
+        "clock": {
+          "scriptTime": 0,
+          "speed": 1.0,
+          "state": "ready"
+        },
+        "currentWord": null,
+        "passedEvents": [],
+        "protocolVersion": 1,
+        "scriptVersion": 1,
+        "type": "snapshot"
+      }
+    },
+    {
+      "at": 0,
+      "event": {
+        "cause": "play",
+        "scriptTime": 0,
+        "speed": 1.0,
+        "state": "playing",
+        "type": "clock"
+      }
+    },
+    {
+      "at": 0,
+      "event": {
+        "data": {
+          "index": 1
+        },
+        "id": "e1",
+        "name": "slide",
+        "scriptTime": 0,
+        "type": "namedEvent"
+      }
+    },
+    {
+      "at": 100,
+      "event": {
+        "scriptTime": 100,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 200,
+      "event": {
+        "scriptTime": 200,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 300,
+      "event": {
+        "scriptTime": 300,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 400,
+      "event": {
+        "scriptTime": 400,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 500,
+      "event": {
+        "duration": 300,
+        "id": "w1",
+        "start": 500,
+        "text": "Good",
+        "type": "word"
+      }
+    },
+    {
+      "at": 500,
+      "event": {
+        "scriptTime": 500,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 600,
+      "event": {
+        "scriptTime": 600,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 700,
+      "event": {
+        "scriptTime": 700,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 800,
+      "event": {
+        "scriptTime": 800,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 900,
+      "event": {
+        "duration": 400,
+        "id": "w2",
+        "start": 900,
+        "text": "morning,",
+        "type": "word"
+      }
+    },
+    {
+      "at": 900,
+      "event": {
+        "scriptTime": 900,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 1000,
+      "event": {
+        "scriptTime": 1000,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 1100,
+      "event": {
+        "scriptTime": 1100,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 1200,
+      "event": {
+        "scriptTime": 1200,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 1300,
+      "event": {
+        "scriptTime": 1300,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 1400,
+      "event": {
+        "duration": 500,
+        "id": "w3",
+        "start": 1400,
+        "text": "everyone.",
+        "type": "word"
+      }
+    },
+    {
+      "at": 1400,
+      "event": {
+        "scriptTime": 1400,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 1500,
+      "event": {
+        "scriptTime": 1500,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 1600,
+      "event": {
+        "scriptTime": 1600,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 1700,
+      "event": {
+        "scriptTime": 1700,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 1800,
+      "event": {
+        "scriptTime": 1800,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 1900,
+      "event": {
+        "scriptTime": 1900,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 2000,
+      "event": {
+        "scriptTime": 2000,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 2000,
+      "event": {
+        "cause": "pause",
+        "scriptTime": 2000,
+        "speed": 1.0,
+        "state": "paused",
+        "type": "clock"
+      }
+    },
+    {
+      "at": 3000,
+      "event": {
+        "cause": "play",
+        "scriptTime": 2000,
+        "speed": 1.0,
+        "state": "playing",
+        "type": "clock"
+      }
+    },
+    {
+      "at": 3100,
+      "event": {
+        "scriptTime": 2100,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 3200,
+      "event": {
+        "scriptTime": 2200,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 3300,
+      "event": {
+        "scriptTime": 2300,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 3400,
+      "event": {
+        "scriptTime": 2400,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 3500,
+      "event": {
+        "duration": 300,
+        "id": "w4",
+        "start": 2500,
+        "text": "Today",
+        "type": "word"
+      }
+    },
+    {
+      "at": 3500,
+      "event": {
+        "data": {
+          "index": 2
+        },
+        "id": "e2",
+        "name": "slide",
+        "scriptTime": 2500,
+        "type": "namedEvent"
+      }
+    },
+    {
+      "at": 3500,
+      "event": {
+        "scriptTime": 2500,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 3600,
+      "event": {
+        "scriptTime": 2600,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 3700,
+      "event": {
+        "scriptTime": 2700,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 3800,
+      "event": {
+        "scriptTime": 2800,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 3900,
+      "event": {
+        "duration": 150,
+        "id": "w5",
+        "start": 2900,
+        "text": "we",
+        "type": "word"
+      }
+    },
+    {
+      "at": 3900,
+      "event": {
+        "scriptTime": 2900,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 4000,
+      "event": {
+        "scriptTime": 3000,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 4000,
+      "event": {
+        "clock": {
+          "scriptTime": 4750,
+          "speed": 1.0,
+          "state": "playing"
+        },
+        "currentWord": {
+          "duration": 200,
+          "id": "w7",
+          "start": 4750,
+          "text": "with"
+        },
+        "passedEvents": [
+          {
+            "data": {
+              "index": 1
+            },
+            "id": "e1",
+            "name": "slide",
+            "scriptTime": 0
+          },
+          {
+            "data": {
+              "index": 2
+            },
+            "id": "e2",
+            "name": "slide",
+            "scriptTime": 2500
+          }
+        ],
+        "protocolVersion": 1,
+        "scriptVersion": 1,
+        "type": "snapshot"
+      }
+    },
+    {
+      "at": 4100,
+      "event": {
+        "scriptTime": 4850,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 4200,
+      "event": {
+        "scriptTime": 4950,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 4300,
+      "event": {
+        "duration": 100,
+        "id": "w8",
+        "start": 5050,
+        "text": "a",
+        "type": "word"
+      }
+    },
+    {
+      "at": 4300,
+      "event": {
+        "scriptTime": 5050,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 4400,
+      "event": {
+        "scriptTime": 5150,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 4500,
+      "event": {
+        "duration": 600,
+        "id": "w9",
+        "start": 5250,
+        "text": "teleprompter.",
+        "type": "word"
+      }
+    },
+    {
+      "at": 4500,
+      "event": {
+        "scriptTime": 5250,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 4600,
+      "event": {
+        "scriptTime": 5350,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 4700,
+      "event": {
+        "scriptTime": 5450,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 4800,
+      "event": {
+        "scriptTime": 5550,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 4900,
+      "event": {
+        "scriptTime": 5650,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 5000,
+      "event": {
+        "scriptTime": 5750,
+        "type": "tick"
+      }
+    },
+    {
+      "at": 5100,
+      "event": {
+        "cause": "end",
+        "scriptTime": 5850,
+        "speed": 1.0,
+        "state": "ended",
+        "type": "clock"
+      }
+    },
+    {
+      "at": 6200,
+      "event": {
+        "cause": "reset",
+        "scriptTime": 0,
+        "speed": 1.0,
+        "state": "ready",
+        "type": "clock"
+      }
+    }
+  ]
+}

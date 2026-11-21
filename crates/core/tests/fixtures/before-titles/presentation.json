@@ -1,0 +1,9 @@
+{
+  "formatVersion": 0,
+  "name": "Old talk",
+  "recordings": [],
+  "words": [
+    {"id":"w1","text":"Hi.","gap":100,"duration":200,"recordingId":null,"audioStart":null,"audioEnd":null,"confidence":null}
+  ],
+  "namedEvents": []
+}

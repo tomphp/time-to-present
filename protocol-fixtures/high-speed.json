@@ -1,0 +1,40 @@
+{
+  "script": {
+    "words": [
+      {"id": "w1", "text": "One", "gap": 200, "duration": 300, "recordingId": null, "audioStart": null, "audioEnd": null, "confidence": null},
+      {"id": "w2", "text": "two", "gap": 100, "duration": 300, "recordingId": null, "audioStart": null, "audioEnd": null, "confidence": null},
+      {"id": "w3", "text": "three.", "gap": 100, "duration": 300, "recordingId": null, "audioStart": null, "audioEnd": null, "confidence": null}
+    ],
+    "namedEvents": [
+      {"id": "e1", "name": "slide", "data": {"index": 1}, "anchor": "scriptStart", "offset": 0},
+      {"id": "e2", "name": "slide", "data": {"index": 2}, "anchor": "w2", "offset": 0},
+      {"id": "e3", "name": "flash", "anchor": "w3", "offset": 500}
+    ]
+  },
+  "steps": [
+    {"action": "speed", "speed": 2.0},
+    {"action": "play"},
+    {"action": "advance", "ms": 300},
+    {"action": "advance", "ms": 100},
+    {"action": "advance", "ms": 100},
+    {"action": "advance", "ms": 100},
+    {"action": "advance", "ms": 100},
+    {"action": "advance", "ms": 100}
+  ],
+  "stream": [
+    {"type": "clock", "state": "ready", "scriptTime": 0, "speed": 2.0, "cause": "speed"},
+    {"type": "clock", "state": "playing", "scriptTime": 0, "speed": 2.0, "cause": "play"},
+    {"type": "namedEvent", "id": "e1", "name": "slide", "data": {"index": 1}, "scriptTime": 0},
+    {"type": "word", "id": "w1", "text": "One", "start": 200, "duration": 300},
+    {"type": "word", "id": "w2", "text": "two", "start": 600, "duration": 300},
+    {"type": "namedEvent", "id": "e2", "name": "slide", "data": {"index": 2}, "scriptTime": 600},
+    {"type": "tick", "scriptTime": 600},
+    {"type": "tick", "scriptTime": 800},
+    {"type": "word", "id": "w3", "text": "three.", "start": 1000, "duration": 300},
+    {"type": "tick", "scriptTime": 1000},
+    {"type": "tick", "scriptTime": 1200},
+    {"type": "tick", "scriptTime": 1400},
+    {"type": "namedEvent", "id": "e3", "name": "flash", "data": null, "scriptTime": 1500},
+    {"type": "clock", "state": "ended", "scriptTime": 1500, "speed": 2.0, "cause": "end"}
+  ]
+}

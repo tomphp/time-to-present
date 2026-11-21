@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Start, editor, settings and Teleprompter windows",
+  "windows": ["start", "editor", "settings", "teleprompter"],
+  "permissions": ["core:default", "dialog:allow-open", "app-windows", "forward-key"]
+}

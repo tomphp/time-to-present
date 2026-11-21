@@ -1,0 +1,14 @@
+{
+  "name": "time-to-present",
+  "private": true,
+  "workspaces": [
+    "apps/desktop",
+    "packages/client",
+    "templates/presentation"
+  ],
+  "scripts": {
+    "test": "cargo test && npm test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev": "npm run tauri -w @time-to-present/desktop -- dev"
+  }
+}

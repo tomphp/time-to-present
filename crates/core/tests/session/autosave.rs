@@ -1,0 +1,159 @@
+use std::fs;
+use std::path::Path;
+
+use ttp_core::capture::InputChoice;
+use ttp_core::script::Edit;
+use ttp_core::session::InsertionPoint;
+
+use crate::support::{Harness, correct};
+
+fn saved_first_word(folder: &Path) -> String {
+    let json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(folder.join("presentation.json")).unwrap())
+            .unwrap();
+    json["words"][0]["text"].as_str().unwrap().to_string()
+}
+
+fn leftovers(folder: &Path) -> Vec<String> {
+    let mut names: Vec<String> = fs::read_dir(folder)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+        .filter(|name| name != "presentation.json" && name != "recordings")
+        .collect();
+    names.sort();
+    names
+}
+
+#[test]
+fn an_edit_is_saved_500_ms_after_it_and_not_before() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.edit(correct("w1", "Hullo,")).unwrap();
+
+    harness.advance(499);
+    session.poll().unwrap();
+    assert_eq!(saved_first_word(&folder), "Hello,");
+
+    harness.advance(1);
+    session.poll().unwrap();
+    assert_eq!(saved_first_word(&folder), "Hullo,");
+    assert_eq!(leftovers(&folder), Vec::<String>::new());
+}
+
+#[test]
+fn a_further_edit_restarts_the_wait() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.edit(correct("w1", "One")).unwrap();
+    harness.advance(300);
+    session.edit(correct("w1", "Two")).unwrap();
+
+    harness.advance(300);
+    session.poll().unwrap();
+    assert_eq!(saved_first_word(&folder), "Hello,");
+
+    harness.advance(200);
+    session.poll().unwrap();
+    assert_eq!(saved_first_word(&folder), "Two");
+}
+
+#[test]
+fn undo_and_redo_are_saved_like_any_edit() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.edit(correct("w1", "Hullo,")).unwrap();
+    harness.advance(500);
+    session.poll().unwrap();
+
+    session.undo().unwrap();
+    harness.advance(500);
+    session.poll().unwrap();
+
+    assert_eq!(saved_first_word(&folder), "Hello,");
+}
+
+#[test]
+fn flushing_saves_an_unsaved_edit_at_once() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.edit(correct("w1", "Hullo,")).unwrap();
+
+    session.flush().unwrap();
+
+    assert_eq!(saved_first_word(&folder), "Hullo,");
+    assert_eq!(leftovers(&folder), Vec::<String>::new());
+}
+
+#[test]
+fn a_new_word_never_gets_an_id_a_deleted_word_had_even_after_reopening() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session
+        .edit(Edit::InsertWord {
+            after: Some("w3".into()),
+            text: "gone".into(),
+        })
+        .unwrap();
+    let gone = session.state().words[3].word.id.clone();
+    session
+        .edit(Edit::Delete {
+            words: vec![gone.clone()],
+        })
+        .unwrap();
+    session.flush().unwrap();
+
+    let mut reopened = harness.open(&folder);
+    reopened
+        .edit(Edit::InsertWord {
+            after: Some("w3".into()),
+            text: "new".into(),
+        })
+        .unwrap();
+
+    assert_ne!(reopened.state().words[3].word.id, gone);
+}
+
+#[test]
+fn a_saved_presentation_opens_again_with_the_edit() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.edit(correct("w1", "Hullo,")).unwrap();
+    harness.advance(500);
+    session.poll().unwrap();
+    let edited = session.state();
+
+    assert_eq!(harness.open(&folder).state(), edited);
+}
+
+#[test]
+fn renaming_saves_a_pending_edit_with_the_new_title_at_once() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.edit(correct("w1", "Hullo,")).unwrap();
+
+    session.rename("Other").unwrap();
+
+    assert_eq!(saved_first_word(&folder), "Hullo,");
+    assert_eq!(harness.open(&folder).state(), session.state());
+    assert_eq!(leftovers(&folder), Vec::<String>::new());
+}
+
+#[test]
+fn stopping_a_recording_saves_a_pending_edit_with_it_and_leaves_undo_intact() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.edit(correct("w1", "Hullo,")).unwrap();
+    session.open_recording_bar(InputChoice {
+        device: None,
+        channel: 1,
+    });
+    session.start_recording(InsertionPoint::default()).unwrap();
+    harness.audio.play(&[0.1; 480]);
+
+    session.stop_recording().unwrap();
+
+    assert_eq!(saved_first_word(&folder), "Hullo,");
+    assert_eq!(harness.open(&folder).state().words, session.state().words);
+    session.undo().unwrap();
+    assert_eq!(session.state().words[0].word.text, "Hello,");
+}

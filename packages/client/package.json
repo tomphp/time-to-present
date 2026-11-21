@@ -1,0 +1,28 @@
+{
+  "name": "@time-to-present/client",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "files": [
+    "src",
+    "docs",
+    "examples",
+    "README.md",
+    "llms.txt",
+    "llms-full.txt"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "jsdom": "^31.0.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
+  }
+}
