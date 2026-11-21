@@ -21,7 +21,7 @@ fn an_event_reanchored_by_a_merge_or_delete_gets_a_moved_badge() {
     session.edit(merge("w2")).unwrap();
     assert_eq!(session.state().moved_events, ["e2"]);
 
-    session.undo();
+    session.undo().unwrap();
     session.edit(delete("w3")).unwrap();
     assert_eq!(session.state().moved_events, ["e2"]);
 }
@@ -61,7 +61,7 @@ fn selecting_an_event_clears_its_badge_without_an_undo_step() {
     session.select_event("e2");
     assert!(session.state().moved_events.is_empty());
 
-    session.undo();
+    session.undo().unwrap();
     assert_ne!(session.state().words, merged);
 }
 
@@ -86,10 +86,10 @@ fn undo_removes_the_badges_its_step_set_and_redo_brings_them_back() {
     let mut session = harness.open(&folder);
     session.edit(merge("w2")).unwrap();
 
-    session.undo();
+    session.undo().unwrap();
     assert!(session.state().moved_events.is_empty());
 
-    session.redo();
+    session.redo().unwrap();
     assert_eq!(session.state().moved_events, ["e2"]);
 }
 
@@ -105,7 +105,7 @@ fn undoing_a_later_edit_keeps_the_badges_an_earlier_one_set() {
         })
         .unwrap();
 
-    session.undo();
+    session.undo().unwrap();
 
     assert_eq!(session.state().moved_events, ["e2"]);
 }
@@ -135,7 +135,7 @@ fn undoing_a_step_keeps_a_badge_an_earlier_step_set_on_the_same_event() {
     session.edit(delete("w3")).unwrap();
     session.edit(delete("w2")).unwrap();
 
-    session.undo();
+    session.undo().unwrap();
 
     assert_eq!(session.state().moved_events, ["e2"]);
 }

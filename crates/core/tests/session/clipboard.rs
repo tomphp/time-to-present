@@ -180,7 +180,7 @@ fn a_cut_passage_pasted_after_its_words_came_back_by_undo_mints_new_ids() {
     let mut session = harness.open(&folder);
 
     session.cut(&ids(&["w3"])).unwrap();
-    session.undo();
+    session.undo().unwrap();
     paste(&mut session, Some("w3"), "Typed");
 
     let state = session.state();
@@ -197,10 +197,10 @@ fn undoing_a_move_takes_back_the_paste_and_its_badges_then_the_cut() {
     session.cut(&ids(&["w3"])).unwrap();
     paste(&mut session, None, "Typed");
 
-    session.undo();
+    session.undo().unwrap();
     assert_eq!(session.state().words.len(), 2);
     assert!(session.state().moved_events.is_empty());
-    session.undo();
+    session.undo().unwrap();
     assert_eq!(session.state(), original);
 }
 
@@ -214,7 +214,7 @@ fn copying_changes_nothing_and_takes_no_undo_step() {
     session.copy(&ids(&["w2"])).unwrap();
     assert_eq!(session.state(), cut);
 
-    session.undo();
+    session.undo().unwrap();
     assert_eq!(session.state().words.len(), 3);
 }
 
@@ -280,7 +280,7 @@ fn pasting_whitespace_changes_nothing() {
     paste(&mut session, Some("w1"), " \n ");
 
     assert_eq!(session.state(), original);
-    session.undo();
+    session.undo().unwrap();
     assert_eq!(session.state(), original);
 }
 
@@ -348,8 +348,8 @@ fn pasting_over_words_replaces_them_in_one_undo_step() {
     assert_eq!(session.state().words[0].word.text, "Fresh");
     assert_eq!(session.state().moved_events, ["e2"]);
 
-    session.undo();
-    session.undo();
+    session.undo().unwrap();
+    session.undo().unwrap();
     assert_eq!(session.state(), original);
 }
 

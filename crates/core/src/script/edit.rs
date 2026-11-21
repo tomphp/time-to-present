@@ -99,6 +99,8 @@ pub enum EditError {
     InvalidPercent,
     #[error("only a Move, Trim or Named Event move can be dragged")]
     NotDraggable,
+    #[error("the Script can't be edited while the clock is playing")]
+    ClockPlaying,
 }
 
 impl Edit {

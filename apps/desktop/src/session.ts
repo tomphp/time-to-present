@@ -34,6 +34,7 @@ export interface SessionState {
   scriptEnd: number;
   recordingBar: RecordingBarState | null;
   pendingPassages: PendingPassage[];
+  locked: boolean;
 }
 
 /** The caret between Words where a Recording lands: before a Word, or at the end. */
@@ -101,3 +102,43 @@ export interface Waveform {
   bucket: number;
   peaks: number[];
 }
+
+export type ClockState = "ready" | "playing" | "paused" | "ended";
+
+export interface ClockView {
+  state: ClockState;
+  scriptTime: number;
+  speed: number;
+}
+
+export interface WordPayload {
+  id: string;
+  text: string;
+  start: number;
+  duration: number;
+}
+
+export interface EventPayload {
+  id: string;
+  name: string;
+  data: unknown;
+  scriptTime: number;
+}
+
+export interface Snapshot {
+  protocolVersion: number;
+  scriptVersion: number;
+  clock: ClockView;
+  currentWord: WordPayload | null;
+  passedEvents: EventPayload[];
+}
+
+export type ClockCause = "play" | "pause" | "speed" | "end" | "reset";
+
+export type StreamEvent =
+  | ({ type: "snapshot" } & Snapshot)
+  | ({ type: "clock"; cause: ClockCause } & ClockView)
+  | { type: "tick"; scriptTime: number }
+  | ({ type: "word" } & WordPayload)
+  | ({ type: "namedEvent" } & EventPayload)
+  | { type: "closed"; reason: string };

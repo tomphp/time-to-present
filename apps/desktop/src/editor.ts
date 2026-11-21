@@ -1,3 +1,4 @@
+import { mountClockControl } from "./clock-control";
 import {
   copy,
   cut,
@@ -19,6 +20,7 @@ import { mountInspector } from "./inspector";
 import { eventNames, nextMoved } from "./named-events";
 import { onPendingAction } from "./pending-passage";
 import { mountRecordingBar } from "./recording-bar";
+import { act, showError } from "./report-error";
 import { sharedSelection } from "./selection";
 import type { SessionState } from "./session";
 import { nudgeOf } from "./timing-controls";
@@ -71,25 +73,20 @@ const inspector = mountInspector(document.querySelector<HTMLFormElement>("#inspe
 
 const recordingBar = mountRecordingBar(pane.insertionPoint);
 
-const error = document.querySelector<HTMLParagraphElement>("#error")!;
-
-function showError(reason: unknown) {
-  error.textContent = String(reason);
-  error.hidden = false;
-}
-
 onPendingAction(script, {
   retry: (recording) => retryTranscription(recording).catch(showError),
   discard: (recording) => discardTranscription(recording).catch(showError),
 });
 
-title.addEventListener("change", async () => {
-  error.hidden = true;
-  await renamePresentation(title.value).catch((reason) => {
-    showError(reason);
-    title.value = savedTitle;
-  });
-});
+title.addEventListener(
+  "change",
+  act(() =>
+    renamePresentation(title.value).catch((reason) => {
+      title.value = savedTitle;
+      throw reason;
+    }),
+  ),
+);
 
 title.addEventListener("keydown", (event) => {
   if (event.key === "Enter") title.blur();
@@ -108,7 +105,7 @@ document.addEventListener(
     const target = event.target as HTMLElement;
     const field = target.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
     const word = selection.ids()[0];
-    const timing = !field && !event.metaKey && !event.ctrlKey && word && nudgeOf(event, word);
+    const timing = !field && !current?.locked && !event.metaKey && !event.ctrlKey && word && nudgeOf(event, word);
     if (!timing) return;
     event.preventDefault();
     event.stopPropagation();
@@ -119,11 +116,12 @@ document.addEventListener(
 
 function showInspector() {
   const event = current?.namedEvents.find((named) => named.id === selected) ?? null;
-  inspector.render(current?.words ?? [], selection.ids(), event);
+  inspector.render(current?.words ?? [], selection.ids(), event, current?.locked ?? false);
 }
 
 /** Selecting a Named Event opens it in the event editor and clears its Moved badge. */
 function select(id: string | null) {
+  if (id && current?.locked) return;
   selected = id;
   pane.selectEvent(id);
   showInspector();
@@ -138,12 +136,13 @@ function render(state: SessionState) {
   savedTitle = state.title;
   document.title = state.title;
   title.value = state.title;
-  if (selected && !state.namedEvents.some((event) => event.id === selected)) eventEditor.close();
+  if (state.locked || (selected && !state.namedEvents.some((event) => event.id === selected))) eventEditor.close();
   selection.update(state.words);
   pane.render(state);
   showInspector();
-  timeline.render(state.words, state.namedEvents, state.movedEvents, state.scriptEnd, selection.ids());
+  timeline.render(state.words, state.namedEvents, state.movedEvents, state.scriptEnd, selection.ids(), state.locked);
   recordingBar.render(state.recordingBar);
 }
 
 onSessionState(render);
+mountClockControl();

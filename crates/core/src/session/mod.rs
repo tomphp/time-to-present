@@ -5,6 +5,7 @@ use std::sync::Arc;
 use serde::Serialize;
 
 use crate::capture::{RecordingBar, RecordingBarState, Taps};
+use crate::clock::{Clock, Snapshot, StreamEvent, Timeline};
 use crate::platform::Platform;
 use crate::script::{Edit, EditError, Ids, Script, TimedEvent, TimedWord};
 use crate::store::{self, Presentation, StoreError};
@@ -12,6 +13,7 @@ use crate::time::Ms;
 use crate::transcription::TranscriptionQueue;
 
 mod clipboard;
+mod clock;
 mod history;
 mod recording;
 mod transcription;
@@ -22,6 +24,7 @@ use transcription::Pending;
 pub use transcription::{InsertionPoint, PendingPassage, PendingPassageError, PendingStatus};
 
 type Listener = Box<dyn Fn(&SessionState) + Send>;
+type StreamListener = Box<dyn Fn(&StreamEvent) + Send>;
 
 /// How long after the last edit the Presentation is saved.
 pub const AUTOSAVE_DELAY: Ms = 500;
@@ -34,6 +37,7 @@ pub struct Session {
     clipboard: Clipboard,
     moved: HashSet<String>,
     listeners: Vec<Listener>,
+    stream_listeners: Vec<StreamListener>,
     platform: Platform,
     bar: Option<RecordingBar>,
     taps: Arc<Taps>,
@@ -41,6 +45,8 @@ pub struct Session {
     transcriptions: TranscriptionQueue,
     pending: Vec<Pending>,
     unsaved_since: Option<Ms>,
+    clock: Clock,
+    timeline: Timeline,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -54,6 +60,8 @@ pub struct SessionState {
     pub script_end: Ms,
     pub recording_bar: Option<RecordingBarState>,
     pub pending_passages: Vec<PendingPassage>,
+    /// The edit lock: Script commands are refused while the clock is playing.
+    pub locked: bool,
 }
 
 impl Session {
@@ -67,11 +75,14 @@ impl Session {
         Ok(Self {
             folder: folder.to_path_buf(),
             ids: Ids::after(&presentation.script),
+            clock: Clock::default(),
+            timeline: Timeline::of(&presentation.script, 1),
             presentation,
             history: History::default(),
             clipboard: Clipboard::default(),
             moved: HashSet::new(),
             listeners: Vec::new(),
+            stream_listeners: Vec::new(),
             bar: None,
             taps: Arc::default(),
             recording_at: None,
@@ -100,11 +111,13 @@ impl Session {
     /// Applies one edit (a Batch counts as one) as a single undo step, or leaves the Script
     /// untouched if any part of it fails or nothing changes.
     pub fn edit(&mut self, edit: Edit) -> Result<(), EditError> {
+        self.refuse_while_playing()?;
         self.change(|script, ids| Ok(((), script.apply(edit, ids)?)))
     }
 
     /// Takes the Words out onto the clipboard with their Named Events, as one undo step.
     pub fn cut(&mut self, words: &[String]) -> Result<(), EditError> {
+        self.refuse_while_playing()?;
         let passage = self.change(|script, _| Ok((script.cut(words)?, Vec::new())))?;
         self.clipboard.hold_cut(passage);
         Ok(())
@@ -125,6 +138,7 @@ impl Session {
         replacing: &[String],
         text: &str,
     ) -> Result<(), EditError> {
+        self.refuse_while_playing()?;
         let script = &self.presentation.script;
         let held = self.clipboard.paste(text, script, &mut self.ids);
         let pastes_held = held.is_some();
@@ -185,6 +199,7 @@ impl Session {
         if !edit.is_draggable() {
             return Err(EditError::NotDraggable);
         }
+        self.refuse_while_playing()?;
         let mut changed = base
             .clone()
             .unwrap_or_else(|| self.presentation.script.clone());
@@ -205,18 +220,22 @@ impl Session {
     }
 
     /// Undoes the last step, and with it the Moved badges that step set.
-    pub fn undo(&mut self) {
+    pub fn undo(&mut self) -> Result<(), EditError> {
+        self.refuse_while_playing()?;
         if let Some(undone) = self.history.undo(&mut self.presentation.script) {
             self.moved.retain(|id| !undone.contains(id));
             self.changed();
         }
+        Ok(())
     }
 
-    pub fn redo(&mut self) {
+    pub fn redo(&mut self) -> Result<(), EditError> {
+        self.refuse_while_playing()?;
         if let Some(redone) = self.history.redo(&mut self.presentation.script) {
             self.moved.extend(redone.iter().cloned());
             self.changed();
         }
+        Ok(())
     }
 
     /// Selecting a Named Event clears its Moved badge.
@@ -226,10 +245,20 @@ impl Session {
         }
     }
 
-    /// Runs the Session's background work: lands what the Transcriptions have reported, and
-    /// saves the Presentation once the autosave delay has passed since the last change.
-    /// Call it regularly.
-    pub fn tick(&mut self) -> Result<(), StoreError> {
+    /// Saves what is unsaved and tells every client the stream is over.
+    pub fn close(mut self) -> Result<(), StoreError> {
+        let flushed = self.flush();
+        self.broadcast(vec![StreamEvent::Closed {
+            reason: "closed".into(),
+        }]);
+        flushed
+    }
+
+    /// Call it about every 100 ms: it runs the clock, lands what the Transcriptions have
+    /// reported, then saves the Presentation once the autosave delay has passed since the last
+    /// change.
+    pub fn poll(&mut self) -> Result<(), StoreError> {
+        self.advance_clock();
         self.land_transcriptions();
         match self.unsaved_since {
             Some(since) if self.platform.time.now() - since >= AUTOSAVE_DELAY => self.flush(),
@@ -247,6 +276,13 @@ impl Session {
         saved
     }
 
+    /// Where the Performance stands now: what every connecting client receives first.
+    pub fn snapshot(&mut self) -> Snapshot {
+        self.advance_clock();
+        self.clock
+            .snapshot(&self.timeline, self.platform.time.now())
+    }
+
     pub fn state(&self) -> SessionState {
         SessionState {
             folder: self.folder.clone(),
@@ -257,6 +293,7 @@ impl Session {
             script_end: self.presentation.script.end(),
             recording_bar: self.bar.as_ref().map(RecordingBar::state),
             pending_passages: self.pending.iter().map(Pending::state).collect(),
+            locked: self.clock.is_playing(),
         }
     }
 
@@ -303,9 +340,31 @@ impl Session {
         Ok(())
     }
 
+    /// The edit lock, judged on the clock as it stands now rather than at the last poll.
+    fn refuse_while_playing(&mut self) -> Result<(), EditError> {
+        self.advance_clock();
+        if self.clock.is_playing() {
+            return Err(EditError::ClockPlaying);
+        }
+        Ok(())
+    }
+
+    /// A Script change: a new version to autosave, and a Snapshot of the clock over it.
     fn changed(&mut self) {
-        self.unsaved_since = Some(self.platform.time.now());
+        let now = self.platform.time.now();
+        self.unsaved_since = Some(now);
+        self.timeline = Timeline::of(&self.presentation.script, self.timeline.version + 1);
+        let events = self.clock.script_changed(&self.timeline, now);
+        self.broadcast(events);
         self.publish();
+    }
+
+    fn broadcast(&self, events: Vec<StreamEvent>) {
+        for event in &events {
+            self.stream_listeners
+                .iter()
+                .for_each(|listener| listener(event));
+        }
     }
 
     fn publish(&self) {

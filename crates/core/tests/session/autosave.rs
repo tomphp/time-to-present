@@ -5,14 +5,7 @@ use ttp_core::capture::InputChoice;
 use ttp_core::script::Edit;
 use ttp_core::session::InsertionPoint;
 
-use crate::support::Harness;
-
-fn correct(text: &str) -> Edit {
-    Edit::Correct {
-        word: "w1".into(),
-        text: text.into(),
-    }
-}
+use crate::support::{Harness, correct};
 
 fn saved_first_word(folder: &Path) -> String {
     let json: serde_json::Value =
@@ -35,14 +28,14 @@ fn leftovers(folder: &Path) -> Vec<String> {
 fn an_edit_is_saved_500_ms_after_it_and_not_before() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);
-    session.edit(correct("Hullo,")).unwrap();
+    session.edit(correct("w1", "Hullo,")).unwrap();
 
     harness.advance(499);
-    session.tick().unwrap();
+    session.poll().unwrap();
     assert_eq!(saved_first_word(&folder), "Hello,");
 
     harness.advance(1);
-    session.tick().unwrap();
+    session.poll().unwrap();
     assert_eq!(saved_first_word(&folder), "Hullo,");
     assert_eq!(leftovers(&folder), Vec::<String>::new());
 }
@@ -51,16 +44,16 @@ fn an_edit_is_saved_500_ms_after_it_and_not_before() {
 fn a_further_edit_restarts_the_wait() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);
-    session.edit(correct("One")).unwrap();
+    session.edit(correct("w1", "One")).unwrap();
     harness.advance(300);
-    session.edit(correct("Two")).unwrap();
+    session.edit(correct("w1", "Two")).unwrap();
 
     harness.advance(300);
-    session.tick().unwrap();
+    session.poll().unwrap();
     assert_eq!(saved_first_word(&folder), "Hello,");
 
     harness.advance(200);
-    session.tick().unwrap();
+    session.poll().unwrap();
     assert_eq!(saved_first_word(&folder), "Two");
 }
 
@@ -68,13 +61,13 @@ fn a_further_edit_restarts_the_wait() {
 fn undo_and_redo_are_saved_like_any_edit() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);
-    session.edit(correct("Hullo,")).unwrap();
+    session.edit(correct("w1", "Hullo,")).unwrap();
     harness.advance(500);
-    session.tick().unwrap();
+    session.poll().unwrap();
 
-    session.undo();
+    session.undo().unwrap();
     harness.advance(500);
-    session.tick().unwrap();
+    session.poll().unwrap();
 
     assert_eq!(saved_first_word(&folder), "Hello,");
 }
@@ -83,7 +76,7 @@ fn undo_and_redo_are_saved_like_any_edit() {
 fn flushing_saves_an_unsaved_edit_at_once() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);
-    session.edit(correct("Hullo,")).unwrap();
+    session.edit(correct("w1", "Hullo,")).unwrap();
 
     session.flush().unwrap();
 
@@ -124,9 +117,9 @@ fn a_new_word_never_gets_an_id_a_deleted_word_had_even_after_reopening() {
 fn a_saved_presentation_opens_again_with_the_edit() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);
-    session.edit(correct("Hullo,")).unwrap();
+    session.edit(correct("w1", "Hullo,")).unwrap();
     harness.advance(500);
-    session.tick().unwrap();
+    session.poll().unwrap();
     let edited = session.state();
 
     assert_eq!(harness.open(&folder).state(), edited);
@@ -136,7 +129,7 @@ fn a_saved_presentation_opens_again_with_the_edit() {
 fn renaming_saves_a_pending_edit_with_the_new_title_at_once() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);
-    session.edit(correct("Hullo,")).unwrap();
+    session.edit(correct("w1", "Hullo,")).unwrap();
 
     session.rename("Other").unwrap();
 
@@ -149,7 +142,7 @@ fn renaming_saves_a_pending_edit_with_the_new_title_at_once() {
 fn stopping_a_recording_saves_a_pending_edit_with_it_and_leaves_undo_intact() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);
-    session.edit(correct("Hullo,")).unwrap();
+    session.edit(correct("w1", "Hullo,")).unwrap();
     session.open_recording_bar(InputChoice {
         device: None,
         channel: 1,
@@ -161,6 +154,6 @@ fn stopping_a_recording_saves_a_pending_edit_with_it_and_leaves_undo_intact() {
 
     assert_eq!(saved_first_word(&folder), "Hullo,");
     assert_eq!(harness.open(&folder).state().words, session.state().words);
-    session.undo();
+    session.undo().unwrap();
     assert_eq!(session.state().words[0].word.text, "Hello,");
 }

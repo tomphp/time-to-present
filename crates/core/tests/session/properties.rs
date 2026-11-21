@@ -201,8 +201,8 @@ fn run(
     let state = session.state();
     let none = HashSet::new();
     match step {
-        Step::Undo => session.undo(),
-        Step::Redo => session.redo(),
+        Step::Undo => session.undo().unwrap(),
+        Step::Redo => session.redo().unwrap(),
         Step::Cut(ws) | Step::Copy(ws) if !state.words.is_empty() => {
             let words = pick_words(ws, &state);
             let cut = matches!(step, Step::Cut(_));
@@ -346,9 +346,9 @@ proptest! {
             if continues_drag(step, steps.get(index + 1)) {
                 continue;
             }
-            session.undo();
+            session.undo().unwrap();
             if session.state() != state {
-                session.redo();
+                session.redo().unwrap();
                 prop_assert_eq!(session.state(), state);
             }
         }

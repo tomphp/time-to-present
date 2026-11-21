@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use ttp_core::clock::TICK_INTERVAL;
 use ttp_core::models::{InstalledModel, ModelManager, Progress, whisper_catalog};
 use ttp_core::platform::Platform;
 use ttp_core::script::{Edit, EditError};
@@ -15,13 +16,15 @@ use ttp_core::transcription::SidecarTranscriber;
 use ttp_core::waveform::{self, Waveform};
 
 mod audio;
+mod clock;
 mod macos;
 mod recording;
 
-const TICK: Duration = Duration::from_millis(100);
+const TICK: Duration = Duration::from_millis(TICK_INTERVAL as u64);
 const SIDECAR: &str = "ttp-stt-sidecar";
 
 const SESSION_STATE: &str = "session-state";
+const SESSION_EVENT: &str = "session-event";
 const START_WINDOW: &str = "start";
 const EDITOR_WINDOW: &str = "editor";
 const SETTINGS_WINDOW: &str = "settings";
@@ -232,16 +235,16 @@ async fn recording_waveform(state: State<'_, App>, recording: String) -> Command
 #[tauri::command]
 fn undo(state: State<'_, App>) -> CommandResult<SessionState> {
     with_session(&state, |session| {
-        session.undo();
-        Ok::<_, String>(session.state())
+        session.undo()?;
+        Ok::<_, EditError>(session.state())
     })
 }
 
 #[tauri::command]
 fn redo(state: State<'_, App>) -> CommandResult<SessionState> {
     with_session(&state, |session| {
-        session.redo();
-        Ok::<_, String>(session.state())
+        session.redo()?;
+        Ok::<_, EditError>(session.state())
     })
 }
 
@@ -276,11 +279,11 @@ fn save_open_session(
     }
 }
 
-/// Lands Transcriptions and autosaves, as the Session asks to be ticked regularly.
+/// Runs the clock, lands Transcriptions and autosaves, as the Session asks to be polled regularly.
 fn tick(app: AppHandle) {
     loop {
         std::thread::sleep(TICK);
-        save_open_session(&app, "autosave", Session::tick);
+        save_open_session(&app, "polling the Session", Session::poll);
     }
 }
 
@@ -299,11 +302,19 @@ fn show(app: &AppHandle, state: &App, mut session: Session) -> CommandResult<Ses
     session.subscribe_meter(move |meter| {
         let _ = metering.emit(RECORDING_METER, meter);
     });
+    let streaming = app.clone();
+    session.subscribe_stream(move |event| {
+        let _ = streaming.emit(SESSION_EVENT, event);
+    });
     let opened = session.state();
     if let Err(error) = state.settings.lock().unwrap().add_recent(&opened.folder) {
         eprintln!("could not update the Recent list: {error}");
     }
-    *state.session.lock().unwrap() = Some(session);
+    if let Some(previous) = state.session.lock().unwrap().replace(session)
+        && let Err(error) = previous.close()
+    {
+        eprintln!("saving the previous Presentation failed: {error}");
+    }
     if app.get_webview_window(EDITOR_WINDOW).is_none() {
         WebviewWindowBuilder::new(app, EDITOR_WINDOW, WebviewUrl::App("editor.html".into()))
             .title(&opened.title)
@@ -377,7 +388,13 @@ pub fn run() {
             recording::stop_recording,
             recording::cancel_recording,
             recording::retry_transcription,
-            recording::discard_transcription
+            recording::discard_transcription,
+            clock::snapshot,
+            clock::play,
+            clock::pause,
+            clock::seek,
+            clock::set_speed,
+            clock::reset
         ])
         .build(tauri::generate_context!())
         .expect("error while building Time to Present")

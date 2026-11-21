@@ -1,0 +1,44 @@
+use super::Session;
+use crate::clock::{Clock, StreamEvent, Timeline};
+use crate::time::Ms;
+
+impl Session {
+    /// Receives every event the Session broadcasts from now on, in Script Time order.
+    pub fn subscribe_stream(&mut self, listener: impl Fn(&StreamEvent) + Send + 'static) {
+        self.stream_listeners.push(Box::new(listener));
+    }
+
+    pub fn play(&mut self) {
+        self.run_clock(Clock::play);
+    }
+
+    pub fn pause(&mut self) {
+        self.run_clock(Clock::pause);
+    }
+
+    pub fn seek(&mut self, script_time: Ms) {
+        self.run_clock(|clock, timeline, now| clock.seek(timeline, now, script_time));
+    }
+
+    pub fn set_speed(&mut self, factor: f64) {
+        self.run_clock(|clock, timeline, now| clock.set_speed(timeline, now, factor));
+    }
+
+    pub fn reset(&mut self) {
+        self.run_clock(Clock::reset);
+    }
+
+    pub(super) fn advance_clock(&mut self) {
+        self.run_clock(Clock::advance);
+    }
+
+    fn run_clock(&mut self, command: impl FnOnce(&mut Clock, &Timeline, Ms) -> Vec<StreamEvent>) {
+        let now = self.platform.time.now();
+        let was_playing = self.clock.is_playing();
+        let events = command(&mut self.clock, &self.timeline, now);
+        self.broadcast(events);
+        if self.clock.is_playing() != was_playing {
+            self.publish();
+        }
+    }
+}

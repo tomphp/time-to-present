@@ -9,9 +9,9 @@ import {
   stopRecording,
 } from "./commands";
 import { channelOptions, escapeAction, formatElapsed, inputOptions, meterFill, shortcut } from "./recording-bar-view";
+import { find } from "./dom";
+import { act } from "./report-error";
 import type { InsertionPoint, RecordingBarState } from "./session";
-
-const find = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 
 const section = find<HTMLElement>("#recording-bar");
 const denied = find<HTMLParagraphElement>("#recording-denied");
@@ -29,20 +29,9 @@ const confirmCancel = find<HTMLParagraphElement>("#confirm-cancel");
 const close = find<HTMLButtonElement>("#close-recording-bar");
 const record = find<HTMLButtonElement>("#record");
 const level = find<HTMLDivElement>(".meter");
-const error = find<HTMLParagraphElement>("#error");
 
 let bar: RecordingBarState | null = null;
 let recorded = 0;
-
-function showError(reason: unknown) {
-  error.textContent = String(reason);
-  error.hidden = false;
-}
-
-const act = (command: () => Promise<void>) => () => {
-  error.hidden = true;
-  command().catch(showError);
-};
 
 function setClipped(clipped: boolean) {
   clip.classList.toggle("lit", clipped);

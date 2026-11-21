@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Edit, InputChoice, InsertionPoint, Meter, SessionState, Waveform } from "./session";
+import type { Edit, InputChoice, InsertionPoint, Meter, SessionState, Snapshot, StreamEvent, Waveform } from "./session";
+import { connectStream } from "./stream";
 
 export const newPresentation = (parent: string, title: string) =>
   invoke<SessionState>("new_presentation", { parent, title });
@@ -77,3 +78,13 @@ export const discardTranscription = (recording: string) => invoke<void>("discard
 export function onMeter(render: (meter: Meter) => void) {
   void listen<Meter>("recording-meter", (event) => render(event.payload));
 }
+
+export const snapshot = () => invoke<Snapshot>("snapshot");
+export const play = () => invoke<void>("play");
+export const pause = () => invoke<void>("pause");
+export const seek = (scriptTime: number) => invoke<void>("seek", { scriptTime });
+export const setSpeed = (speed: number) => invoke<void>("set_speed", { speed });
+export const reset = () => invoke<void>("reset");
+
+export const onStreamEvent = (render: (event: StreamEvent) => void) =>
+  connectStream({ listen: (onEvent) => listen<StreamEvent>("session-event", (event) => onEvent(event.payload)), snapshot }, render);

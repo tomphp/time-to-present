@@ -66,7 +66,7 @@ fn retime_is_one_undo_step() {
     let original = session.state();
 
     session.edit(retime(&["w1", "w2"], 50.0)).unwrap();
-    session.undo();
+    session.undo().unwrap();
 
     assert_eq!(session.state(), original);
 }

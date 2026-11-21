@@ -1,4 +1,5 @@
 pub mod capture;
+pub mod clock;
 pub mod models;
 pub mod platform;
 pub mod script;

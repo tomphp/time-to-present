@@ -207,6 +207,6 @@ fn a_dragged_event_is_one_undo_step() {
     }
 
     assert_eq!(events(&session.state())[1].1, word("w1"));
-    session.undo();
+    session.undo().unwrap();
     assert_eq!(session.state(), original);
 }

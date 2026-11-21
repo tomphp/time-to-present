@@ -22,7 +22,7 @@ export interface EventHooks {
   selectEvent(id: string): void;
 }
 
-export type PaneScript = Pick<SessionState, "words" | "namedEvents" | "movedEvents" | "pendingPassages">;
+export type PaneScript = Pick<SessionState, "words" | "namedEvents" | "movedEvents" | "pendingPassages" | "locked">;
 
 const INPUT_TYPES: Record<string, Input | undefined> = {
   deleteContentBackward: { type: "deleteBackward" },
@@ -44,7 +44,8 @@ export function mountTextPane(
   events: EventHooks,
   onSelect: (range: Range) => void,
 ) {
-  let script: PaneScript = { words: [], namedEvents: [], movedEvents: [], pendingPassages: [] };
+  let script: PaneScript = { words: [], namedEvents: [], movedEvents: [], pendingPassages: [], locked: false };
+  let locked = false;
   let words: ScriptWord[] = [];
   let selectedEvent: string | null = null;
   let slot: Slot | null = null;
@@ -59,6 +60,7 @@ export function mountTextPane(
   function repaint(next: PaneScript) {
     script = next;
     words = next.words;
+    setLocked(next.locked);
     const target = pending ?? (root.contains(document.activeElement) ? currentCaret(root) : null);
     pending = null;
     const caret = target && resolveCaret(target, words);
@@ -104,6 +106,13 @@ export function mountTextPane(
     repaint(script);
   }
 
+  /** The edit lock: read-only while the clock is playing, whoever started it. */
+  function setLocked(next: boolean) {
+    locked = next;
+    root.contentEditable = locked ? "false" : "true";
+    root.classList.toggle("locked", locked);
+  }
+
   function enqueue(work: () => Promise<void>) {
     queued++;
     queue = queue.then(work, work).finally(() => queued--);
@@ -121,6 +130,7 @@ export function mountTextPane(
 
   root.addEventListener("beforeinput", (event) => {
     event.preventDefault();
+    if (locked) return;
     const input = inputFrom(event);
     if (!input) return;
     const selection = selectionAtKeystroke();
@@ -137,7 +147,7 @@ export function mountTextPane(
   });
 
   root.addEventListener("keydown", (event) => {
-    if (!(event.metaKey || event.ctrlKey)) return;
+    if (locked || !(event.metaKey || event.ctrlKey)) return;
     const key = event.key.toLowerCase();
     if (key === "z") {
       event.preventDefault();
@@ -162,7 +172,7 @@ export function mountTextPane(
 
   root.addEventListener("cut", (event) => {
     const ids = putOnClipboard(event);
-    if (!ids.length) return;
+    if (locked || !ids.length) return;
     enqueue(async () => {
       pending = endOf(words, indexOf(words, ids[0]) - 1);
       await commands.cut(ids).then(repaint, reportAndDrop);
@@ -171,6 +181,7 @@ export function mountTextPane(
 
   root.addEventListener("paste", (event) => {
     event.preventDefault();
+    if (locked) return;
     const text = event.clipboardData?.getData("text/plain") ?? "";
     if (!text.trim()) return;
     const selection = selectionAtKeystroke();
@@ -242,7 +253,7 @@ export function mountTextPane(
       return;
     }
     const chip = (event.target as Element).closest<HTMLElement>("[data-event-id]");
-    if (chip) {
+    if (chip && !locked) {
       lastCaret = currentCaret(root) ?? lastCaret;
       events.selectEvent(chip.dataset.eventId!);
     }

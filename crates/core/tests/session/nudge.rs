@@ -30,9 +30,9 @@ fn a_run_of_nudges_is_one_undo_step() {
     }
 
     assert_eq!(gap_of_w2(&session), 180);
-    session.undo();
+    session.undo().unwrap();
     assert_eq!(session.state(), original);
-    session.redo();
+    session.redo().unwrap();
     assert_eq!(gap_of_w2(&session), 180);
 }
 
@@ -48,7 +48,7 @@ fn nudges_after_another_change_start_a_new_step() {
         .unwrap();
     session.nudge("gap:w2", gap_nudge(10)).unwrap();
 
-    session.undo();
+    session.undo().unwrap();
 
     assert_eq!(gap_of_w2(&session), 160);
 }
@@ -67,7 +67,7 @@ fn nudging_something_else_starts_a_new_step() {
         )
         .unwrap();
 
-    session.undo();
+    session.undo().unwrap();
 
     assert_eq!(session.state().words[1].word.duration, 450);
     assert_eq!(gap_of_w2(&session), 160);
@@ -77,10 +77,10 @@ fn nudging_something_else_starts_a_new_step() {
 fn a_run_of_nudges_after_undo_starts_a_new_step() {
     let (_harness, mut session) = hello_world();
     session.nudge("gap:w2", gap_nudge(10)).unwrap();
-    session.undo();
+    session.undo().unwrap();
     session.nudge("gap:w2", gap_nudge(10)).unwrap();
 
-    session.undo();
+    session.undo().unwrap();
 
     assert_eq!(gap_of_w2(&session), 150);
 }

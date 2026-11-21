@@ -4,7 +4,9 @@ use std::sync::{Arc, Mutex};
 
 use tempfile::TempDir;
 use ttp_core::capture::{Access, AudioCallback, AudioSource, CaptureError, Input};
+use ttp_core::clock::StreamEvent;
 use ttp_core::platform::{AppNap, Platform};
+use ttp_core::script::Edit;
 use ttp_core::session::{Session, SessionState};
 use ttp_core::store::StoreError;
 use ttp_core::time::{Ms, TimeSource};
@@ -292,6 +294,13 @@ impl Harness {
     }
 }
 
+pub fn correct(word: &str, text: &str) -> Edit {
+    Edit::Correct {
+        word: word.into(),
+        text: text.into(),
+    }
+}
+
 pub fn starts(state: &SessionState) -> Vec<(&str, Ms)> {
     word_starts(state)
         .into_iter()
@@ -305,4 +314,20 @@ pub fn word_starts(state: &SessionState) -> Vec<(&str, &str, Ms)> {
         .iter()
         .map(|w| (w.word.id.as_str(), w.word.text.as_str(), w.start))
         .collect()
+}
+
+/// Collects everything the Session broadcasts from now on; `take` empties it.
+pub struct Stream(Arc<Mutex<Vec<StreamEvent>>>);
+
+impl Stream {
+    pub fn of(session: &mut Session) -> Self {
+        let events = Arc::new(Mutex::new(Vec::new()));
+        let sink = events.clone();
+        session.subscribe_stream(move |event| sink.lock().unwrap().push(event.clone()));
+        Self(events)
+    }
+
+    pub fn take(&self) -> Vec<StreamEvent> {
+        std::mem::take(&mut *self.0.lock().unwrap())
+    }
 }

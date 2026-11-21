@@ -1,0 +1,32 @@
+{
+  "script": {
+    "words": [
+      {"id": "w1", "text": "Go", "gap": 300, "duration": 200, "recordingId": null, "audioStart": null, "audioEnd": null, "confidence": null}
+    ],
+    "namedEvents": [
+      {"id": "e1", "name": "b", "anchor": "w1", "offset": 0},
+      {"id": "e2", "name": "a", "anchor": "scriptStart", "offset": 300},
+      {"id": "e3", "name": "c", "anchor": "w1", "offset": -100},
+      {"id": "e4", "name": "d", "anchor": "w1", "offset": -500}
+    ]
+  },
+  "steps": [
+    {"action": "play"},
+    {"action": "advance", "ms": 100},
+    {"action": "advance", "ms": 100},
+    {"action": "advance", "ms": 100},
+    {"action": "connect"}
+  ],
+  "stream": [
+    {"type": "clock", "state": "playing", "scriptTime": 0, "speed": 1.0, "cause": "play"},
+    {"type": "namedEvent", "id": "e4", "name": "d", "data": null, "scriptTime": 0},
+    {"type": "tick", "scriptTime": 100},
+    {"type": "namedEvent", "id": "e3", "name": "c", "data": null, "scriptTime": 200},
+    {"type": "tick", "scriptTime": 200},
+    {"type": "word", "id": "w1", "text": "Go", "start": 300, "duration": 200},
+    {"type": "namedEvent", "id": "e1", "name": "b", "data": null, "scriptTime": 300},
+    {"type": "namedEvent", "id": "e2", "name": "a", "data": null, "scriptTime": 300},
+    {"type": "tick", "scriptTime": 300},
+    {"type": "snapshot", "protocolVersion": 1, "scriptVersion": 1, "clock": {"state": "playing", "scriptTime": 300, "speed": 1.0}, "currentWord": {"id": "w1", "text": "Go", "start": 300, "duration": 200}, "passedEvents": [{"id": "e4", "name": "d", "data": null, "scriptTime": 0}, {"id": "e3", "name": "c", "data": null, "scriptTime": 200}, {"id": "e1", "name": "b", "data": null, "scriptTime": 300}, {"id": "e2", "name": "a", "data": null, "scriptTime": 300}]}
+  ]
+}

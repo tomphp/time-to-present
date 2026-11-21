@@ -16,6 +16,7 @@ const CURSORS = { body: "grab", start: "ew-resize", end: "ew-resize" };
  * The Script Time timeline: a block per Word at its Script Time. Clicking a block picks it,
  * dragging its body Moves it and dragging an edge Trims it, each drag one Session drag. A flag
  * per Named Event sits at its Script Time; clicking one picks it and dragging it re-anchors it.
+ * Under the edit lock a click still picks, but nothing drags.
  */
 export function mountTimeline(
   root: HTMLElement,
@@ -38,14 +39,18 @@ export function mountTimeline(
   let scriptEnd = 0;
   let selected = new Set<string>();
   let movedEvents = new Set<string>();
+  let locked = false;
   let drag: { minPx?: number; startX: number; edit: (dx: number) => Edit; send: (edit: Edit) => void } | null = null;
 
-  function render(next: ScriptWord[], nextEvents: TimedEvent[], moved: string[], end: number, ids: string[]) {
+  function render(next: ScriptWord[], nextEvents: TimedEvent[], moved: string[], end: number, ids: string[], lock: boolean) {
     words = next;
     events = nextEvents;
     movedEvents = new Set(moved);
     laidOut = timelineBlocks(words);
     scriptEnd = end;
+    locked = lock;
+    if (locked) drag = null;
+    root.classList.toggle("locked", locked);
     select(ids);
   }
 
@@ -144,6 +149,7 @@ export function mountTimeline(
     const flagged = events.find((named) => named.id === id);
     if (!flagged) return;
     pickEvent(id);
+    if (locked) return;
     track.setPointerCapture(event.pointerId);
     drag = { startX: event.clientX, edit: (dx) => flagDragEdit(words, flagged, dx), send: send(), minPx: FLAG_DRAG_PX };
   }
@@ -159,7 +165,7 @@ export function mountTimeline(
     if (!hit) return;
     event.preventDefault();
     pick(hit.word, event.shiftKey);
-    if (event.shiftKey) return;
+    if (event.shiftKey || locked) return;
     track.setPointerCapture(event.pointerId);
     drag = { startX: event.clientX, edit: (dx) => dragEdit(hit, dx), send: send() };
   });
@@ -170,7 +176,7 @@ export function mountTimeline(
       if (Math.abs(dx) >= (drag.minPx ?? 0)) drag.send(drag.edit(dx));
       return;
     }
-    const hit = hitAt(event);
+    const hit = locked ? null : hitAt(event);
     track.style.cursor = hit ? CURSORS[hit.grip] : "";
   });
 

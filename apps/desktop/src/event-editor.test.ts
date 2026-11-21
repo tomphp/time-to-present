@@ -136,6 +136,7 @@ describe("the text pane's event keys", () => {
     namedEvents: [{ id: "e1", name: "slide", anchor: "w2", offset: 0, time: 850 }],
     movedEvents: [],
     pendingPassages: [],
+    locked: false,
   };
 
   function mountPane() {

@@ -35,9 +35,9 @@ fn a_whole_drag_is_one_undo_step() {
     }
     let dragged = session.state();
 
-    session.undo();
+    session.undo().unwrap();
     assert_eq!(session.state(), original);
-    session.redo();
+    session.redo().unwrap();
     assert_eq!(session.state(), dragged);
 }
 
@@ -49,7 +49,7 @@ fn a_new_drag_is_a_new_undo_step() {
     session.drag("d2", move_w2_by(100)).unwrap();
 
     assert_eq!(gap_of_w2(&session), 350);
-    session.undo();
+    session.undo().unwrap();
     assert_eq!(gap_of_w2(&session), 250);
 }
 
@@ -58,12 +58,12 @@ fn a_step_of_a_drag_that_lands_after_undo_is_ignored() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);
     session.drag("d1", move_w2_by(100)).unwrap();
-    session.undo();
+    session.undo().unwrap();
 
     session.drag("d1", move_w2_by(150)).unwrap();
 
     assert_eq!(gap_of_w2(&session), 150);
-    session.redo();
+    session.redo().unwrap();
     assert_eq!(gap_of_w2(&session), 250);
 }
 
@@ -90,7 +90,7 @@ fn a_step_of_a_drag_that_lands_after_a_cut_is_ignored() {
     session.drag("d1", move_w2_by(80)).unwrap();
 
     assert_eq!(session.state(), cut);
-    session.undo();
+    session.undo().unwrap();
     assert_eq!(gap_of_w2(&session), 200);
 }
 
@@ -105,7 +105,7 @@ fn a_step_of_a_drag_that_lands_after_a_paste_is_ignored() {
     session.drag("d1", move_w2_by(80)).unwrap();
 
     assert_eq!(session.state(), pasted);
-    session.undo();
+    session.undo().unwrap();
     assert_eq!(gap_of_w2(&session), 200);
 }
 
@@ -122,7 +122,7 @@ fn a_drag_back_to_where_it_started_leaves_no_undo_step() {
     session.drag("d1", move_w2_by(100)).unwrap();
 
     session.drag("d1", move_w2_by(0)).unwrap();
-    session.undo();
+    session.undo().unwrap();
 
     assert_eq!(session.state().words[0].word.text, "Hello,");
     assert_eq!(gap_of_w2(&session), 150);
@@ -143,10 +143,10 @@ fn a_trim_dragged_past_its_limit_and_back_to_its_start_leaves_no_undo_step() {
     session.drag("d1", trimmed(0)).unwrap();
     assert_eq!(session.state(), original);
     session.drag("d1", trimmed(50)).unwrap();
-    session.undo();
+    session.undo().unwrap();
 
     assert_eq!(session.state(), original);
-    session.undo();
+    session.undo().unwrap();
     assert_eq!(session.state(), original);
 }
 
@@ -173,9 +173,9 @@ fn undoing_a_drag_keeps_the_moved_badges_of_the_edit_before_it() {
     session.edit(Edit::Merge { word: "w2".into() }).unwrap();
     session.drag("d1", move_w2_by(100)).unwrap();
 
-    session.undo();
+    session.undo().unwrap();
     assert_eq!(session.state().moved_events, ["e2"]);
-    session.undo();
+    session.undo().unwrap();
     assert!(session.state().moved_events.is_empty());
 }
 
