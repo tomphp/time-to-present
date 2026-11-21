@@ -1,4 +1,4 @@
-use ttp_core::script::{BreakAfter, Edit, EditError};
+use ttp_core::script::{Anchor, BreakAfter, Edit, EditError};
 
 use crate::support::{Harness, word_starts};
 
@@ -49,4 +49,17 @@ fn the_last_word_has_nothing_to_merge_with() {
     let error = session.edit(Edit::Merge { word: "w3".into() }).unwrap_err();
 
     assert_eq!(error, EditError::NothingAfter("w3".into()));
+}
+
+#[test]
+fn merging_reanchors_the_second_words_events_to_the_merged_word_at_the_same_script_time() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+
+    session.edit(Edit::Merge { word: "w2".into() }).unwrap();
+
+    let state = session.state();
+    let confetti = &state.named_events[1];
+    assert_eq!(confetti.event.anchor, Anchor::Word("w2".into()));
+    assert_eq!((confetti.event.offset, confetti.time), (1350, 2200));
 }

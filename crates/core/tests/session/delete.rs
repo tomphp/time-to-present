@@ -1,6 +1,24 @@
-use ttp_core::script::Edit;
+use ttp_core::script::{Anchor, Edit};
+use ttp_core::session::{Session, SessionState};
 
 use crate::support::{Harness, word_starts};
+
+fn mark(session: &mut Session, word: &str, offset: i64) {
+    session
+        .edit(Edit::InsertEvent {
+            anchor: Anchor::Word(word.into()),
+            offset,
+            name: "cue".into(),
+            data: None,
+        })
+        .unwrap();
+}
+
+/// The last Named Event's anchor, offset and Script Time.
+fn last_event(state: &SessionState) -> (Anchor, i64, i64) {
+    let timed = state.named_events.last().unwrap();
+    (timed.event.anchor.clone(), timed.event.offset, timed.time)
+}
 
 fn delete(session: &mut ttp_core::session::Session, words: &[&str]) {
     session
@@ -81,4 +99,83 @@ fn deleting_every_word_leaves_an_empty_script() {
     delete(&mut session, &["w1", "w2"]);
 
     assert!(session.state().words.is_empty());
+}
+
+#[test]
+fn an_event_on_a_deleted_word_keeps_its_distance_before_the_next_word() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    mark(&mut session, "w2", 500);
+
+    delete(&mut session, &["w2"]);
+
+    assert_eq!(
+        last_event(&session.state()),
+        (Anchor::Word("w3".into()), -50, 800)
+    );
+}
+
+#[test]
+fn an_event_on_a_deleted_word_after_the_next_words_start_stays_that_far_after_it() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    mark(&mut session, "w2", 1300);
+
+    delete(&mut session, &["w2"]);
+
+    assert_eq!(
+        last_event(&session.state()),
+        (Anchor::Word("w3".into()), 750, 1600)
+    );
+}
+
+#[test]
+fn an_event_on_a_deleted_word_never_sits_before_the_previous_words_end() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    mark(&mut session, "w2", 100);
+
+    delete(&mut session, &["w2"]);
+
+    assert_eq!(
+        last_event(&session.state()),
+        (Anchor::Word("w3".into()), -150, 700)
+    );
+}
+
+#[test]
+fn an_event_on_a_deleted_first_word_never_sits_before_the_script_start() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    mark(&mut session, "w1", 0);
+
+    delete(&mut session, &["w1"]);
+
+    assert_eq!(
+        last_event(&session.state()),
+        (Anchor::Word("w2".into()), -400, 0)
+    );
+}
+
+#[test]
+fn an_event_on_a_deleted_last_word_goes_to_the_previous_words_end() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+
+    delete(&mut session, &["w2", "w3"]);
+
+    assert_eq!(
+        last_event(&session.state()),
+        (Anchor::Word("w1".into()), 300, 700)
+    );
+}
+
+#[test]
+fn events_on_a_script_with_every_word_deleted_go_to_the_script_start() {
+    let (harness, folder) = Harness::with_fixture("spoken-only");
+    let mut session = harness.open(&folder);
+
+    delete(&mut session, &["w1", "w2"]);
+
+    assert_eq!(last_event(&session.state()), (Anchor::ScriptStart, 0, 0));
 }

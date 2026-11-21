@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use super::Script;
 
-/// Mints Word ids that no Word or Named Event has had: random, so an id deleted in an earlier
+/// Mints Word and Named Event ids that no Word or Named Event has had: random, so an id deleted in an earlier
 /// session can't come back, and checked against every id seen in this one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ids {
@@ -19,8 +19,16 @@ impl Ids {
     }
 
     pub fn next_word(&mut self) -> String {
+        self.next("w")
+    }
+
+    pub fn next_event(&mut self) -> String {
+        self.next("e")
+    }
+
+    fn next(&mut self, prefix: &str) -> String {
         loop {
-            let id = format!("w{:x}", random_u64());
+            let id = format!("{prefix}{:x}", random_u64());
             if self.taken.insert(id.clone()) {
                 return id;
             }

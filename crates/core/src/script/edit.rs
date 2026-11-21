@@ -1,7 +1,9 @@
 use serde::Deserialize;
+use serde_json::Value;
 
-use super::{BreakAfter, Ids, Script, Word};
-use super::{estimate, transform};
+use super::{Anchor, BreakAfter, Ids, Script, Word};
+use super::{estimate, events, transform};
+use crate::time::Ms;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(
@@ -32,6 +34,17 @@ pub enum Edit {
         after: Option<String>,
         text: String,
     },
+    InsertEvent {
+        anchor: Anchor,
+        offset: Ms,
+        name: String,
+        data: Option<Value>,
+    },
+    SetEvent {
+        event: String,
+        name: String,
+        data: Option<Value>,
+    },
     Batch {
         edits: Vec<Edit>,
     },
@@ -47,10 +60,15 @@ pub enum EditError {
     InvalidSplit { at: usize, length: usize },
     #[error("no Word follows {0}")]
     NothingAfter(String),
+    #[error("no Named Event with id {0}")]
+    UnknownEvent(String),
+    #[error("a Named Event needs a name")]
+    UnnamedEvent,
 }
 
 impl Script {
-    pub fn apply(&mut self, edit: Edit, ids: &mut Ids) -> Result<(), EditError> {
+    /// Applies an edit, returning the ids of the Named Events it re-anchored on its own.
+    pub fn apply(&mut self, edit: Edit, ids: &mut Ids) -> Result<Vec<String>, EditError> {
         match edit {
             Edit::Correct { word, text } => {
                 let word = self.word_mut(&word)?;
@@ -67,14 +85,13 @@ impl Script {
                 if index + 1 == self.words.len() {
                     return Err(EditError::NothingAfter(word));
                 }
-                let second = self.words.remove(index + 1);
-                transform::merge(&mut self.words[index], second);
+                return Ok(self.merge_at(index));
             }
             Edit::Delete { words } => {
                 for id in &words {
                     self.index_of(id)?;
                 }
-                transform::delete(&mut self.words, |word| words.contains(&word.id));
+                return Ok(self.delete_words(&words));
             }
             Edit::SetBreak { word, break_after } => {
                 self.word_mut(&word)?.break_after = break_after;
@@ -87,13 +104,35 @@ impl Script {
                 let typed = self.typed_word(ids.next_word(), one_word(text)?, index);
                 self.words.insert(index, typed);
             }
-            Edit::Batch { edits } => {
-                for edit in edits {
-                    self.apply(edit, ids)?;
+            Edit::InsertEvent {
+                anchor,
+                offset,
+                name,
+                data,
+            } => {
+                if let Anchor::Word(id) = &anchor {
+                    self.index_of(id)?;
                 }
+                let event = events::named(ids.next_event(), name, data, anchor, offset)?;
+                self.named_events.push(event);
+            }
+            Edit::SetEvent { event, name, data } => {
+                let event = self
+                    .named_events
+                    .iter_mut()
+                    .find(|named| named.id == event)
+                    .ok_or(EditError::UnknownEvent(event))?;
+                events::rename(event, name, data)?;
+            }
+            Edit::Batch { edits } => {
+                let mut reanchored = Vec::new();
+                for edit in edits {
+                    reanchored.extend(self.apply(edit, ids)?);
+                }
+                return Ok(reanchored);
             }
         }
-        Ok(())
+        Ok(Vec::new())
     }
 
     /// A typed Word going in at `index` takes the Gap of the Word it goes before, which then

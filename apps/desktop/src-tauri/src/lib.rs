@@ -187,6 +187,14 @@ fn redo(state: State<'_, App>) -> CommandResult<SessionState> {
     })
 }
 
+#[tauri::command]
+fn select_event(state: State<'_, App>, event: String) -> CommandResult<SessionState> {
+    with_session(&state, |session| {
+        session.select_event(&event);
+        Ok::<_, String>(session.state())
+    })
+}
+
 /// Runs a command on the open Session, which there must be.
 fn with_session<T, E: std::fmt::Display>(
     state: &App,
@@ -287,6 +295,7 @@ pub fn run() {
             edit,
             undo,
             redo,
+            select_event,
             recording::open_recording_bar,
             recording::select_input,
             recording::select_channel,

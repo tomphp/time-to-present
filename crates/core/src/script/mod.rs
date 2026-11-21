@@ -5,7 +5,9 @@ use crate::time::Ms;
 
 mod edit;
 mod estimate;
+mod events;
 mod ids;
+mod reanchor;
 mod transform;
 
 pub use edit::{Edit, EditError};
@@ -78,6 +80,13 @@ pub struct TimedWord {
     pub start: Ms,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct TimedEvent {
+    #[serde(flatten)]
+    pub event: NamedEvent,
+    pub time: Ms,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Script {
@@ -95,15 +104,28 @@ impl Script {
             .collect()
     }
 
-    pub fn end(&self) -> Ms {
+    pub fn timed_events(&self) -> Vec<TimedEvent> {
         let starts: Vec<(&Word, Ms)> = self.word_starts().collect();
-        let last_word_end = starts
+        self.named_events
+            .iter()
+            .filter_map(|event| {
+                Some(TimedEvent {
+                    time: event_time(event, &starts)?,
+                    event: event.clone(),
+                })
+            })
+            .collect()
+    }
+
+    pub fn end(&self) -> Ms {
+        let last_word_end = self
+            .word_starts()
             .last()
             .map_or(0, |(word, start)| start + word.duration);
         let last_event = self
-            .named_events
+            .timed_events()
             .iter()
-            .filter_map(|event| event_time(event, &starts))
+            .map(|timed| timed.time)
             .max()
             .unwrap_or(0);
         last_word_end.max(last_event)

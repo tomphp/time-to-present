@@ -6,3 +6,4 @@
 # everyone who runs the test benefits from these saved cases.
 cc c4362715f2c3ddefdb4a0952c7331affe846c4ca876245e4d0839fef58ad4073 # shrinks to fixture = "hello-world", steps = [Correct(879, "dkp!"), Undo]
 cc 796ddbb7460b94a52666fa6f2175c003a0cd2882cdc06e6e327177a2a108b2ee # shrinks to fixture = "spoken-only", steps = [Insert(None, "a"), Undo]
+cc cda69b011177393d0d7d4ca1a07bebfb267f84cc21d14a6d47bf10d8597c89fc # shrinks to fixture = "hello-world", steps = [Delete([2064257772408283349, 1029404459363320161]), Delete([0]), Undo]

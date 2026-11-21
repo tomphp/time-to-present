@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -5,7 +6,7 @@ use serde::Serialize;
 
 use crate::capture::{RecordingBar, RecordingBarState, Taps};
 use crate::platform::Platform;
-use crate::script::{Edit, EditError, Ids, TimedWord};
+use crate::script::{Edit, EditError, Ids, TimedEvent, TimedWord};
 use crate::store::{self, Presentation, StoreError};
 use crate::time::Ms;
 
@@ -24,6 +25,7 @@ pub struct Session {
     presentation: Presentation,
     ids: Ids,
     history: History,
+    moved: HashSet<String>,
     listeners: Vec<Listener>,
     platform: Platform,
     bar: Option<RecordingBar>,
@@ -37,6 +39,8 @@ pub struct SessionState {
     pub folder: PathBuf,
     pub title: String,
     pub words: Vec<TimedWord>,
+    pub named_events: Vec<TimedEvent>,
+    pub moved_events: Vec<String>,
     pub script_end: Ms,
     pub recording_bar: Option<RecordingBarState>,
 }
@@ -54,6 +58,7 @@ impl Session {
             ids: Ids::after(&presentation.script),
             presentation,
             history: History::default(),
+            moved: HashSet::new(),
             listeners: Vec::new(),
             platform,
             bar: None,
@@ -81,27 +86,44 @@ impl Session {
     /// untouched if any part of it fails or nothing changes.
     pub fn edit(&mut self, edit: Edit) -> Result<(), EditError> {
         let before = self.presentation.script.clone();
-        if let Err(error) = self.presentation.script.apply(edit, &mut self.ids) {
-            self.presentation.script = before;
-            return Err(error);
-        }
+        let reanchored = match self.presentation.script.apply(edit, &mut self.ids) {
+            Ok(reanchored) => reanchored,
+            Err(error) => {
+                self.presentation.script = before;
+                return Err(error);
+            }
+        };
         if self.presentation.script == before {
             return Ok(());
         }
-        self.history.record(before);
+        let badged = reanchored
+            .into_iter()
+            .filter(|id| self.moved.insert(id.clone()))
+            .collect();
+        self.history.record(before, badged);
         self.changed();
         Ok(())
     }
 
+    /// Undoes the last step, and with it the Moved badges that step set.
     pub fn undo(&mut self) {
-        if self.history.undo(&mut self.presentation.script) {
+        if let Some(badged) = self.history.undo(&mut self.presentation.script) {
+            self.moved.retain(|id| !badged.contains(id));
             self.changed();
         }
     }
 
     pub fn redo(&mut self) {
-        if self.history.redo(&mut self.presentation.script) {
+        if let Some(badged) = self.history.redo(&mut self.presentation.script) {
+            self.moved.extend(badged.iter().cloned());
             self.changed();
+        }
+    }
+
+    /// Selecting a Named Event clears its Moved badge.
+    pub fn select_event(&mut self, id: &str) {
+        if self.moved.remove(id) {
+            self.publish();
         }
     }
 
@@ -129,9 +151,19 @@ impl Session {
             folder: self.folder.clone(),
             title: self.presentation.title.clone(),
             words: self.presentation.script.timed_words(),
+            named_events: self.presentation.script.timed_events(),
+            moved_events: self.moved_events(),
             script_end: self.presentation.script.end(),
             recording_bar: self.bar.as_ref().map(RecordingBar::state),
         }
+    }
+
+    fn moved_events(&self) -> Vec<String> {
+        let events = self.presentation.script.named_events.iter();
+        events
+            .filter(|event| self.moved.contains(&event.id))
+            .map(|event| event.id.clone())
+            .collect()
     }
 
     /// Saves at once, as renaming and registering a Recording do; any pending autosave goes with it.
