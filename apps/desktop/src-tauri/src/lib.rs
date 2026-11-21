@@ -11,6 +11,7 @@ use ttp_core::session::{Session, SessionState};
 use ttp_core::settings::Settings;
 use ttp_core::store::StoreError;
 use ttp_core::time::MonotonicTime;
+use ttp_core::waveform::{self, Waveform};
 
 mod audio;
 mod macos;
@@ -198,6 +199,27 @@ fn paste(
 }
 
 #[tauri::command]
+fn drag(state: State<'_, App>, drag: String, edit: Edit) -> CommandResult<SessionState> {
+    with_session(&state, |session| {
+        session.drag(&drag, edit)?;
+        Ok::<_, EditError>(session.state())
+    })
+}
+
+#[tauri::command]
+async fn recording_waveform(state: State<'_, App>, recording: String) -> CommandResult<Waveform> {
+    let file = with_session(&state, |session| {
+        session
+            .recording_file(&recording)
+            .ok_or(format!("no Recording with id {recording}"))
+    })?;
+    tauri::async_runtime::spawn_blocking(move || waveform::read(&file))
+        .await
+        .map_err(message)?
+        .map_err(message)
+}
+
+#[tauri::command]
 fn undo(state: State<'_, App>) -> CommandResult<SessionState> {
     with_session(&state, |session| {
         session.undo();
@@ -322,6 +344,8 @@ pub fn run() {
             cut,
             copy,
             paste,
+            drag,
+            recording_waveform,
             undo,
             redo,
             select_event,

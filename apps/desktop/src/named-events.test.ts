@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { chipsByAnchor, completeName, eventAnchorAt, eventEdit, eventNames, nextMoved, parseEventData } from "./named-events";
-import type { ScriptWord, TimedEvent } from "./session";
+import {
+  chipsByAnchor,
+  completeName,
+  eventAnchorAt,
+  eventEdit,
+  eventNames,
+  nextMoved,
+  parseEventData,
+  sameChips,
+} from "./named-events";
+import type { TimedEvent } from "./session";
+import { scriptWord } from "./test-words";
 
-const word = (id: string, text: string, duration = 300): ScriptWord => ({
-  id,
-  text,
-  start: 0,
-  duration,
-  confidence: null,
-});
+const word = (id: string, text: string, duration = 300) => scriptWord(id, text, { duration });
 
 const event = (id: string, name: string, anchor: string, time: number, offset = 0): TimedEvent => ({
   id,
@@ -122,6 +126,39 @@ describe("chipsByAnchor", () => {
 
     expect(chips.get("w1")?.map((e) => e.id)).toEqual(["e2", "e1"]);
     expect(chips.get("scriptStart")?.map((e) => e.id)).toEqual(["e3"]);
+  });
+});
+
+describe("sameChips", () => {
+  const chips = (namedEvents: TimedEvent[], movedEvents: string[] = []) => ({ namedEvents, movedEvents });
+  const events = [event("e1", "cue", "w1", 500), event("e2", "intro", "scriptStart", 0)];
+
+  it("holds when only the events' Script Time has changed", () => {
+    const moved = [event("e1", "cue", "w1", 900), event("e2", "intro", "scriptStart", 0)];
+
+    expect(sameChips(chips(events), chips(moved))).toBe(true);
+  });
+
+  it("holds when events reach the same chips in another Script Time order", () => {
+    const reordered = [event("e2", "intro", "scriptStart", 1000), event("e1", "cue", "w1", 0)];
+
+    expect(sameChips(chips(events), chips(reordered))).toBe(true);
+  });
+
+  it("fails when a chip's name, anchor, order or Moved badge changes", () => {
+    const [cue, intro] = events;
+
+    expect(sameChips(chips(events), chips([event("e1", "fade", "w1", 500), intro]))).toBe(false);
+    expect(sameChips(chips(events), chips([event("e1", "cue", "w2", 500), intro]))).toBe(false);
+    expect(sameChips(chips([cue]), chips([cue, intro]))).toBe(false);
+    expect(sameChips(chips(events), chips(events, ["e1"]))).toBe(false);
+  });
+
+  it("fails when events on one anchor swap places", () => {
+    const pair = [event("e1", "a", "w1", 100), event("e3", "b", "w1", 200)];
+    const swapped = [event("e1", "a", "w1", 300), event("e3", "b", "w1", 200)];
+
+    expect(sameChips(chips(pair), chips(swapped))).toBe(false);
   });
 });
 

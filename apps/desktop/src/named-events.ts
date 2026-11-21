@@ -1,5 +1,5 @@
 import { indexOf, isSlot, type Caret } from "./caret";
-import { SCRIPT_START, type Edit, type ScriptWord, type TimedEvent } from "./session";
+import { SCRIPT_START, type Edit, type ScriptWord, type SessionState, type TimedEvent } from "./session";
 
 export interface EventAt {
   anchor: string;
@@ -70,4 +70,16 @@ export function chipsByAnchor(events: TimedEvent[]): Map<string, TimedEvent[]> {
     chips.set(event.anchor, [...(chips.get(event.anchor) ?? []), event]);
   }
   return chips;
+}
+
+type ChipState = Pick<SessionState, "namedEvents" | "movedEvents">;
+
+/** Whether two Scripts show the same chips in the same places, whatever their Script Time. */
+export function sameChips(a: ChipState, b: ChipState): boolean {
+  const layout = ({ namedEvents, movedEvents }: ChipState) => {
+    const anchors = [...chipsByAnchor(namedEvents)].sort(([x], [y]) => x.localeCompare(y));
+    const placed = anchors.map(([anchor, chips]) => [anchor, chips.map(({ id, name }) => [id, name])]);
+    return JSON.stringify([placed, [...movedEvents].sort()]);
+  };
+  return layout(a) === layout(b);
 }

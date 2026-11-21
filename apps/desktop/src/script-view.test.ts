@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { scriptLayout } from "./script-view";
+import { sameLayout, scriptLayout } from "./script-view";
 import type { ScriptWord } from "./session";
+import { scriptWord } from "./test-words";
 
 const word = (
   id: string,
   text: string,
   breakAfter?: ScriptWord["breakAfter"],
   confidence: number | null = null,
-): ScriptWord => ({ id, text, start: 0, duration: 300, confidence, breakAfter });
+): ScriptWord => scriptWord(id, text, { confidence, breakAfter });
 
 const laidOut = (id: string, text: string, lowConfidence = false) => ({ id, text, lowConfidence });
 
@@ -47,5 +48,21 @@ describe("scriptLayout", () => {
     ]);
 
     expect(layout[0][0].map((w) => w.lowConfidence)).toEqual([false, true, false]);
+  });
+});
+
+describe("sameLayout", () => {
+  it("holds when only timing has changed", () => {
+    const moved = scriptWord("w1", "Hello,", { start: 900, gap: 500, duration: 120 });
+
+    expect(sameLayout([word("w1", "Hello,")], [moved])).toBe(true);
+  });
+
+  it("fails when text, breaks or confidence marks change", () => {
+    const words = [word("w1", "Hello,"), word("w2", "world.")];
+
+    expect(sameLayout(words, [word("w1", "Hullo,"), words[1]])).toBe(false);
+    expect(sameLayout(words, [word("w1", "Hello,", "line"), words[1]])).toBe(false);
+    expect(sameLayout(words, [word("w1", "Hello,", undefined, 0.2), words[1]])).toBe(false);
   });
 });

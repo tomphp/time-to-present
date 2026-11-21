@@ -141,6 +141,36 @@ impl Session {
         Ok(())
     }
 
+    /// Applies `edit` as all that `drag` has done so far, to the Script as it was when the drag
+    /// began, so the drag is one undo step. Any other edit, undo or redo ends the drag, and its
+    /// steps that land after that are ignored. Only a Move or Trim can be dragged.
+    pub fn drag(&mut self, drag: &str, edit: Edit) -> Result<(), EditError> {
+        if !edit.is_timing() {
+            return Err(EditError::NotATimingEdit);
+        }
+        if self.history.drag_ended(drag) {
+            return Ok(());
+        }
+        let start = self.history.drag_start(drag).cloned();
+        let mut dragged = start
+            .clone()
+            .unwrap_or_else(|| self.presentation.script.clone());
+        dragged.apply(edit, &mut self.ids)?;
+        if dragged == self.presentation.script {
+            return Ok(());
+        }
+        match start {
+            Some(start) if start == dragged => self.history.drop_drag_step(),
+            Some(_) => {}
+            None => self
+                .history
+                .record_drag(self.presentation.script.clone(), drag),
+        }
+        self.presentation.script = dragged;
+        self.changed();
+        Ok(())
+    }
+
     /// Undoes the last step, and with it the Moved badges that step set.
     pub fn undo(&mut self) {
         if let Some(undone) = self.history.undo(&mut self.presentation.script) {

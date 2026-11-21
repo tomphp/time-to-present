@@ -21,8 +21,33 @@ enum Step {
     /// Pastes over some Words the clipboard's passage, or plain text when it holds none or
     /// this is false.
     Paste(Option<usize>, Vec<usize>, bool, String),
+    Timing(Gesture, usize, i64),
+    Drag(u8, Gesture, usize, i64),
     Undo,
     Redo,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Gesture {
+    Move,
+    TrimStart,
+    TrimEnd,
+}
+
+fn gesture() -> impl Strategy<Value = Gesture> {
+    prop_oneof![
+        Just(Gesture::Move),
+        Just(Gesture::TrimStart),
+        Just(Gesture::TrimEnd)
+    ]
+}
+
+fn timing_edit(gesture: Gesture, word: String, by: i64) -> Edit {
+    match gesture {
+        Gesture::Move => Edit::Move { word, by },
+        Gesture::TrimStart => Edit::TrimStart { word, by },
+        Gesture::TrimEnd => Edit::TrimEnd { word, by },
+    }
 }
 
 fn word_text() -> impl Strategy<Value = String> {
@@ -55,6 +80,9 @@ fn step() -> impl Strategy<Value = Step> {
             "[a-z]{1,8}( [a-z]{1,8}){0,2}"
         )
             .prop_map(|(w, replacing, internal, text)| Step::Paste(w, replacing, internal, text)),
+        (gesture(), any::<usize>(), -2000..2000i64).prop_map(|(g, w, by)| Step::Timing(g, w, by)),
+        (0..2u8, gesture(), any::<usize>(), -2000..2000i64)
+            .prop_map(|(d, g, w, by)| Step::Drag(d, g, w, by)),
         Just(Step::Undo),
         Just(Step::Redo),
     ]
@@ -102,6 +130,9 @@ fn resolve(step: &Step, state: &SessionState) -> Option<Edit> {
                 .as_ref()
                 .map_or(Anchor::ScriptStart, |w| Anchor::Word(pick(w)));
             insert_event(anchor, *offset)
+        }
+        Step::Timing(gesture, w, by) | Step::Drag(_, gesture, w, by) => {
+            timing_edit(*gesture, pick(w), *by)
         }
         Step::Cut(_) | Step::Copy(_) | Step::Paste(..) | Step::Undo | Step::Redo => return None,
     })
@@ -206,6 +237,12 @@ fn run(
             let restorable = std::mem::take(&mut clipboard.cut_ids);
             return (Outcome::Events(clipboard.events as isize), restorable);
         }
+        Step::Drag(drag, ..) => {
+            if let Some(edit) = resolve(step, &state) {
+                let _ = session.drag(&format!("d{drag}"), edit);
+            }
+            return (Outcome::Events(0), none);
+        }
         _ => {
             let edit = resolve(step, &state);
             let inserts_event = matches!(edit, Some(Edit::InsertEvent { .. }));
@@ -214,6 +251,11 @@ fn run(
         }
     }
     (Outcome::Restored, none)
+}
+
+/// Undoing between two steps of the same drag would end it, so the check waits for its last step.
+fn continues_drag(step: &Step, next: Option<&Step>) -> bool {
+    matches!((step, next), (Step::Drag(this, ..), Some(Step::Drag(next, ..))) if this == next)
 }
 
 fn assert_script_times_monotonic(state: &SessionState) {
@@ -292,7 +334,7 @@ proptest! {
         let mut ever = ids_of(&session.state());
         let mut clipboard = Clipboard::default();
 
-        for step in &steps {
+        for (index, step) in steps.iter().enumerate() {
             let before = session.state();
             let (outcome, restorable) = run(&mut session, &mut clipboard, step);
 
@@ -301,6 +343,9 @@ proptest! {
             assert_every_event_resolves(&state, before.named_events.len(), &outcome);
             assert_ids_unique(&state);
             assert_minted_ids_fresh(&outcome, &restorable, &state, &ids_of(&before), &mut ever);
+            if continues_drag(step, steps.get(index + 1)) {
+                continue;
+            }
             session.undo();
             if session.state() != state {
                 session.redo();

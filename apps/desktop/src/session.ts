@@ -4,7 +4,11 @@ export interface ScriptWord {
   id: string;
   text: string;
   start: number;
+  gap: number;
   duration: number;
+  recordingId: string | null;
+  audioStart: number | null;
+  audioEnd: number | null;
   confidence: number | null;
   breakAfter?: BreakAfter;
 }
@@ -65,4 +69,12 @@ export type Edit =
   | { kind: "insertWord"; after: string | null; text: string }
   | { kind: "insertEvent"; anchor: string; offset: number; name: string; data?: unknown }
   | { kind: "setEvent"; event: string; name: string; data?: unknown }
+  | { kind: "move"; word: string; by: number }
+  | { kind: "trimStart"; word: string; by: number }
+  | { kind: "trimEnd"; word: string; by: number }
   | { kind: "batch"; edits: Edit[] };
+
+export interface Waveform {
+  bucket: number;
+  peaks: number[];
+}

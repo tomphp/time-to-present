@@ -30,3 +30,6 @@ export function scriptLayout(words: ScriptWord[]): Paragraph[] {
   if (paragraph.length > 0) paragraphs.push(paragraph);
   return paragraphs;
 }
+
+export const sameLayout = (a: ScriptWord[], b: ScriptWord[]) =>
+  JSON.stringify(scriptLayout(a)) === JSON.stringify(scriptLayout(b));

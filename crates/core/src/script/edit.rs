@@ -2,7 +2,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use super::{Anchor, BreakAfter, Ids, Script, Word};
-use super::{estimate, events, plain_text, transform};
+use super::{estimate, events, plain_text, timing, transform};
 use crate::time::Ms;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -49,6 +49,18 @@ pub enum Edit {
         name: String,
         data: Option<Value>,
     },
+    Move {
+        word: String,
+        by: Ms,
+    },
+    TrimStart {
+        word: String,
+        by: Ms,
+    },
+    TrimEnd {
+        word: String,
+        by: Ms,
+    },
     Batch {
         edits: Vec<Edit>,
     },
@@ -70,6 +82,17 @@ pub enum EditError {
     UnnamedEvent,
     #[error("no Words are selected")]
     NothingSelected,
+    #[error("only a Move or Trim can be dragged")]
+    NotATimingEdit,
+}
+
+impl Edit {
+    pub fn is_timing(&self) -> bool {
+        matches!(
+            self,
+            Edit::Move { .. } | Edit::TrimStart { .. } | Edit::TrimEnd { .. }
+        )
+    }
 }
 
 impl Script {
@@ -115,6 +138,9 @@ impl Script {
                     self.words.insert(index, typed);
                 }
             }
+            Edit::Move { word, by } => timing::move_by(self.word_mut(&word)?, by),
+            Edit::TrimStart { word, by } => timing::trim_start(self.word_mut(&word)?, by),
+            Edit::TrimEnd { word, by } => timing::trim_end(self.word_mut(&word)?, by),
             Edit::InsertEvent {
                 anchor,
                 offset,

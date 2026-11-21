@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use super::Session;
 use crate::capture::{CaptureError, InputChoice, Meter, RecordingBar};
 use crate::store::{self, Recording};
@@ -51,6 +53,13 @@ impl Session {
         let cancelled = bar.cancel();
         self.publish();
         cancelled
+    }
+
+    /// For reading a Recording's waveform without holding the Session.
+    pub fn recording_file(&self, id: &str) -> Option<PathBuf> {
+        let recordings = &self.presentation.recordings;
+        let recording = recordings.iter().find(|recording| recording.id == id)?;
+        Some(self.folder.join(&recording.file))
     }
 
     pub fn subscribe_meter(&self, listener: impl Fn(Meter) + Send + 'static) {

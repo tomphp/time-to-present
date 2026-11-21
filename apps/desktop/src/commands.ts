@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Edit, InputChoice, Meter, SessionState } from "./session";
+import type { Edit, InputChoice, Meter, SessionState, Waveform } from "./session";
 
 export const newPresentation = (parent: string, title: string) =>
   invoke<SessionState>("new_presentation", { parent, title });
@@ -21,6 +21,8 @@ export const cut = (words: string[]) => invoke<SessionState>("cut", { words });
 export const copy = (words: string[]) => invoke<void>("copy", { words });
 export const paste = (after: string | null, replacing: string[], text: string) =>
   invoke<SessionState>("paste", { after, replacing, text });
+export const drag = (drag: string, edit: Edit) => invoke<SessionState>("drag", { drag, edit });
+export const recordingWaveform = (recording: string) => invoke<Waveform>("recording_waveform", { recording });
 export const undo = () => invoke<SessionState>("undo");
 export const redo = () => invoke<SessionState>("redo");
 export const selectEvent = (event: string) => invoke<SessionState>("select_event", { event });

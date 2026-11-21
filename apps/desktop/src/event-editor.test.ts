@@ -4,6 +4,7 @@ import { mountEventEditor } from "./event-editor";
 import type { Edit, SessionState } from "./session";
 import { mountTextPane } from "./text-pane";
 import { placeCaret } from "./dom-caret";
+import { scriptWord } from "./test-words";
 
 const FORM = `
   <form id="event-editor" hidden>
@@ -129,8 +130,8 @@ describe("the event editor", () => {
 describe("the text pane's event keys", () => {
   const state = {
     words: [
-      { id: "w1", text: "Hello,", start: 400, duration: 300, confidence: null },
-      { id: "w2", text: "world.", start: 850, duration: 450, confidence: null },
+      scriptWord("w1", "Hello,", { start: 400, gap: 400 }),
+      scriptWord("w2", "world.", { start: 850, gap: 150, duration: 450 }),
     ],
     namedEvents: [{ id: "e1", name: "slide", anchor: "w2", offset: 0, time: 850 }],
     movedEvents: [],
@@ -140,7 +141,7 @@ describe("the text pane's event keys", () => {
     const hooks = { insertEventAt: vi.fn(), selectEvent: vi.fn() };
     const commands = { edit: vi.fn(), cut: vi.fn(), copy: vi.fn(), paste: vi.fn(), undo: vi.fn(), redo: vi.fn() };
     const root = document.querySelector<HTMLElement>("#script")!;
-    const pane = mountTextPane(root, commands, hooks);
+    const pane = mountTextPane(root, commands, hooks, vi.fn());
     pane.render(state);
     return { root, hooks };
   }

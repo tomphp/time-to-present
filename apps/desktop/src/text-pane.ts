@@ -1,8 +1,9 @@
 import { collapsed, endOf, indexOf, isSlot, lastId, resolveCaret, type CaretTarget, type Range, type Slot } from "./caret";
 import { caretAfterPaste, passageText, pasteAt, selectedWords } from "./clipboard";
-import { currentCaret, placeCaret, selectedRange } from "./dom-caret";
-import { eventAnchorAt, type EventAt } from "./named-events";
+import { currentCaret, placeCaret, placeRange, selectedRange } from "./dom-caret";
+import { eventAnchorAt, sameChips, type EventAt } from "./named-events";
 import { renderScript } from "./pane-render";
+import { sameLayout } from "./script-view";
 import type { Edit, ScriptWord, SessionState } from "./session";
 import { applyInput, type Input } from "./text-editing";
 
@@ -34,8 +35,14 @@ const INPUT_TYPES: Record<string, Input | undefined> = {
 /**
  * The editable text pane. Every keystroke becomes a Session edit and the DOM is only ever
  * rendered from state; inputs queue up so a fast burst lands one after another.
+ * It reports every selection made in it, to share with the timeline.
  */
-export function mountTextPane(root: HTMLElement, commands: Commands, events: EventHooks) {
+export function mountTextPane(
+  root: HTMLElement,
+  commands: Commands,
+  events: EventHooks,
+  onSelect: (range: Range) => void,
+) {
   let script: PaneScript = { words: [], namedEvents: [], movedEvents: [] };
   let words: ScriptWord[] = [];
   let selectedEvent: string | null = null;
@@ -48,7 +55,7 @@ export function mountTextPane(root: HTMLElement, commands: Commands, events: Eve
   root.contentEditable = "true";
   root.spellcheck = false;
 
-  function render(next: PaneScript) {
+  function repaint(next: PaneScript) {
     script = next;
     words = next.words;
     const target = pending ?? (root.contains(document.activeElement) ? currentCaret(root) : null);
@@ -59,16 +66,25 @@ export function mountTextPane(root: HTMLElement, commands: Commands, events: Eve
     if (caret) placeCaret(root, caret);
   }
 
+  /** Renders new Session state, leaving the DOM and its selection alone when only timing changed. */
+  function render(next: PaneScript) {
+    const timingOnly = !pending && sameLayout(words, next.words) && sameChips(script, next);
+    if (timingOnly) {
+      script = next;
+      words = next.words;
+    } else repaint(next);
+  }
+
   function selectEvent(id: string | null) {
     selectedEvent = id;
-    render(script);
+    repaint(script);
     if (id) root.querySelector(`[data-event-id="${id}"]`)?.scrollIntoView({ block: "nearest" });
   }
 
   /** Puts the caret back where it was before an event took the focus. */
   function focus() {
     pending = lastCaret ?? { slotAfter: lastId(words) };
-    render(script);
+    repaint(script);
   }
 
   function enqueue(work: () => Promise<void>) {
@@ -98,8 +114,8 @@ export function mountTextPane(root: HTMLElement, commands: Commands, events: Eve
       lastCaret = outcome?.caret ?? range.start;
       if (!outcome) return;
       pending = outcome.caret;
-      if (!outcome.edit) return render(script);
-      await commands.edit(outcome.edit).then(render, reportAndDrop);
+      if (!outcome.edit) return repaint(script);
+      await commands.edit(outcome.edit).then(repaint, reportAndDrop);
     });
   });
 
@@ -132,7 +148,7 @@ export function mountTextPane(root: HTMLElement, commands: Commands, events: Eve
     if (!ids.length) return;
     enqueue(async () => {
       pending = endOf(words, indexOf(words, ids[0]) - 1);
-      await commands.cut(ids).then(render, reportAndDrop);
+      await commands.cut(ids).then(repaint, reportAndDrop);
     });
   });
 
@@ -150,7 +166,7 @@ export function mountTextPane(root: HTMLElement, commands: Commands, events: Eve
         .paste(at.after, at.replacing, text)
         .then((next) => {
           pending = caretAfterPaste(previous, next.words, at);
-          render(next);
+          repaint(next);
         }, reportAndDrop);
     });
   });
@@ -174,9 +190,11 @@ export function mountTextPane(root: HTMLElement, commands: Commands, events: Eve
   });
 
   document.addEventListener("selectionchange", () => {
+    const range = selectedRange(root);
+    if (range) onSelect(range);
     if (!slot || queued > 0) return;
     const caret = currentCaret(root);
-    if (caret && !isSlot(caret)) render(script);
+    if (caret && !isSlot(caret)) repaint(script);
   });
 
   function reportAndDrop(error: unknown) {
@@ -185,7 +203,7 @@ export function mountTextPane(root: HTMLElement, commands: Commands, events: Eve
     lastCaret = { slotAfter: lastId(words) };
   }
 
-  return { render, selectEvent, focus };
+  return { render, selectEvent, focus, select: (range: Range) => placeRange(root, range) };
 }
 
 function inputFrom(event: InputEvent): Input | null {

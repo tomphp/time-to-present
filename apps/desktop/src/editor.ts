@@ -1,14 +1,18 @@
-import { copy, cut, edit, onSessionState, paste, redo, renamePresentation, selectEvent, undo } from "./commands";
+import { copy, cut, drag, edit, onSessionState, paste, recordingWaveform, redo, renamePresentation, selectEvent, undo } from "./commands";
 import { mountEventEditor } from "./event-editor";
 import { eventNames, nextMoved } from "./named-events";
 import { renderRecordingBar } from "./recording-bar";
+import { sharedSelection } from "./selection";
 import type { SessionState } from "./session";
 import { mountTextPane } from "./text-pane";
+import { mountTimeline } from "./timeline";
 
 const title = document.querySelector<HTMLInputElement>("#title")!;
 let savedTitle = "";
 let current: SessionState | null = null;
 let selected: string | null = null;
+
+const selection = sharedSelection((ids) => timeline.select(ids));
 
 const pane = mountTextPane(
   document.querySelector<HTMLElement>("#script")!,
@@ -20,6 +24,7 @@ const pane = mountTextPane(
     },
     selectEvent: select,
   },
+  selection.fromText,
 );
 const eventEditor = mountEventEditor(document.querySelector<HTMLFormElement>("#event-editor")!, {
   edit,
@@ -29,6 +34,15 @@ const eventEditor = mountEventEditor(document.querySelector<HTMLFormElement>("#e
     pane.focus();
   },
 });
+
+const timeline = mountTimeline(
+  document.querySelector<HTMLElement>("#timeline")!,
+  { drag, waveform: recordingWaveform },
+  (word, extend) => {
+    const range = selection.fromTimeline(word, extend);
+    if (range) pane.select(range);
+  },
+);
 
 const error = document.querySelector<HTMLParagraphElement>("#error")!;
 
@@ -68,7 +82,9 @@ function render(state: SessionState) {
   document.title = state.title;
   title.value = state.title;
   if (selected && !state.namedEvents.some((event) => event.id === selected)) eventEditor.close();
+  selection.update(state.words);
   pane.render(state);
+  timeline.render(state.words, state.scriptEnd, selection.ids());
   renderRecordingBar(state.recordingBar);
 }
 

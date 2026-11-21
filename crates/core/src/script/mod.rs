@@ -10,6 +10,7 @@ mod ids;
 mod passage;
 mod plain_text;
 mod reanchor;
+mod timing;
 mod transform;
 
 pub use edit::{Edit, EditError};

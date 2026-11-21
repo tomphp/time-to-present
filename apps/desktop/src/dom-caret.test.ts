@@ -1,18 +1,13 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Caret } from "./caret";
-import { currentCaret, placeCaret, selectedRange } from "./dom-caret";
+import { currentCaret, placeCaret, placeRange, selectedRange } from "./dom-caret";
 import { renderScript } from "./pane-render";
 import type { ScriptWord } from "./session";
+import { scriptWord } from "./test-words";
 
-const word = (id: string, text: string, breakAfter?: ScriptWord["breakAfter"], confidence: number | null = null): ScriptWord => ({
-  id,
-  text,
-  start: 0,
-  duration: 300,
-  confidence,
-  breakAfter,
-});
+const word = (id: string, text: string, breakAfter?: ScriptWord["breakAfter"], confidence: number | null = null): ScriptWord =>
+  scriptWord(id, text, { confidence, breakAfter });
 
 const words = [word("w1", "Hello,", undefined, 0.4), word("w2", "wörld.", "paragraph"), word("w3", "Typed")];
 let root: HTMLElement;
@@ -92,6 +87,15 @@ describe("placing and reading the caret", () => {
     document.getSelection()!.setBaseAndExtent(hello.firstChild!, 3, world.firstChild!, 2);
 
     expect(selectedRange(root)).toEqual({ start: { word: "w1", offset: 3 }, end: { word: "w2", offset: 2 } });
+  });
+
+  it("places a range across Words, as the timeline selects them", () => {
+    renderScript(root, words, null);
+    const range = { start: { word: "w1", offset: 0 }, end: { word: "w3", offset: 5 } };
+
+    placeRange(root, range);
+
+    expect(selectedRange(root)).toEqual(range);
   });
 
   it("is null when the selection is outside the pane", () => {

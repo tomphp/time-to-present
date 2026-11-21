@@ -3,15 +3,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { currentCaret } from "./dom-caret";
 import { renderScript, type Chips } from "./pane-render";
 import type { ScriptWord, TimedEvent } from "./session";
+import { scriptWord } from "./test-words";
 
-const word = (id: string, text: string, breakAfter?: ScriptWord["breakAfter"]): ScriptWord => ({
-  id,
-  text,
-  start: 0,
-  duration: 300,
-  confidence: null,
-  breakAfter,
-});
+const word = (id: string, text: string, breakAfter?: ScriptWord["breakAfter"]) => scriptWord(id, text, { breakAfter });
 
 const event = (id: string, name: string, anchor: string, time: number): TimedEvent => ({
   id,
