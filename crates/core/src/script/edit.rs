@@ -92,7 +92,7 @@ pub enum EditError {
     NothingSelected,
     #[error("a percentage must be above zero")]
     InvalidPercent,
-    #[error("only a Move or Trim can be dragged")]
+    #[error("only a Move or Trim can be dragged or nudged")]
     NotATimingEdit,
 }
 

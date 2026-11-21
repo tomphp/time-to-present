@@ -88,3 +88,12 @@ fn retime_needs_words_and_a_positive_percentage() {
         Err(EditError::UnknownWord("nope".into()))
     );
 }
+
+#[test]
+fn retime_leaves_the_shortest_word_rather_than_none() {
+    let (_harness, mut session) = hello_world();
+
+    session.edit(retime(&["w1"], 0.1)).unwrap();
+
+    assert_eq!(session.state().words[0].word.duration, 10);
+}

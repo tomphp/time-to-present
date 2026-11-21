@@ -116,3 +116,18 @@ fn an_event_offset_is_set_in_signed_milliseconds() {
     assert_eq!(event.event.anchor, Anchor::Word("w3".into()));
     assert_eq!(event.event.offset, -120);
 }
+
+#[test]
+fn an_unknown_event_has_no_offset_to_set() {
+    let (_harness, mut session) = hello_world();
+
+    let result = session.edit(Edit::SetOffset {
+        event: "nope".into(),
+        offset: 5,
+    });
+
+    assert_eq!(
+        result,
+        Err(ttp_core::script::EditError::UnknownEvent("nope".into()))
+    );
+}

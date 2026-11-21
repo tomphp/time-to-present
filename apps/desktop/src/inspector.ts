@@ -42,6 +42,13 @@ export function mountInspector(form: HTMLFormElement, commands: InspectorCommand
     });
   }
 
+  for (const field of [gap, duration, offset]) {
+    field.addEventListener("keydown", (key) => {
+      if (key.key !== "Enter") return;
+      key.preventDefault();
+      field.blur();
+    });
+  }
   for (const field of [gap, duration]) {
     field.addEventListener("change", () => {
       const word = words.find((candidate) => candidate.id === ids[0]);

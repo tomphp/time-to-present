@@ -76,7 +76,8 @@ document.addEventListener("keydown", (event) => {
 document.addEventListener(
   "keydown",
   (event) => {
-    const field = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
+    const target = event.target as HTMLElement;
+    const field = target.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
     const word = selection.ids()[0];
     const timing = !field && !event.metaKey && !event.ctrlKey && word && nudgeOf(event, word);
     if (!timing) return;

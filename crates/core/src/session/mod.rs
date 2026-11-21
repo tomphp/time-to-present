@@ -146,49 +146,49 @@ impl Session {
     /// the drag, and its steps that land after that are ignored. Only a Move or Trim can be
     /// dragged.
     pub fn drag(&mut self, drag: &str, edit: Edit) -> Result<(), EditError> {
-        if !edit.is_timing() {
-            return Err(EditError::NotATimingEdit);
-        }
         if self.history.drag_ended(drag) {
             return Ok(());
         }
         let start = self.history.drag_start(drag).cloned();
-        let mut dragged = start
-            .clone()
-            .unwrap_or_else(|| self.presentation.script.clone());
-        dragged.apply(edit, &mut self.ids)?;
-        if dragged == self.presentation.script {
-            return Ok(());
-        }
-        match start {
-            Some(start) if start == dragged => self.history.drop_drag_step(),
-            Some(_) => {}
-            None => self
-                .history
-                .record_drag(self.presentation.script.clone(), drag),
-        }
-        self.presentation.script = dragged;
-        self.changed();
-        Ok(())
+        self.apply_timing_run(drag, start, edit)
     }
 
     /// Applies a Move or Trim as part of the run of nudges named `run`, so that a run of them,
     /// with nothing else changing the Script between, is one undo step.
     pub fn nudge(&mut self, run: &str, edit: Edit) -> Result<(), EditError> {
+        let run = format!("nudge:{run}");
+        let continuing = self.history.drag_start(&run).is_some();
+        let base = continuing.then(|| self.presentation.script.clone());
+        self.apply_timing_run(&run, base, edit)
+    }
+
+    /// Applies a Move or Trim to `base`, the Script the run began from, or to the current Script
+    /// when `base` is None because the run is only starting. A run that ends back at its start
+    /// leaves no undo step.
+    fn apply_timing_run(
+        &mut self,
+        run: &str,
+        base: Option<Script>,
+        edit: Edit,
+    ) -> Result<(), EditError> {
         if !edit.is_timing() {
             return Err(EditError::NotATimingEdit);
         }
-        let run = format!("nudge:{run}");
-        let mut nudged = self.presentation.script.clone();
-        nudged.apply(edit, &mut self.ids)?;
-        if nudged == self.presentation.script {
+        let mut changed = base
+            .clone()
+            .unwrap_or_else(|| self.presentation.script.clone());
+        changed.apply(edit, &mut self.ids)?;
+        if changed == self.presentation.script {
             return Ok(());
         }
-        if self.history.drag_start(&run).is_none() {
-            self.history
-                .record_drag(self.presentation.script.clone(), &run);
+        match base {
+            Some(start) if start == changed => self.history.drop_drag_step(),
+            Some(_) => {}
+            None => self
+                .history
+                .record_drag(self.presentation.script.clone(), run),
         }
-        self.presentation.script = nudged;
+        self.presentation.script = changed;
         self.changed();
         Ok(())
     }
