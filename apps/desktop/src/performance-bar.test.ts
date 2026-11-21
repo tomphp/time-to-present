@@ -82,7 +82,7 @@ describe("the end of the Performance", () => {
   });
 
   it("is not started by a speed change before play, nor given a total when joined after the end", () => {
-    expect(foldRun(NOT_STARTED, { ...clock("play"), cause: "speed", state: "ready" }, 5)).toEqual(NOT_STARTED);
+    expect(foldRun(NOT_STARTED, { type: "clock", cause: "speed", state: "ready", scriptTime: 0, speed: 1.1 }, 5)).toEqual(NOT_STARTED);
     const joined = foldRun(NOT_STARTED, { type: "snapshot", clock: { state: "ended", scriptTime: 0, speed: 1 } } as StreamEvent, 5);
     expect(endedSummary(joined, 725_000)).toBe("Ended (Script 12:05)");
   });
