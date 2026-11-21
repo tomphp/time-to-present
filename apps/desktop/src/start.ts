@@ -26,17 +26,6 @@ document.querySelector("#open-folder")!.addEventListener("click", async () => {
   if (folder) await openFolder(folder).catch(showError);
 });
 
-document.querySelector("#check-microphone")!.addEventListener("click", async () => {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stream.getTracks().forEach((track) => track.stop());
-    notice.textContent = "Microphone access granted";
-    notice.hidden = false;
-  } catch (reason) {
-    showError(`Microphone access failed: ${reason}`);
-  }
-});
-
 const notice = document.querySelector<HTMLParagraphElement>("#notice")!;
 const recent = document.querySelector<HTMLElement>("#recent")!;
 const recentList = document.querySelector<HTMLUListElement>("#recent-list")!;
@@ -57,7 +46,22 @@ async function showRecent() {
       button.addEventListener("click", () =>
         openFolder(folder).catch((reason) => {
           showError(reason);
-          void showRecent();
+          async function checkMicrophone() {
+  error.hidden = true;
+  notice.hidden = true;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((track) => track.stop());
+    notice.textContent = "Microphone access granted";
+    notice.hidden = false;
+  } catch (reason) {
+    showError(`Microphone access failed: ${reason}`);
+  }
+}
+
+document.querySelector("#check-microphone")!.addEventListener("click", checkMicrophone);
+
+void showRecent();
         }),
       );
       const item = document.createElement("li");
@@ -68,5 +72,20 @@ async function showRecent() {
   notice.hidden = dropped.length === 0;
   notice.textContent = `Removed from Recent, no longer found: ${dropped.map(folderName).join(", ")}`;
 }
+
+async function checkMicrophone() {
+  error.hidden = true;
+  notice.hidden = true;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((track) => track.stop());
+    notice.textContent = "Microphone access granted";
+    notice.hidden = false;
+  } catch (reason) {
+    showError(`Microphone access failed: ${reason}`);
+  }
+}
+
+document.querySelector("#check-microphone")!.addEventListener("click", checkMicrophone);
 
 void showRecent();

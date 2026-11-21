@@ -5,7 +5,7 @@ identity="${SIGNING_IDENTITY:-Time to Present Local}"
 
 if ! security find-identity -v -p codesigning | grep -q "\"$identity\""; then
   echo "No code signing identity named \"$identity\" in your keychain." >&2
-  echo "See docs/release.md for how to make one." >&2
+  echo "It must exist and be trusted for Code Signing. See docs/release.md for how to make one." >&2
   exit 1
 fi
 
