@@ -3,4 +3,15 @@
 The library a Presentation App uses to follow a Performance: it connects to the
 event stream Time to Present serves and folds Named Events into app state.
 
-Only the protocol version is exported so far.
+```ts
+import { connect } from "@time-to-present/client";
+
+const client = connect<{ slide: { index: number } }>();
+const deck = client.fold(0, { slide: (_, event) => event.data.index });
+deck.subscribe(({ state, live }) => showSlide(state, { animate: live }));
+client.onFrame((scriptTime) => moveProgressBar(scriptTime));
+```
+
+Derive state with a Fold: it is rebuilt on every Snapshot, so seeks, late joins and
+reconnects are always right. The raw `on…` hooks only hear live events and are not
+seek-safe.
