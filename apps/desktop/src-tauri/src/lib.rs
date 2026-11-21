@@ -48,7 +48,9 @@ async fn open_folder(
 ) -> CommandResult<SessionState> {
     let session = Session::open(&folder, state.time.clone()).map_err(|error| {
         if !folder.is_dir() {
-            let _ = state.settings.lock().unwrap().forget_recent(&folder);
+            if let Err(error) = state.settings.lock().unwrap().forget_recent(&folder) {
+                eprintln!("could not update the Recent list: {error}");
+            }
             return format!(
                 "{} no longer exists, so it was removed from Recent",
                 folder.display()
@@ -71,8 +73,8 @@ fn recent_presentations(state: State<'_, App>) -> CommandResult<Recent> {
 
 #[tauri::command]
 fn rename_presentation(app: AppHandle, state: State<'_, App>, title: String) -> CommandResult<()> {
-    let mut session = state.session.lock().unwrap();
-    let session = session.as_mut().ok_or("no Presentation is open")?;
+    let mut guard = state.session.lock().unwrap();
+    let session = guard.as_mut().ok_or("no Presentation is open")?;
     session.rename(&title).map_err(message)?;
     set_editor_title(&app, &session.state().title);
     Ok(())
@@ -89,7 +91,9 @@ fn show(app: &AppHandle, state: &App, mut session: Session) -> CommandResult<Ses
         let _ = publisher.emit(SESSION_STATE, published);
     });
     let opened = session.state();
-    let _ = state.settings.lock().unwrap().add_recent(&opened.folder);
+    if let Err(error) = state.settings.lock().unwrap().add_recent(&opened.folder) {
+        eprintln!("could not update the Recent list: {error}");
+    }
     *state.session.lock().unwrap() = Some(session);
     if app.get_webview_window(EDITOR_WINDOW).is_none() {
         WebviewWindowBuilder::new(app, EDITOR_WINDOW, WebviewUrl::App("editor.html".into()))

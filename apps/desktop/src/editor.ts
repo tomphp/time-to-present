@@ -12,7 +12,7 @@ title.addEventListener("change", async () => {
   await renamePresentation(title.value).catch((reason) => {
     error.textContent = String(reason);
     error.hidden = false;
-    title.value = document.title;
+    title.value = savedTitle;
   });
 });
 
@@ -20,7 +20,10 @@ title.addEventListener("keydown", (event) => {
   if (event.key === "Enter") title.blur();
 });
 
+let savedTitle = "";
+
 function render(state: SessionState) {
+  savedTitle = state.title;
   document.title = state.title;
   title.value = state.title;
   script.replaceChildren(...paragraphs(state));
