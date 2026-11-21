@@ -2,16 +2,7 @@ use tauri::State;
 use ttp_core::capture::{CaptureError, InputChoice};
 use ttp_core::session::Session;
 
-use crate::{App, CommandResult, message};
-
-fn with_session<T>(
-    state: &App,
-    act: impl FnOnce(&mut Session) -> Result<T, CaptureError>,
-) -> CommandResult<T> {
-    let mut guard = state.session.lock().unwrap();
-    let session = guard.as_mut().ok_or("no Presentation is open")?;
-    act(session).map_err(message)
-}
+use crate::{App, CommandResult, message, with_session};
 
 #[tauri::command]
 pub async fn open_recording_bar(state: State<'_, App>) -> CommandResult<()> {
@@ -23,7 +14,7 @@ pub async fn open_recording_bar(state: State<'_, App>) -> CommandResult<()> {
     let choice = state.settings.lock().unwrap().input().clone();
     with_session(&state, |session| {
         session.open_recording_bar(choice);
-        Ok(())
+        Ok::<_, CaptureError>(())
     })
 }
 

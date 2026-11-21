@@ -195,10 +195,9 @@ impl Harness {
 }
 
 pub fn starts(state: &SessionState) -> Vec<(&str, Ms)> {
-    state
-        .words
-        .iter()
-        .map(|w| (w.word.text.as_str(), w.start))
+    word_starts(state)
+        .into_iter()
+        .map(|(_, text, start)| (text, start))
         .collect()
 }
 

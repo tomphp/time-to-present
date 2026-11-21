@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::Path;
 
+use ttp_core::capture::InputChoice;
 use ttp_core::script::Edit;
 
 use crate::support::Harness;
@@ -141,4 +142,24 @@ fn renaming_saves_a_pending_edit_with_the_new_title_at_once() {
     assert_eq!(saved_first_word(&folder), "Hullo,");
     assert_eq!(harness.open(&folder).state(), session.state());
     assert_eq!(leftovers(&folder), Vec::<String>::new());
+}
+
+#[test]
+fn stopping_a_recording_saves_a_pending_edit_with_it_and_leaves_undo_intact() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.edit(correct("Hullo,")).unwrap();
+    session.open_recording_bar(InputChoice {
+        device: None,
+        channel: 1,
+    });
+    session.start_recording().unwrap();
+    harness.audio.play(&[0.1; 480]);
+
+    session.stop_recording().unwrap();
+
+    assert_eq!(saved_first_word(&folder), "Hullo,");
+    assert_eq!(harness.open(&folder).state().words, session.state().words);
+    session.undo();
+    assert_eq!(session.state().words[0].word.text, "Hello,");
 }

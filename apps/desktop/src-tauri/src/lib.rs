@@ -6,9 +6,10 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use ttp_core::models::{InstalledModel, ModelManager, Progress, whisper_catalog};
 use ttp_core::platform::Platform;
-use ttp_core::script::Edit;
+use ttp_core::script::{Edit, EditError};
 use ttp_core::session::{Session, SessionState};
 use ttp_core::settings::Settings;
+use ttp_core::store::StoreError;
 use ttp_core::time::MonotonicTime;
 
 mod audio;
@@ -87,10 +88,11 @@ fn recent_presentations(state: State<'_, App>) -> CommandResult<Recent> {
 
 #[tauri::command]
 fn rename_presentation(app: AppHandle, state: State<'_, App>, title: String) -> CommandResult<()> {
-    let mut guard = state.session.lock().unwrap();
-    let session = guard.as_mut().ok_or("no Presentation is open")?;
-    session.rename(&title).map_err(message)?;
-    set_editor_title(&app, &session.state().title);
+    let renamed = with_session(&state, |session| {
+        session.rename(&title)?;
+        Ok::<_, StoreError>(session.state())
+    })?;
+    set_editor_title(&app, &renamed.title);
     Ok(())
 }
 
@@ -163,14 +165,17 @@ fn session_state(state: State<'_, App>) -> Option<SessionState> {
 
 #[tauri::command]
 fn edit(state: State<'_, App>, edit: Edit) -> CommandResult<SessionState> {
-    with_session(&state, |session| session.edit(edit).map_err(message))
+    with_session(&state, |session| {
+        session.edit(edit)?;
+        Ok::<_, EditError>(session.state())
+    })
 }
 
 #[tauri::command]
 fn undo(state: State<'_, App>) -> CommandResult<SessionState> {
     with_session(&state, |session| {
         session.undo();
-        Ok(())
+        Ok::<_, String>(session.state())
     })
 }
 
@@ -178,37 +183,37 @@ fn undo(state: State<'_, App>) -> CommandResult<SessionState> {
 fn redo(state: State<'_, App>) -> CommandResult<SessionState> {
     with_session(&state, |session| {
         session.redo();
-        Ok(())
+        Ok::<_, String>(session.state())
     })
 }
 
-/// Runs a command on the open Session and answers with the state it leaves behind.
-fn with_session(
+/// Runs a command on the open Session, which there must be.
+fn with_session<T, E: std::fmt::Display>(
     state: &App,
-    command: impl FnOnce(&mut Session) -> CommandResult<()>,
-) -> CommandResult<SessionState> {
-    let mut session = state.session.lock().unwrap();
-    let session = session.as_mut().ok_or("no Presentation is open")?;
-    command(session)?;
-    Ok(session.state())
+    command: impl FnOnce(&mut Session) -> Result<T, E>,
+) -> CommandResult<T> {
+    let mut guard = state.session.lock().unwrap();
+    let session = guard.as_mut().ok_or("no Presentation is open")?;
+    command(session).map_err(message)
 }
 
-fn flush(app: &AppHandle) {
+/// Runs a save on the Session if one is open, and reports a failure without stopping.
+fn save_open_session(
+    app: &AppHandle,
+    what: &str,
+    save: impl FnOnce(&mut Session) -> Result<(), StoreError>,
+) {
     if let Some(session) = app.state::<App>().session.lock().unwrap().as_mut()
-        && let Err(error) = session.flush()
+        && let Err(error) = save(session)
     {
-        eprintln!("saving on exit failed: {error}");
+        eprintln!("{what} failed: {error}");
     }
 }
 
 fn autosave(app: AppHandle) {
     loop {
         std::thread::sleep(AUTOSAVE_POLL);
-        if let Some(session) = app.state::<App>().session.lock().unwrap().as_mut()
-            && let Err(error) = session.tick()
-        {
-            eprintln!("autosave failed: {error}");
-        }
+        save_open_session(&app, "autosave", Session::tick);
     }
 }
 
@@ -265,9 +270,6 @@ pub fn run() {
                     whisper_catalog(),
                 )),
             });
-            Ok(())
-        })
-        .setup(|app| {
             let handle = app.handle().clone();
             std::thread::spawn(move || autosave(handle));
             Ok(())
@@ -296,8 +298,8 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building Time to Present")
         .run(|app, event| {
-            if let tauri::RunEvent::ExitRequested { .. } = event {
-                flush(app);
+            if let tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit = event {
+                save_open_session(app, "saving on exit", Session::flush);
             }
         });
 }
