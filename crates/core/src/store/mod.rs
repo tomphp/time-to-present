@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -105,7 +106,8 @@ pub fn new_recording(folder: &Path, presentation: &Presentation) -> Result<Recor
 }
 
 /// The Recordings in `recordings/` that no Word references, registered or not, oldest first,
-/// with any WAV header a crash left unfixed brought up to the length on disk.
+/// with any WAV header a crash left unfixed brought up to the length on disk. A file that is
+/// no WAV at all is still returned, for the presenter to Discard.
 pub fn unreferenced_recordings(
     folder: &Path,
     presentation: &Presentation,
@@ -113,7 +115,7 @@ pub fn unreferenced_recordings(
     let Ok(entries) = std::fs::read_dir(folder.join(RECORDINGS_DIR)) else {
         return Ok(Vec::new());
     };
-    let referenced: Vec<&str> = presentation.script.recording_ids().collect();
+    let referenced: HashSet<&str> = presentation.script.recording_ids().collect();
     let mut found = Vec::new();
     for entry in entries {
         let path = entry?.path();
@@ -126,7 +128,7 @@ pub fn unreferenced_recordings(
         let Some(number) = stem.strip_prefix('r').and_then(|n| n.parse::<u64>().ok()) else {
             continue;
         };
-        if !referenced.contains(&stem) {
+        if !referenced.contains(stem) {
             found.push((number, stem.to_string()));
         }
     }
@@ -139,7 +141,7 @@ pub fn unreferenced_recordings(
         })
         .collect();
     for recording in &recordings {
-        wav::fix_header(&folder.join(&recording.file))?;
+        let _ = wav::fix_header(&folder.join(&recording.file));
     }
     Ok(recordings)
 }

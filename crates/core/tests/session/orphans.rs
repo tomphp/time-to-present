@@ -57,6 +57,19 @@ fn a_wav_a_crash_left_with_an_unfixed_header_is_offered_at_the_end_and_registere
 }
 
 #[test]
+fn a_file_that_is_no_wav_is_still_offered_and_does_not_stop_the_presentation_opening() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    std::fs::create_dir_all(folder.join("recordings")).unwrap();
+    std::fs::write(folder.join("recordings/r2.wav"), b"").unwrap();
+
+    let mut session = harness.open(&folder);
+
+    assert_eq!(session.state().pending_passages, [interrupted("r2")]);
+    session.discard_transcription("r2").unwrap();
+    assert!(!folder.join("recordings/r2.wav").exists());
+}
+
+#[test]
 fn a_stopped_recording_without_words_is_offered_when_the_presentation_opens_again() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);

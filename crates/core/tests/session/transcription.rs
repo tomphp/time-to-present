@@ -340,7 +340,7 @@ fn retry_needs_a_failed_passage_and_discard_a_pending_one() {
 
     assert!(matches!(
         session.retry_transcription("r2").unwrap_err(),
-        PendingPassageError::NotFailed(_)
+        PendingPassageError::NotRetryable(_)
     ));
     assert!(matches!(
         session.discard_transcription("r9").unwrap_err(),

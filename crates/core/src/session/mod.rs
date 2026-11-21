@@ -16,6 +16,7 @@ mod clipboard;
 mod clock;
 mod history;
 mod live;
+mod orphans;
 mod recording;
 mod transcription;
 
