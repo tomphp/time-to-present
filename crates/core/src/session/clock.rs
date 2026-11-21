@@ -66,7 +66,7 @@ impl Session {
     }
 
     fn hold_off_app_nap_while_playing(&mut self) {
-        self.performing = self
+        self.performance_app_nap = self
             .clock
             .is_playing()
             .then(|| self.platform.app_nap.hold_off("Performance"));

@@ -1,12 +1,14 @@
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder, Window, WindowEvent};
 
-use crate::{App, CommandResult, message};
+use crate::{App, CommandResult, message, with_session};
 
 const TELEPROMPTER_WINDOW: &str = "teleprompter";
 
 #[tauri::command]
 pub fn open_teleprompter(app: AppHandle) -> CommandResult<()> {
     if let Some(window) = app.get_webview_window(TELEPROMPTER_WINDOW) {
+        window.unminimize().map_err(message)?;
+        window.show().map_err(message)?;
         return window.set_focus().map_err(message);
     }
     WebviewWindowBuilder::new(
@@ -26,7 +28,8 @@ pub fn on_window_event(window: &Window, event: &WindowEvent) {
     if window.label() != TELEPROMPTER_WINDOW || !matches!(event, WindowEvent::Destroyed) {
         return;
     }
-    if let Some(session) = window.state::<App>().session.lock().unwrap().as_mut() {
+    let _no_presentation_to_pause = with_session(&window.state::<App>(), |session| {
         session.pause();
-    }
+        Ok::<_, String>(())
+    });
 }

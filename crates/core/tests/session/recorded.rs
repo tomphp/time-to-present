@@ -57,7 +57,8 @@ fn rehearse() -> Value {
     session.play();
     recorder.advance(&mut session, 1_000);
     session.seek(4_750);
-    recorder.advance(&mut session, 1_200);
+    recorder.advance(&mut session, 2_200);
+    session.reset();
 
     let mut state = serde_json::to_value(session.state()).unwrap();
     state["folder"] = json!("");

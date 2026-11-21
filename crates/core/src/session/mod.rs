@@ -52,7 +52,7 @@ pub struct Session {
     clock: Clock,
     previewing: bool,
     timeline: Timeline,
-    performing: Option<Box<dyn Send>>,
+    performance_app_nap: Option<Box<dyn Send>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -101,7 +101,7 @@ impl Session {
             transcriptions: TranscriptionQueue::new(platform.transcriber.clone()),
             pending: Vec::new(),
             unsaved_since: None,
-            performing: None,
+            performance_app_nap: None,
             platform,
         })
     }

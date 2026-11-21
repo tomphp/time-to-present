@@ -599,6 +599,16 @@
         "state": "ended",
         "type": "clock"
       }
+    },
+    {
+      "at": 6200,
+      "event": {
+        "cause": "reset",
+        "scriptTime": 0,
+        "speed": 1.0,
+        "state": "ready",
+        "type": "clock"
+      }
     }
   ]
 }

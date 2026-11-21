@@ -322,8 +322,9 @@ body.teleprompter {
   color-scheme: dark;
   color: #eee;
   background: #000;
+  --line: 1.4em;
   font-size: 48px;
-  line-height: 1.4;
+  line-height: var(--line);
 }
 
 body.teleprompter #column {
@@ -331,11 +332,12 @@ body.teleprompter #column {
   width: min(30ch, 90vw);
   margin: 0 auto;
   text-align: left;
+  overflow-wrap: break-word;
   will-change: transform;
 }
 
 body.teleprompter #column p {
-  margin: 0 0 1lh;
+  margin: 0 0 var(--line);
 }
 
 body.teleprompter .spoken {

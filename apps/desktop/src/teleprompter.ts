@@ -14,9 +14,9 @@ import {
   type Scroll,
 } from "./teleprompter-view";
 
-const READING_LINE = 1 / 3;
 const SCROLL_EASE = "transform 200ms ease";
 
+const readingLine = find<HTMLSpanElement>("#reading-line");
 const column = find<HTMLElement>("#column");
 const paused = find<HTMLParagraphElement>("#paused");
 
@@ -56,12 +56,13 @@ function highlight(next: number | null) {
   spans.forEach((span, index) => (span.className = wordLook(index, next)));
 }
 
-/** Holds the current Word's line on the Reading Line. */
+/** Holds the current Word's line level with the Reading Line's chevron. */
 function follow(target: HTMLSpanElement) {
-  const next = scrollTo(scroll, target.offsetTop, followed.seeks);
+  const next = scrollTo(scroll, target.offsetTop, followed.jumps);
   if (next === scroll) return;
   scroll = next;
-  const offset = window.innerHeight * READING_LINE - (target.offsetTop + target.offsetHeight / 2);
+  const { top, height } = readingLine.getBoundingClientRect();
+  const offset = top + height / 2 - (target.offsetTop + target.offsetHeight / 2);
   column.style.transition = next.animate ? SCROLL_EASE : "none";
   column.style.transform = `translateY(${offset}px)`;
 }
@@ -83,7 +84,7 @@ document.addEventListener("keydown", (event) => {
   void (command === "play" ? play() : pause()).catch(console.error);
 });
 
-window.addEventListener("resize", () => (scroll = null));
+new ResizeObserver(() => (scroll = null)).observe(column);
 
 onSessionState((state) => renderScript(state.words));
 void onStreamEvent((event) => {

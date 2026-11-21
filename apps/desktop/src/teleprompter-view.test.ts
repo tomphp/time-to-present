@@ -89,21 +89,22 @@ describe("scrolling", () => {
   /** The rehearsal laid out unwrapped: a line, a blank line for the paragraph break, then two lines. */
   const lineOf = [0, 0, 0, 2, 2, 2, 3, 3, 3];
 
-  it("moves a line at a time with an ease as the Words cross lines, holds still between, and jumps on a seek", () => {
+  it("moves a line at a time with an ease as the Words cross lines, holds still between, and jumps on a seek or reset", () => {
     const moves: Array<Scroll & { at: number }> = [];
     let scroll: Scroll | null = null;
-    for (let at = 0; at <= 6_000; at += 50) {
+    for (let at = 0; at <= 6_500; at += 50) {
       const followed = followedAt(at);
       const current = currentWord(words, followed.state, scriptTimeAt(followed, at));
-      const next = scrollTo(scroll, lineOf[current ?? 0], followed.seeks);
+      const next = scrollTo(scroll, lineOf[current ?? 0], followed.jumps);
       if (next !== scroll) moves.push({ at, ...next });
       scroll = next;
     }
 
     expect(moves).toEqual([
-      { at: 0, line: 0, seeks: 1, animate: false },
-      { at: 3_500, line: 2, seeks: 1, animate: true },
-      { at: 4_000, line: 3, seeks: 2, animate: false },
+      { at: 0, line: 0, jumps: 1, animate: false },
+      { at: 3_500, line: 2, jumps: 1, animate: true },
+      { at: 4_000, line: 3, jumps: 2, animate: false },
+      { at: 6_200, line: 0, jumps: 3, animate: false },
     ]);
   });
 
@@ -112,7 +113,7 @@ describe("scrolling", () => {
     const closed = followClock(playing, { type: "closed", reason: "closed" }, 3_600);
     const reopened = followClock(closed, rehearsal.stream[0].event, 3_700);
 
-    expect(scrollTo({ line: 2, seeks: playing.seeks, animate: true }, 0, reopened.seeks).animate).toBe(false);
+    expect(scrollTo({ line: 2, jumps: playing.jumps, animate: true }, 0, reopened.jumps).animate).toBe(false);
   });
 });
 
