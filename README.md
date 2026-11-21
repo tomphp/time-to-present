@@ -9,7 +9,7 @@ are in [GLOSSARY.md](GLOSSARY.md), and the decisions behind it in [docs/adr](doc
 | --- | --- |
 | `apps/desktop` | The Tauri v2 app: webview frontends, with the Tauri shell in `src-tauri` |
 | `crates/core` | The Rust core: Script model, Presentation store and Session |
-| `crates/stt-sidecar` | The speech-to-text sidecar |
+| `crates/stt-sidecar` | The speech-to-text sidecar, speaking [its JSON-lines protocol](docs/stt-sidecar-protocol.md) |
 | `packages/client` | `@time-to-present/client`, the library Presentation Apps use |
 | `templates/presentation` | The Presentation App source written into new Presentations as `app-src/` |
 | `protocol-fixtures` | Event stream fixtures shared by the core and the client's Simulator |
