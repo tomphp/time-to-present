@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ScriptWord } from "./session";
-import { applyInput, resolveCaret, type Caret, type Input, type Range } from "./text-editing";
+import { resolveCaret, type Caret, type Range } from "./caret";
+import { applyInput, type Input } from "./text-editing";
 
 const word = (id: string, text: string, breakAfter?: ScriptWord["breakAfter"]): ScriptWord => ({
   id,
@@ -16,6 +17,8 @@ const at = (caret: Caret): Range => ({ start: caret, end: caret });
 const type = (text: string): Input => ({ type: "insertText", text });
 const backspace: Input = { type: "deleteBackward" };
 const forwardDelete: Input = { type: "deleteForward" };
+const wordBackspace: Input = { type: "deleteWordBackward" };
+const wordForwardDelete: Input = { type: "deleteWordForward" };
 const enter: Input = { type: "insertBreak" };
 
 describe("typing text", () => {
@@ -49,6 +52,37 @@ describe("typing text", () => {
     });
   });
 
+  it("over a selection across Words trims both ends and joins the text to the first", () => {
+    const range: Range = { start: { word: "w1", offset: 3 }, end: { word: "w2", offset: 2 } };
+
+    expect(applyInput(words, range, type("p"))).toEqual({
+      edit: {
+        kind: "batch",
+        edits: [
+          { kind: "correct", word: "w1", text: "Help" },
+          { kind: "correct", word: "w2", text: "rld." },
+        ],
+      },
+      caret: { word: "w1", offset: 4 },
+    });
+  });
+
+  it("over a selection from a slot inserts the text there and removes what was selected", () => {
+    const range: Range = { start: { slotAfter: "w1" }, end: { word: "w3", offset: 1 } };
+
+    expect(applyInput(words, range, type("x"))).toEqual({
+      edit: {
+        kind: "batch",
+        edits: [
+          { kind: "correct", word: "w3", text: "yped" },
+          { kind: "insertWord", after: "w1", text: "x" },
+          { kind: "delete", words: ["w2"] },
+        ],
+      },
+      caret: { wordAfter: "w1", offset: 1 },
+    });
+  });
+
   it("ignores text with whitespace in it", () => {
     expect(applyInput(words, at({ word: "w1", offset: 1 }), type("a b"))).toBeNull();
   });
@@ -79,6 +113,21 @@ describe("typing a space", () => {
 
   it("in a slot does nothing", () => {
     expect(applyInput(words, at({ slotAfter: "w1" }), type(" "))).toBeNull();
+  });
+
+  it("over a selection inside a Word removes it and splits there", () => {
+    const range: Range = { start: { word: "w1", offset: 1 }, end: { word: "w1", offset: 5 } };
+
+    expect(applyInput(words, range, type(" "))).toEqual({
+      edit: {
+        kind: "batch",
+        edits: [
+          { kind: "correct", word: "w1", text: "H," },
+          { kind: "split", word: "w1", at: 1 },
+        ],
+      },
+      caret: { wordAfter: "w1", offset: 0 },
+    });
   });
 });
 
@@ -123,21 +172,54 @@ describe("backspace", () => {
     expect(applyInput(words, at({ slotAfter: null }), backspace)).toBeNull();
   });
 
-  it("over a selection across Words deletes every Word it touches", () => {
-    const range: Range = { start: { word: "w1", offset: 3 }, end: { word: "w2", offset: 2 } };
+  it("over a selection across Words trims the ends and deletes the Words between", () => {
+    const range: Range = { start: { word: "w1", offset: 3 }, end: { word: "w3", offset: 2 } };
 
     expect(applyInput(words, range, backspace)).toEqual({
-      edit: { kind: "delete", words: ["w1", "w2"] },
-      caret: { wordAfter: null, offset: 0 },
+      edit: {
+        kind: "batch",
+        edits: [
+          { kind: "correct", word: "w1", text: "Hel" },
+          { kind: "correct", word: "w3", text: "ped" },
+          { kind: "delete", words: ["w2"] },
+        ],
+      },
+      caret: { word: "w1", offset: 3 },
     });
   });
 
-  it("over a selection from a slot to a Word deletes the Words between", () => {
+  it("over whole Words deletes them in one go and lands where they were", () => {
+    const range: Range = { start: { word: "w1", offset: 0 }, end: { word: "w2", offset: 6 } };
+
+    expect(applyInput(words, range, backspace)).toEqual({
+      edit: { kind: "delete", words: ["w1", "w2"] },
+      caret: { slotAfter: null },
+    });
+  });
+
+  it("over a selection from a slot to inside a Word keeps that Word's tail", () => {
     const range: Range = { start: { slotAfter: "w1" }, end: { word: "w3", offset: 1 } };
 
     expect(applyInput(words, range, backspace)).toEqual({
-      edit: { kind: "delete", words: ["w2", "w3"] },
-      caret: { wordAfter: "w1", offset: 0 },
+      edit: {
+        kind: "batch",
+        edits: [
+          { kind: "correct", word: "w3", text: "yped" },
+          { kind: "delete", words: ["w2"] },
+        ],
+      },
+      caret: { word: "w3", offset: 0 },
+    });
+  });
+
+  it("by whole Word removes the text before the caret, or acts like backspace at the start", () => {
+    expect(applyInput(words, at({ word: "w1", offset: 3 }), wordBackspace)).toEqual({
+      edit: { kind: "correct", word: "w1", text: "lo," },
+      caret: { word: "w1", offset: 0 },
+    });
+    expect(applyInput(words, at({ word: "w2", offset: 0 }), wordBackspace)).toEqual({
+      edit: { kind: "merge", word: "w1" },
+      caret: { word: "w1", offset: 6 },
     });
   });
 });
@@ -164,17 +246,41 @@ describe("forward delete", () => {
   it("at the end of the last Word does nothing", () => {
     expect(applyInput(words, at({ word: "w3", offset: 5 }), forwardDelete)).toBeNull();
   });
+
+  it("by whole Word removes the text after the caret, or acts like delete at the end", () => {
+    expect(applyInput(words, at({ word: "w1", offset: 3 }), wordForwardDelete)).toEqual({
+      edit: { kind: "correct", word: "w1", text: "Hel" },
+      caret: { word: "w1", offset: 3 },
+    });
+    expect(applyInput(words, at({ word: "w1", offset: 6 }), wordForwardDelete)).toEqual({
+      edit: { kind: "merge", word: "w1" },
+      caret: { word: "w1", offset: 6 },
+    });
+  });
 });
 
 describe("enter", () => {
   it("sets a line break after the Word, then a paragraph break, and opens a slot after it", () => {
-    expect(applyInput(words, at({ word: "w1", offset: 3 }), enter)).toEqual({
+    expect(applyInput(words, at({ word: "w1", offset: 6 }), enter)).toEqual({
       edit: { kind: "setBreak", word: "w1", breakAfter: "line" },
       caret: { slotAfter: "w1" },
     });
     expect(applyInput([word("w1", "a", "line")], at({ word: "w1", offset: 1 }), enter)).toEqual({
       edit: { kind: "setBreak", word: "w1", breakAfter: "paragraph" },
       caret: { slotAfter: "w1" },
+    });
+  });
+
+  it("inside a Word splits it and breaks after the first part", () => {
+    expect(applyInput(words, at({ word: "w1", offset: 3 }), enter)).toEqual({
+      edit: {
+        kind: "batch",
+        edits: [
+          { kind: "split", word: "w1", at: 3 },
+          { kind: "setBreak", word: "w1", breakAfter: "line" },
+        ],
+      },
+      caret: { wordAfter: "w1", offset: 0 },
     });
   });
 

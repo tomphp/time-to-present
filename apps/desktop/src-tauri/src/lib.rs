@@ -162,12 +162,12 @@ fn session_state(state: State<'_, App>) -> Option<SessionState> {
 }
 
 #[tauri::command]
-fn edit(state: State<'_, App>, edit: Edit) -> CommandResult<()> {
+fn edit(state: State<'_, App>, edit: Edit) -> CommandResult<SessionState> {
     with_session(&state, |session| session.edit(edit).map_err(message))
 }
 
 #[tauri::command]
-fn undo(state: State<'_, App>) -> CommandResult<()> {
+fn undo(state: State<'_, App>) -> CommandResult<SessionState> {
     with_session(&state, |session| {
         session.undo();
         Ok(())
@@ -175,19 +175,30 @@ fn undo(state: State<'_, App>) -> CommandResult<()> {
 }
 
 #[tauri::command]
-fn redo(state: State<'_, App>) -> CommandResult<()> {
+fn redo(state: State<'_, App>) -> CommandResult<SessionState> {
     with_session(&state, |session| {
         session.redo();
         Ok(())
     })
 }
 
-fn with_session<T>(
+/// Runs a command on the open Session and answers with the state it leaves behind.
+fn with_session(
     state: &App,
-    f: impl FnOnce(&mut Session) -> CommandResult<T>,
-) -> CommandResult<T> {
+    command: impl FnOnce(&mut Session) -> CommandResult<()>,
+) -> CommandResult<SessionState> {
     let mut session = state.session.lock().unwrap();
-    f(session.as_mut().ok_or("no Presentation is open")?)
+    let session = session.as_mut().ok_or("no Presentation is open")?;
+    command(session)?;
+    Ok(session.state())
+}
+
+fn flush(app: &AppHandle) {
+    if let Some(session) = app.state::<App>().session.lock().unwrap().as_mut()
+        && let Err(error) = session.flush()
+    {
+        eprintln!("saving on exit failed: {error}");
+    }
 }
 
 fn autosave(app: AppHandle) {
@@ -282,6 +293,11 @@ pub fn run() {
             recording::stop_recording,
             recording::cancel_recording
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Time to Present");
+        .build(tauri::generate_context!())
+        .expect("error while building Time to Present")
+        .run(|app, event| {
+            if let tauri::RunEvent::ExitRequested { .. } = event {
+                flush(app);
+            }
+        });
 }

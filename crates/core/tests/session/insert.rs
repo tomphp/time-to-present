@@ -1,6 +1,10 @@
 use ttp_core::script::Edit;
 
-use crate::support::{Harness, word_starts};
+use crate::support::{Harness, starts};
+
+fn last_id(session: &ttp_core::session::Session) -> String {
+    session.state().words.last().unwrap().word.id.clone()
+}
 
 fn insert(session: &mut ttp_core::session::Session, after: Option<&str>, text: &str) {
     session
@@ -20,12 +24,12 @@ fn a_typed_word_between_two_words_takes_the_next_words_gap_which_then_gets_the_m
 
     let state = session.state();
     assert_eq!(
-        word_starts(&state),
+        starts(&state),
         [
-            ("w1", "Hello,", 400),
-            ("w4", "big", 850),
-            ("w2", "world.", 1188),
-            ("w3", "Typed", 1738)
+            ("Hello,", 400),
+            ("big", 850),
+            ("world.", 1188),
+            ("Typed", 1738)
         ]
     );
     let typed = &state.words[1].word;
@@ -48,10 +52,12 @@ fn a_typed_words_duration_is_its_length_times_the_median_ms_per_character_clampe
     let mut session = harness.open(&folder);
 
     insert(&mut session, Some("w3"), "Hi");
-    insert(&mut session, Some("w4"), "Presentation");
+    let hi = last_id(&session);
+    insert(&mut session, Some(&hi), "Presentation");
+    let presentation = last_id(&session);
     insert(
         &mut session,
-        Some("w5"),
+        Some(&presentation),
         "Supercalifragilisticexpialidocious",
     );
 
@@ -80,10 +86,8 @@ fn a_typed_word_at_the_start_takes_the_lead_in_and_the_old_first_word_gets_the_m
     insert(&mut session, None, "Well,");
 
     let state = session.state();
-    assert_eq!(
-        word_starts(&state)[..2],
-        [("w4", "Well,", 400), ("w1", "Hello,", 863)]
-    );
+    assert_eq!(starts(&state)[..2], [("Well,", 400), ("Hello,", 863)]);
+    assert_eq!(state.words[1].word.id, "w1");
     assert_eq!(state.words[1].word.gap, 150);
 }
 
@@ -93,13 +97,11 @@ fn without_spoken_words_a_typed_word_lasts_300_ms_and_gets_a_100_ms_gap_after_th
     let mut session = harness.create("Draft");
 
     insert(&mut session, None, "First");
-    insert(&mut session, Some("w1"), "second");
+    let first = session.state().words[0].word.id.clone();
+    insert(&mut session, Some(&first), "second");
 
     let state = session.state();
-    assert_eq!(
-        word_starts(&state),
-        [("w1", "First", 0), ("w2", "second", 400)]
-    );
+    assert_eq!(starts(&state), [("First", 0), ("second", 400)]);
     assert_eq!(state.words[1].word.duration, 300);
 }
 

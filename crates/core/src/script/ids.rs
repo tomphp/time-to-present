@@ -1,30 +1,35 @@
+use std::collections::HashSet;
+
 use super::Script;
 
-/// Mints Word ids that no Word or Named Event in the Script has ever had.
-/// It only counts up, so an id undone away is never handed out again.
+/// Mints Word ids that no Word or Named Event has had: random, so an id deleted in an earlier
+/// session can't come back, and checked against every id seen in this one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ids {
-    next: u64,
+    taken: HashSet<String>,
 }
 
 impl Ids {
     pub fn after(script: &Script) -> Self {
-        let words = script.words.iter().map(|word| word.id.as_str());
-        let events = script.named_events.iter().map(|event| event.id.as_str());
-        let highest = words.chain(events).filter_map(trailing_number).max();
+        let words = script.words.iter().map(|word| word.id.clone());
+        let events = script.named_events.iter().map(|event| event.id.clone());
         Self {
-            next: highest.map_or(1, |n| n + 1),
+            taken: words.chain(events).collect(),
         }
     }
 
     pub fn next_word(&mut self) -> String {
-        let id = format!("w{}", self.next);
-        self.next += 1;
-        id
+        loop {
+            let id = format!("w{:x}", random_u64());
+            if self.taken.insert(id.clone()) {
+                return id;
+            }
+        }
     }
 }
 
-fn trailing_number(id: &str) -> Option<u64> {
-    let prefix = id.trim_end_matches(|c: char| c.is_ascii_digit()).len();
-    id[prefix..].parse().ok()
+fn random_u64() -> u64 {
+    let mut bytes = [0; 8];
+    getrandom::fill(&mut bytes).expect("the OS random source is available");
+    u64::from_le_bytes(bytes)
 }

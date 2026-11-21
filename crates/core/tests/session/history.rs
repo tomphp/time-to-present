@@ -96,6 +96,7 @@ fn a_word_split_off_then_undone_never_gets_its_id_reused() {
             at: 2,
         })
         .unwrap();
+    let split_off = session.state().words[1].word.id.clone();
     session.undo();
 
     session
@@ -105,5 +106,60 @@ fn a_word_split_off_then_undone_never_gets_its_id_reused() {
         })
         .unwrap();
 
-    assert_eq!(session.state().words[3].word.id, "w5");
+    assert_ne!(session.state().words[3].word.id, split_off);
+}
+
+#[test]
+fn an_edit_that_changes_nothing_is_not_an_undo_step() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.edit(correct("w1", "Hullo,")).unwrap();
+    session
+        .edit(Edit::SetBreak {
+            word: "w2".into(),
+            break_after: Some(ttp_core::script::BreakAfter::Paragraph),
+        })
+        .unwrap();
+
+    session.undo();
+
+    assert_eq!(session.state().words[0].word.text, "Hello,");
+}
+
+#[test]
+fn a_batch_of_edits_is_one_undo_step() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    let original = session.state();
+
+    session
+        .edit(Edit::Batch {
+            edits: vec![correct("w1", "One"), correct("w2", "two")],
+        })
+        .unwrap();
+    assert_eq!(
+        word_starts(&session.state())[..2],
+        [("w1", "One", 400), ("w2", "two", 850)]
+    );
+
+    session.undo();
+    assert_eq!(session.state(), original);
+}
+
+#[test]
+fn a_batch_that_fails_part_way_leaves_the_script_as_it_was() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    let original = session.state();
+
+    let error = session
+        .edit(Edit::Batch {
+            edits: vec![correct("w1", "One"), correct("nope", "x")],
+        })
+        .unwrap_err();
+
+    assert!(matches!(error, ttp_core::script::EditError::UnknownWord(_)));
+    assert_eq!(session.state(), original);
+    session.undo();
+    assert_eq!(session.state(), original);
 }

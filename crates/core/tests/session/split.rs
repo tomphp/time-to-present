@@ -1,6 +1,6 @@
 use ttp_core::script::{BreakAfter, Edit, EditError};
 
-use crate::support::{Harness, word_starts};
+use crate::support::{Harness, starts};
 
 fn split(session: &mut ttp_core::session::Session, word: &str, at: usize) {
     session
@@ -20,15 +20,17 @@ fn a_split_word_divides_its_duration_and_audio_by_character_count_and_the_new_wo
 
     let state = session.state();
     assert_eq!(
-        word_starts(&state),
+        starts(&state),
         [
-            ("w1", "Hello,", 400),
-            ("w2", "wo", 850),
-            ("w4", "rld.", 1000),
-            ("w3", "Typed", 1400)
+            ("Hello,", 400),
+            ("wo", 850),
+            ("rld.", 1000),
+            ("Typed", 1400)
         ]
     );
     let (first, second) = (&state.words[1].word, &state.words[2].word);
+    assert_eq!(first.id, "w2");
+    assert!(!["w1", "w2", "w3", "e1", "e2"].contains(&second.id.as_str()));
     assert_eq!((first.gap, first.duration), (150, 150));
     assert_eq!((second.gap, second.duration), (0, 300));
     assert_eq!(

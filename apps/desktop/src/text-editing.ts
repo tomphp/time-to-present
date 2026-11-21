@@ -1,13 +1,13 @@
-import { chars, indexAfter, indexOf, isSlot, sameCaret, type Caret, type CaretTarget, type Range } from "./caret";
+import { chars, collapsed, endOf, indexOf, isSlot, sameCaret, type Caret, type CaretTarget, type Range } from "./caret";
 import type { BreakAfter, Edit, ScriptWord } from "./session";
-
-export type { Caret, CaretTarget, Range } from "./caret";
-export { resolveCaret } from "./caret";
+import { replaceSelection } from "./selection-editing";
 
 export type Input =
   | { type: "insertText"; text: string }
   | { type: "deleteBackward" }
   | { type: "deleteForward" }
+  | { type: "deleteWordBackward" }
+  | { type: "deleteWordForward" }
   | { type: "insertBreak" };
 
 export interface Outcome {
@@ -26,24 +26,38 @@ export function applyInput(words: ScriptWord[], range: Range, input: Input): Out
       return deleteBackward(words, caret);
     case "deleteForward":
       return deleteForward(words, caret);
+    case "deleteWordBackward":
+      return isSlot(caret) || caret.offset === 0
+        ? deleteBackward(words, caret)
+        : replaceSelection(words, { start: { word: caret.word, offset: 0 }, end: caret }, "");
+    case "deleteWordForward":
+      return isSlot(caret) || caret.offset === textLength(words, caret.word)
+        ? deleteForward(words, caret)
+        : replaceSelection(words, { start: caret, end: endOf(words, indexOf(words, caret.word)) }, "");
     case "insertBreak":
       return insertBreak(words, caret);
   }
 }
 
-function applyToSelection(words: ScriptWord[], { start, end }: Range, input: Input): Outcome | null {
-  if (!isSlot(start) && !isSlot(end) && start.word === end.word) {
-    const replacement = input.type === "insertText" && input.text !== " " ? input.text : "";
-    if (input.type === "insertBreak" || /\s/.test(replacement)) return null;
-    return replaceText(words, start.word, start.offset, end.offset, replacement);
+function applyToSelection(words: ScriptWord[], range: Range, input: Input): Outcome | null {
+  switch (input.type) {
+    case "insertBreak":
+      return null;
+    case "insertText":
+      return input.text === " " ? spaceOverSelection(words, range) : replaceSelection(words, range, input.text);
+    default:
+      return replaceSelection(words, range, "");
   }
-  if (input.type === "insertBreak") return null;
-  const first = indexAfter(words, start);
-  const last = isSlot(end) ? indexOf(words, end.slotAfter) : indexOf(words, end.word);
-  if (first > last) return null;
+}
+
+function spaceOverSelection(words: ScriptWord[], range: Range): Outcome | null {
+  const removed = replaceSelection(words, range, "");
+  const { start } = range;
+  if (!removed?.edit || removed.edit.kind !== "correct" || isSlot(start)) return removed;
+  if (start.offset === 0 || start.offset >= chars(removed.edit.text).length) return removed;
   return {
-    edit: { kind: "delete", words: words.slice(first, last + 1).map((word) => word.id) },
-    caret: { wordAfter: words[first - 1]?.id ?? null, offset: 0 },
+    edit: { kind: "batch", edits: [removed.edit, { kind: "split", word: start.word, at: start.offset }] },
+    caret: { wordAfter: start.word, offset: 0 },
   };
 }
 
@@ -55,23 +69,25 @@ function typeText(words: ScriptWord[], caret: Caret, text: string): Outcome | nu
       caret: { wordAfter: caret.slotAfter, offset: chars(text).length },
     };
   }
-  return replaceText(words, caret.word, caret.offset, caret.offset, text);
+  return replaceSelection(words, collapsed(caret), text);
 }
 
 function space(words: ScriptWord[], caret: Caret): Outcome | null {
   if (isSlot(caret)) return null;
   const index = indexOf(words, caret.word);
   if (caret.offset === 0) return { caret: { slotAfter: words[index - 1]?.id ?? null } };
-  if (caret.offset >= chars(words[index].text).length) return { caret: { slotAfter: caret.word } };
+  if (caret.offset >= textLength(words, caret.word)) return { caret: { slotAfter: caret.word } };
   return { edit: { kind: "split", word: caret.word, at: caret.offset }, caret: { wordAfter: caret.word, offset: 0 } };
 }
 
 function deleteBackward(words: ScriptWord[], caret: Caret): Outcome | null {
   if (isSlot(caret)) return caret.slotAfter === null ? null : { caret: endOf(words, indexOf(words, caret.slotAfter)) };
-  if (caret.offset > 0) return replaceText(words, caret.word, caret.offset - 1, caret.offset, "");
+  if (caret.offset > 0) {
+    return replaceSelection(words, { start: { word: caret.word, offset: caret.offset - 1 }, end: caret }, "");
+  }
   const previous = words[indexOf(words, caret.word) - 1];
   if (!previous) return null;
-  if (previous.breakAfter) return { edit: setBreak(previous, previousBreak(previous.breakAfter)), caret };
+  if (previous.breakAfter) return removeBreak(previous, caret);
   return { edit: { kind: "merge", word: previous.id }, caret: endOf(words, indexOf(words, previous.id)) };
 }
 
@@ -79,33 +95,39 @@ function deleteForward(words: ScriptWord[], caret: Caret): Outcome | null {
   if (isSlot(caret)) return null;
   const index = indexOf(words, caret.word);
   const word = words[index];
-  if (caret.offset < chars(word.text).length) return replaceText(words, word.id, caret.offset, caret.offset + 1, "");
+  if (caret.offset < chars(word.text).length) {
+    return replaceSelection(words, { start: caret, end: { word: word.id, offset: caret.offset + 1 } }, "");
+  }
   if (!words[index + 1]) return null;
-  if (word.breakAfter) return { edit: setBreak(word, previousBreak(word.breakAfter)), caret };
+  if (word.breakAfter) return removeBreak(word, caret);
   return { edit: { kind: "merge", word: word.id }, caret };
 }
 
 function insertBreak(words: ScriptWord[], caret: Caret): Outcome | null {
+  if (!isSlot(caret) && caret.offset > 0 && caret.offset < textLength(words, caret.word)) {
+    const word = words[indexOf(words, caret.word)];
+    return {
+      edit: { kind: "batch", edits: [{ kind: "split", word: word.id, at: caret.offset }, addBreak(word)] },
+      caret: { wordAfter: word.id, offset: 0 },
+    };
+  }
   const index = isSlot(caret) ? indexOf(words, caret.slotAfter) : indexOf(words, caret.word) - (caret.offset === 0 ? 1 : 0);
   const word = words[index];
   if (!word) return null;
   const target = { slotAfter: word.id };
   if (word.breakAfter === "paragraph") return { caret: target };
-  return { edit: setBreak(word, nextBreak(word.breakAfter)), caret: target };
+  return { edit: addBreak(word), caret: target };
 }
 
-function replaceText(words: ScriptWord[], id: string, from: number, to: number, replacement: string): Outcome {
-  const text = chars(words[indexOf(words, id)].text);
-  const edited = [...text.slice(0, from), ...chars(replacement), ...text.slice(to)].join("");
-  if (edited === "") return { edit: { kind: "delete", words: [id] }, caret: endOf(words, indexOf(words, id) - 1) };
-  return { edit: { kind: "correct", word: id, text: edited }, caret: { word: id, offset: from + chars(replacement).length } };
-}
-
-const endOf = (words: ScriptWord[], index: number): Caret =>
-  index < 0 ? { slotAfter: null } : { word: words[index].id, offset: chars(words[index].text).length };
+const textLength = (words: ScriptWord[], id: string) => chars(words[indexOf(words, id)].text).length;
 
 const setBreak = (word: ScriptWord, breakAfter: BreakAfter | null): Edit => ({ kind: "setBreak", word: word.id, breakAfter });
 
-const nextBreak = (current?: BreakAfter): BreakAfter => (current === "line" ? "paragraph" : "line");
+/** Enter sets a line break, and a second Enter a paragraph break. */
+const addBreak = (word: ScriptWord) => setBreak(word, word.breakAfter === "line" ? "paragraph" : "line");
 
-const previousBreak = (current: BreakAfter): BreakAfter | null => (current === "paragraph" ? "line" : null);
+/** Deleting across a break steps it back the way Enter set it. */
+const removeBreak = (word: ScriptWord, caret: Caret): Outcome => ({
+  edit: setBreak(word, word.breakAfter === "paragraph" ? "line" : null),
+  caret,
+});

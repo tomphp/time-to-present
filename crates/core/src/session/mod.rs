@@ -77,9 +77,17 @@ impl Session {
         self.save(renamed)
     }
 
+    /// Applies one edit (a Batch counts as one) as a single undo step, or leaves the Script
+    /// untouched if any part of it fails or nothing changes.
     pub fn edit(&mut self, edit: Edit) -> Result<(), EditError> {
         let before = self.presentation.script.clone();
-        self.presentation.script.apply(edit, &mut self.ids)?;
+        if let Err(error) = self.presentation.script.apply(edit, &mut self.ids) {
+            self.presentation.script = before;
+            return Err(error);
+        }
+        if self.presentation.script == before {
+            return Ok(());
+        }
         self.history.record(before);
         self.changed();
         Ok(())
@@ -100,15 +108,20 @@ impl Session {
     /// Saves the Presentation once the autosave delay has passed since the last change.
     /// Call it regularly; it does nothing until then.
     pub fn tick(&mut self) -> Result<(), StoreError> {
-        let Some(since) = self.unsaved_since else {
-            return Ok(());
-        };
-        if self.platform.time.now() - since < AUTOSAVE_DELAY {
+        match self.unsaved_since {
+            Some(since) if self.platform.time.now() - since >= AUTOSAVE_DELAY => self.flush(),
+            _ => Ok(()),
+        }
+    }
+
+    /// Saves any unsaved change now. After a failed save the wait starts again.
+    pub fn flush(&mut self) -> Result<(), StoreError> {
+        if self.unsaved_since.is_none() {
             return Ok(());
         }
-        store::save(&self.folder, &self.presentation)?;
-        self.unsaved_since = None;
-        Ok(())
+        let saved = store::save(&self.folder, &self.presentation);
+        self.unsaved_since = saved.is_err().then(|| self.platform.time.now());
+        saved
     }
 
     pub fn state(&self) -> SessionState {

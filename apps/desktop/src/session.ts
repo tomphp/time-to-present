@@ -48,4 +48,5 @@ export type Edit =
   | { kind: "merge"; word: string }
   | { kind: "delete"; words: string[] }
   | { kind: "setBreak"; word: string; breakAfter: BreakAfter | null }
-  | { kind: "insertWord"; after: string | null; text: string };
+  | { kind: "insertWord"; after: string | null; text: string }
+  | { kind: "batch"; edits: Edit[] };

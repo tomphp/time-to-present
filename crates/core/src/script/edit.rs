@@ -32,6 +32,9 @@ pub enum Edit {
         after: Option<String>,
         text: String,
     },
+    Batch {
+        edits: Vec<Edit>,
+    },
 }
 
 #[derive(Debug, thiserror::Error, PartialEq)]
@@ -84,6 +87,11 @@ impl Script {
                 let typed = self.typed_word(ids.next_word(), one_word(text)?, index);
                 self.words.insert(index, typed);
             }
+            Edit::Batch { edits } => {
+                for edit in edits {
+                    self.apply(edit, ids)?;
+                }
+            }
         }
         Ok(())
     }
@@ -93,10 +101,10 @@ impl Script {
     fn typed_word(&mut self, id: String, text: String, index: usize) -> Word {
         let median_gap = estimate::median_gap(&self.words);
         let duration = estimate::typed_duration(&self.words, &text);
-        let at_end_of_empty = self.words.is_empty();
+        let script_is_empty = self.words.is_empty();
         let gap = match self.words.get_mut(index) {
             Some(next) => std::mem::replace(&mut next.gap, median_gap),
-            None if at_end_of_empty => 0,
+            None if script_is_empty => 0,
             None => median_gap,
         };
         Word {

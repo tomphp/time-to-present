@@ -49,7 +49,9 @@ fn deleting_a_run_of_words_drops_the_gaps_inside_the_run() {
         })
         .unwrap();
 
-    delete(&mut session, &["w2", "w4"]);
+    let split_off = session.state().words[2].word.id.clone();
+
+    delete(&mut session, &["w2", &split_off]);
 
     let state = session.state();
     assert_eq!(

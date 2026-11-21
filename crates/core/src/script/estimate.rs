@@ -10,7 +10,7 @@ const LONGEST_TYPED: Ms = 1500;
 /// Words, clamped, or 300 ms when nothing has been spoken.
 pub fn typed_duration(words: &[Word], text: &str) -> Ms {
     let per_char =
-        spoken(words).map(|word| word.duration as f64 / word.text.chars().count() as f64);
+        spoken(words.iter()).map(|word| word.duration as f64 / word.text.chars().count() as f64);
     match median(per_char) {
         Some(per_char) => {
             let estimate = (text.chars().count() as f64 * per_char).round() as Ms;
@@ -22,14 +22,12 @@ pub fn typed_duration(words: &[Word], text: &str) -> Ms {
 
 /// The median Gap before the spoken Words after the first, or 100 ms when there are none.
 pub fn median_gap(words: &[Word]) -> Ms {
-    let gaps = spoken(&words[1.min(words.len())..]).map(|word| word.gap as f64);
+    let gaps = spoken(words.iter().skip(1)).map(|word| word.gap as f64);
     median(gaps).map_or(FALLBACK_GAP, |gap| gap.round() as Ms)
 }
 
-fn spoken(words: &[Word]) -> impl Iterator<Item = &Word> {
-    words
-        .iter()
-        .filter(|word| word.recording_id.is_some() && !word.text.is_empty())
+fn spoken<'a>(words: impl Iterator<Item = &'a Word>) -> impl Iterator<Item = &'a Word> {
+    words.filter(|word| word.recording_id.is_some() && !word.text.is_empty())
 }
 
 fn median(values: impl Iterator<Item = f64>) -> Option<f64> {

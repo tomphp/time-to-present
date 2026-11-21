@@ -78,6 +78,47 @@ fn undo_and_redo_are_saved_like_any_edit() {
 }
 
 #[test]
+fn flushing_saves_an_unsaved_edit_at_once() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.edit(correct("Hullo,")).unwrap();
+
+    session.flush().unwrap();
+
+    assert_eq!(saved_first_word(&folder), "Hullo,");
+    assert_eq!(leftovers(&folder), Vec::<String>::new());
+}
+
+#[test]
+fn a_new_word_never_gets_an_id_a_deleted_word_had_even_after_reopening() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session
+        .edit(Edit::InsertWord {
+            after: Some("w3".into()),
+            text: "gone".into(),
+        })
+        .unwrap();
+    let gone = session.state().words[3].word.id.clone();
+    session
+        .edit(Edit::Delete {
+            words: vec![gone.clone()],
+        })
+        .unwrap();
+    session.flush().unwrap();
+
+    let mut reopened = harness.open(&folder);
+    reopened
+        .edit(Edit::InsertWord {
+            after: Some("w3".into()),
+            text: "new".into(),
+        })
+        .unwrap();
+
+    assert_ne!(reopened.state().words[3].word.id, gone);
+}
+
+#[test]
 fn a_saved_presentation_opens_again_with_the_edit() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);
