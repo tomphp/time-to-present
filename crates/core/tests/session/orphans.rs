@@ -38,6 +38,7 @@ fn interrupted(id: &str) -> PendingPassage {
         recording_id: id.into(),
         after: Some("w3".into()),
         before: None,
+        replacing: vec![],
         status: PendingStatus::Interrupted,
     }
 }

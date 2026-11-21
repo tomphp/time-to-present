@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 use std::path::Path;
 
-use super::transcription::Pending;
-use super::{InsertionPoint, PendingPassage, PendingPassageError, PendingStatus, Session};
+use super::transcription::{Landing, Pending};
+use super::{PendingPassage, PendingPassageError, PendingStatus, Session};
 use crate::script::Script;
 use crate::store::{self, Recording, StoreError};
 
@@ -21,13 +21,14 @@ impl Session {
             }
         }
         self.save(registered)?;
-        let (after, before) = InsertionPoint::default().neighbours_in(&self.presentation.script);
+        let (after, before, replacing) = Landing::default().anchors_in(&self.presentation.script);
         for recording in found {
             self.pending.push(Pending {
                 passage: PendingPassage {
                     recording_id: recording.id.clone(),
                     after: after.clone(),
                     before: before.clone(),
+                    replacing: replacing.clone(),
                     status: PendingStatus::Interrupted,
                 },
                 recording,

@@ -101,7 +101,7 @@ describe("rendering Pending Passages", () => {
   });
 
   it("offers Transcribe and Discard on an interrupted one", () => {
-    renderScript(root, words, null, undefined, [passage("r2", "w3", null, { kind: "interrupted" })]);
+    renderScript(root, words, null, undefined, { pending: [passage("r2", "w3", null, { kind: "interrupted" })] });
 
     const placeholder = root.querySelector<HTMLElement>('[data-recording-id="r2"]')!;
     expect(placeholder.querySelector("[data-retry]")!.textContent).toBe("Transcribe");
