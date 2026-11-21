@@ -111,6 +111,7 @@ impl PresentationSize {
 pub enum PerformanceLayout {
     #[default]
     TwoWindows,
+    Combined,
     TeleprompterOnly,
 }
 

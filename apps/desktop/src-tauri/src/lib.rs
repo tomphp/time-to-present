@@ -180,11 +180,16 @@ fn bring_up_window(
         reveal(&window)?;
         return Ok(window);
     }
-    WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("{label}.html").into()))
-        .title(title)
-        .inner_size(width, height)
-        .build()
-        .map_err(message)
+    let builder =
+        WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("{label}.html").into()))
+            .title(title)
+            .inner_size(width, height);
+    let builder = if label == TELEPROMPTER_WINDOW {
+        builder.initialization_script_for_all_frames(perform::FORWARD_APP_PANE_KEYS)
+    } else {
+        builder
+    };
+    builder.build().map_err(message)
 }
 
 #[tauri::command]

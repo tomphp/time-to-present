@@ -365,8 +365,48 @@ body.teleprompter #pane {
   inset: 0;
 }
 
-body.teleprompter #stage {
+body.teleprompter #views {
   position: fixed;
+  inset: 0;
+  display: flex;
+}
+
+body.teleprompter.combined #views {
+  bottom: var(--bar-height);
+}
+
+body.teleprompter.combined.app-right #views {
+  flex-direction: row-reverse;
+}
+
+body.teleprompter #app-slot {
+  position: relative;
+  flex: none;
+  background: #111;
+}
+
+body.teleprompter #app-frame {
+  position: absolute;
+  border: 0;
+  background: #fff;
+}
+
+body.teleprompter #divider {
+  flex: none;
+  width: 10px;
+  cursor: col-resize;
+  background: #222;
+  touch-action: none;
+}
+
+body.teleprompter #prompter {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+body.teleprompter #stage {
+  position: absolute;
   inset: 0;
   overflow: hidden;
 }

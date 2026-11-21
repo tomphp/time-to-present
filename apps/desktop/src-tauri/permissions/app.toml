@@ -55,5 +55,5 @@ commands.allow = [
 
 [[permission]]
 identifier = "forward-key"
-description = "Lets the Presentation Window's page forward the keys pressed in it."
+description = "Lets the Presentation Window's page, and the Teleprompter relaying the app pane's keys, forward them."
 commands.allow = ["forward_key"]

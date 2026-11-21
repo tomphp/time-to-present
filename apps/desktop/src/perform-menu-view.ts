@@ -3,7 +3,7 @@ import type { Display, PerformanceLayout, PerformanceSettings, PresentationSize 
 /** Lets the core choose: the main display for the Teleprompter, another one for the Presentation. */
 export const AUTOMATIC = "";
 
-const LAYOUTS: readonly PerformanceLayout[] = ["twoWindows", "teleprompterOnly"];
+const LAYOUTS: readonly PerformanceLayout[] = ["twoWindows", "combined", "teleprompterOnly"];
 const SIZES: readonly PresentationSize[] = ["1280x720", "1920x1080", "fit"];
 
 export interface Choice {

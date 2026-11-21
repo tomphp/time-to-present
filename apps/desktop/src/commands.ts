@@ -118,7 +118,13 @@ export const displays = () => invoke<Display[]>("displays");
 export const performanceSettings = () => invoke<PerformanceSettings>("performance_settings");
 export const setPerformanceSettings = (performance: PerformanceSettings) =>
   invoke<void>("set_performance_settings", { performance });
+export const forwardKey = (key: unknown) => invoke<void>("forward_key", { key });
 export const leaveFullscreen = () => invoke<void>("leave_fullscreen");
+
+export function onPerformanceSettings(handle: (settings: PerformanceSettings) => void) {
+  void listen<PerformanceSettings>("performance-settings", (event) => handle(event.payload));
+  void performanceSettings().then(handle);
+}
 
 export function onPerformanceKey(handle: (key: ForwardedKey) => void) {
   void listen<ForwardedKey>("performance-key", (event) => handle(event.payload));

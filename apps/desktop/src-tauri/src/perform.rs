@@ -19,9 +19,15 @@ use crate::{
 const PRESENTATION_WINDOW: &str = "presentation";
 const APPROACH_CUE: &str = "approach-cue";
 const PERFORMANCE_KEY: &str = "performance-key";
+const PERFORMANCE_SETTINGS: &str = "performance-settings";
 const APP_FOCUS: &str = "app-focus";
 const TELEPROMPTER_SIZE: (f64, f64) = (900.0, 700.0);
 const FORWARD_KEYS: &str = include_str!("forward-keys.js");
+/// Injected into the Teleprompter Window's frames only, to forward keys pressed in the app pane.
+pub const FORWARD_APP_PANE_KEYS: &str = concat!(
+    "window.forwardFromFramesOnly = true;\n",
+    include_str!("forward-keys.js")
+);
 const PERFORMANCE_WINDOWS: [&str; 2] = [TELEPROMPTER_WINDOW, PRESENTATION_WINDOW];
 
 /// The Performance windows that have focus, so keys reach the Performance while any one does.
@@ -52,7 +58,7 @@ pub fn perform(app: AppHandle, state: State<'_, App>) -> CommandResult<()> {
         PerformanceLayout::TwoWindows => {
             show_presentation(&app, &state, &performance, teleprompter_monitor)?
         }
-        PerformanceLayout::TeleprompterOnly => {
+        PerformanceLayout::Combined | PerformanceLayout::TeleprompterOnly => {
             if let Some(presentation) = app.get_webview_window(PRESENTATION_WINDOW) {
                 presentation.close().map_err(message)?;
             }
@@ -78,7 +84,9 @@ pub fn set_performance_settings(
         .settings
         .lock()
         .unwrap()
-        .set_performance(performance)
+        .set_performance(performance.clone())
+        .map_err(message)?;
+    app.emit(PERFORMANCE_SETTINGS, performance)
         .map_err(message)?;
     let Some(presentation) = app.get_webview_window(PRESENTATION_WINDOW) else {
         return Ok(());
@@ -98,8 +106,9 @@ pub fn leave_fullscreen(app: AppHandle, window: WebviewWindow) -> CommandResult<
     fullscreen::leave(&app, &window)
 }
 
-/// A key pressed in the Presentation Window's page. Performance keys go on to the Teleprompter,
-/// which runs the keymap, except Esc, which takes the Presentation Window out of fullscreen.
+/// A key pressed in the Presentation Window's page, or in the app pane of the Combined layout.
+/// Performance keys go on to the Teleprompter, which runs the keymap, except Esc, which takes the
+/// calling window out of fullscreen.
 #[tauri::command]
 pub fn forward_key(app: AppHandle, window: WebviewWindow, key: PageKey) -> CommandResult<()> {
     if !forwards(&key) {

@@ -44,8 +44,12 @@ describe("chosen settings", () => {
     });
   });
 
+  test("accept the Combined layout", () => {
+    expect(chosenSettings({ ...menu, layout: "combined" }).layout).toBe("combined");
+  });
+
   test("refuse a layout or size the core does not know", () => {
-    expect(() => chosenSettings({ ...menu, layout: "combined" })).toThrow("combined");
+    expect(() => chosenSettings({ ...menu, layout: "sideways" })).toThrow("sideways");
     expect(() => chosenSettings({ ...menu, presentationSize: "4k" })).toThrow("4k");
   });
 });

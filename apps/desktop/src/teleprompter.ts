@@ -14,6 +14,7 @@ import {
   seek,
   setSpeed,
 } from "./commands";
+import { isCombined, mountCombinedPane } from "./combined-pane";
 import { find } from "./dom";
 import { asKeydown } from "./forwarded-key";
 import {
@@ -69,6 +70,7 @@ const column = find<HTMLElement>("#column");
 const paused = find<HTMLParagraphElement>("#paused");
 const stage = find<HTMLDivElement>("#stage");
 const pane = find<HTMLElement>("#pane");
+const prompter = find<HTMLElement>("#prompter");
 const screenKey = () => `${screen.width}x${screen.height}@${devicePixelRatio}`;
 const FLASH = "fired";
 
@@ -175,7 +177,7 @@ function follow(target: HTMLElement) {
   const next = scrollTo(scroll, { top: target.offsetTop, free: free?.offset ?? 0, jumps: followed.jumps });
   if (next === scroll) return;
   scroll = next;
-  const offset = options.readingLine * innerHeight - (target.offsetTop + target.offsetHeight / 2) - next.free;
+  const offset = options.readingLine * stage.clientHeight - (target.offsetTop + target.offsetHeight / 2) - next.free;
   column.style.transition = next.animate ? SCROLL_EASE : "none";
   column.style.transform = `translateY(${offset}px)`;
 }
@@ -268,7 +270,9 @@ function applyOptions() {
   document.body.classList.toggle("markers-hidden", !options.markers);
   document.body.style.fontSize = `${options.fontSize}px`;
   document.body.style.setProperty("--reading-line", String(options.readingLine));
-  pane.style.transform = mirrorTransform(mirror);
+  const [mirrored, upright] = isCombined() ? [prompter, pane] : [pane, prompter];
+  mirrored.style.transform = mirrorTransform(mirror);
+  upright.style.transform = "";
   scroll = null;
 }
 
@@ -290,6 +294,7 @@ function perform(action: DisplayAction) {
 document.addEventListener("wheel", (event) => scrollFreelyBy(event.deltaY), { passive: true });
 
 new ResizeObserver(() => (scroll = null)).observe(column);
+mountCombinedPane(applyOptions);
 
 window.addEventListener("resize", applyOptions);
 document.addEventListener("keydown", onKey);

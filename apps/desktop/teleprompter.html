@@ -7,10 +7,16 @@
   </head>
   <body class="teleprompter">
     <main id="pane">
-      <div id="stage">
-        <span id="reading-line" aria-hidden="true">▸</span>
-        <article id="column" aria-label="Script"></article>
-        <p id="paused" hidden>PAUSED</p>
+      <div id="views">
+        <div id="app-slot" hidden><iframe id="app-frame" title="Presentation App"></iframe></div>
+        <div id="divider" role="separator" aria-orientation="vertical" hidden></div>
+        <div id="prompter">
+          <div id="stage">
+            <span id="reading-line" aria-hidden="true">▸</span>
+            <article id="column" aria-label="Script"></article>
+            <p id="paused" hidden>PAUSED</p>
+          </div>
+        </div>
       </div>
       <footer id="bar">
         <p id="bar-warning" hidden></p>
@@ -24,6 +30,7 @@
           <span id="bar-url"></span>
           <button id="bar-copy" type="button">Copy</button>
           <button id="bar-open" type="button">Open in browser</button>
+          <button id="bar-swap" type="button" hidden>Swap sides</button>
           <span id="bar-apps"></span>
         </div>
         <p id="bar-notice" hidden></p>

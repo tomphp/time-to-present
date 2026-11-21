@@ -174,7 +174,7 @@ export type StreamEvent =
   | ({ type: "namedEvent" } & EventPayload)
   | { type: "closed"; reason: string };
 
-export type PerformanceLayout = "twoWindows" | "teleprompterOnly";
+export type PerformanceLayout = "twoWindows" | "combined" | "teleprompterOnly";
 
 export type PresentationSize = "1280x720" | "1920x1080" | "fit";
 

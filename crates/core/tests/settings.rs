@@ -205,3 +205,18 @@ fn the_performance_layout_displays_and_size_are_remembered_on_this_machine() {
 
     assert_eq!(*settings_in(&dir).performance(), chosen);
 }
+
+#[test]
+fn the_combined_layout_is_remembered_on_this_machine() {
+    let dir = TempDir::new().unwrap();
+    let chosen = PerformanceSettings {
+        layout: PerformanceLayout::Combined,
+        ..PerformanceSettings::default()
+    };
+
+    settings_in(&dir).set_performance(chosen.clone()).unwrap();
+
+    assert_eq!(*settings_in(&dir).performance(), chosen);
+    let stored = std::fs::read_to_string(dir.path().join("settings.json")).unwrap();
+    assert!(stored.contains("\"combined\""), "{stored}");
+}
