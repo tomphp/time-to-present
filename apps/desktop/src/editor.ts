@@ -7,6 +7,7 @@ import {
   edit,
   nudge,
   onSessionState,
+  openTeleprompter,
   paste,
   recordingWaveform,
   redo,
@@ -25,6 +26,7 @@ import { act, showError } from "./report-error";
 import { sharedSelection } from "./selection";
 import { mountServerStatus } from "./server-status";
 import type { SessionState } from "./session";
+import { isPerformShortcut } from "./teleprompter-view";
 import { nudgeOf } from "./timing-controls";
 import { mountTextPane } from "./text-pane";
 import { mountTimeline } from "./timeline";
@@ -100,6 +102,14 @@ title.addEventListener(
 
 title.addEventListener("keydown", (event) => {
   if (event.key === "Enter") title.blur();
+});
+
+document.querySelector("#perform")!.addEventListener("click", act(openTeleprompter));
+
+document.addEventListener("keydown", (event) => {
+  if (!isPerformShortcut(event)) return;
+  event.preventDefault();
+  act(openTeleprompter)();
 });
 
 document.addEventListener("keydown", (event) => {

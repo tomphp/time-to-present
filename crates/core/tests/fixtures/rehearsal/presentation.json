@@ -1,0 +1,20 @@
+{
+  "formatVersion": 1,
+  "title": "Rehearsal",
+  "recordings": [],
+  "words": [
+    {"id":"w1","text":"Good","gap":500,"duration":300,"recordingId":null,"audioStart":null,"audioEnd":null,"confidence":null},
+    {"id":"w2","text":"morning,","gap":100,"duration":400,"recordingId":null,"audioStart":null,"audioEnd":null,"confidence":null},
+    {"id":"w3","text":"everyone.","gap":100,"duration":500,"recordingId":null,"audioStart":null,"audioEnd":null,"confidence":null,"breakAfter":"paragraph"},
+    {"id":"w4","text":"Today","gap":600,"duration":300,"recordingId":null,"audioStart":null,"audioEnd":null,"confidence":null},
+    {"id":"w5","text":"we","gap":100,"duration":150,"recordingId":null,"audioStart":null,"audioEnd":null,"confidence":null},
+    {"id":"w6","text":"rehearse","gap":100,"duration":400,"recordingId":null,"audioStart":null,"audioEnd":null,"confidence":null,"breakAfter":"line"},
+    {"id":"w7","text":"with","gap":1200,"duration":200,"recordingId":null,"audioStart":null,"audioEnd":null,"confidence":null},
+    {"id":"w8","text":"a","gap":100,"duration":100,"recordingId":null,"audioStart":null,"audioEnd":null,"confidence":null},
+    {"id":"w9","text":"teleprompter.","gap":100,"duration":600,"recordingId":null,"audioStart":null,"audioEnd":null,"confidence":null}
+  ],
+  "namedEvents": [
+    {"id":"e1","name":"slide","data":{"index":1},"anchor":"scriptStart","offset":0},
+    {"id":"e2","name":"slide","data":{"index":2},"anchor":"w4","offset":0}
+  ]
+}

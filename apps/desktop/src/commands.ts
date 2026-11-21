@@ -103,6 +103,7 @@ export const pause = () => invoke<void>("pause");
 export const seek = (scriptTime: number) => invoke<void>("seek", { scriptTime });
 export const setSpeed = (speed: number) => invoke<void>("set_speed", { speed });
 export const reset = () => invoke<void>("reset");
+export const openTeleprompter = () => invoke<void>("open_teleprompter");
 
 export const onStreamEvent = (render: (event: StreamEvent) => void) =>
   connectStream({ listen: (onEvent) => listen<StreamEvent>("session-event", (event) => onEvent(event.payload)), snapshot }, render);

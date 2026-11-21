@@ -24,6 +24,7 @@ mod preview;
 mod properties;
 mod protocol;
 mod publish;
+mod recorded;
 mod recording;
 mod rename;
 mod retime;

@@ -292,6 +292,8 @@ body.editor {
 #script .event-chip.dragging {
   opacity: 0.5;
   cursor: grabbing;
+}
+
 .clock {
   display: flex;
   gap: 0.5rem;
@@ -311,4 +313,63 @@ body.editor {
   color: GrayText;
   user-select: text;
   -webkit-user-select: text;
+}
+
+body.teleprompter {
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+  color-scheme: dark;
+  color: #eee;
+  background: #000;
+  font-size: 48px;
+  line-height: 1.4;
+}
+
+body.teleprompter #column {
+  position: relative;
+  width: min(30ch, 90vw);
+  margin: 0 auto;
+  text-align: left;
+  will-change: transform;
+}
+
+body.teleprompter #column p {
+  margin: 0 0 1lh;
+}
+
+body.teleprompter .spoken {
+  opacity: 0.4;
+}
+
+body.teleprompter .current {
+  color: #000;
+  background: #ffd54f;
+  border-radius: 0.1em;
+}
+
+body.teleprompter #reading-line {
+  position: fixed;
+  top: 33.333vh;
+  left: max(0px, calc(50% - min(15ch, 45vw) - 1em));
+  transform: translateY(-50%);
+  color: #ffd54f;
+}
+
+body.teleprompter #paused {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  font-size: 18vw;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: rgb(255 255 255 / 0.18);
+  background: rgb(0 0 0 / 0.45);
+  pointer-events: none;
+}
+
+body.teleprompter #paused[hidden] {
+  display: none;
 }

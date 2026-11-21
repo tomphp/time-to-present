@@ -21,6 +21,7 @@ use ttp_server::{Server, ServerStatus, SharedSession};
 mod audio;
 mod clock;
 mod macos;
+mod perform;
 mod recording;
 
 const POLL_INTERVAL: Duration = Duration::from_millis(TICK_INTERVAL as u64);
@@ -408,6 +409,7 @@ pub fn run() {
             tauri::async_runtime::spawn(watch_server(app.handle().clone()));
             Ok(())
         })
+        .on_window_event(perform::on_window_event)
         .invoke_handler(tauri::generate_handler![
             new_presentation,
             open_folder,
@@ -445,7 +447,8 @@ pub fn run() {
             clock::pause,
             clock::seek,
             clock::set_speed,
-            clock::reset
+            clock::reset,
+            perform::open_teleprompter
         ])
         .build(tauri::generate_context!())
         .expect("error while building Time to Present")

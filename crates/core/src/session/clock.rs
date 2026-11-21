@@ -60,7 +60,15 @@ impl Session {
         self.previewing &= self.clock.is_playing();
         self.broadcast(events);
         if self.clock.is_playing() != was_playing {
+            self.hold_off_app_nap_while_playing();
             self.publish();
         }
+    }
+
+    fn hold_off_app_nap_while_playing(&mut self) {
+        self.performing = self
+            .clock
+            .is_playing()
+            .then(|| self.platform.app_nap.hold_off("Performance"));
     }
 }

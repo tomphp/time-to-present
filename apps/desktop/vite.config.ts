@@ -5,7 +5,7 @@ export default defineConfig({
   server: { port: 1420, strictPort: true },
   build: {
     rollupOptions: {
-      input: { start: "index.html", editor: "editor.html", settings: "settings.html" },
+      input: { start: "index.html", editor: "editor.html", settings: "settings.html", teleprompter: "teleprompter.html" },
     },
   },
 });

@@ -323,3 +323,22 @@ fn a_stall_or_high_speed_still_fires_everything_crossed_in_order() {
         .collect();
     assert_eq!(ids, ["w1", "w2", "w3", "tick 1600"]);
 }
+
+#[test]
+fn app_nap_is_held_off_only_while_the_clock_plays() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    assert!(!harness.app_nap.held());
+
+    session.play();
+    assert!(harness.app_nap.held());
+    session.pause();
+    assert!(!harness.app_nap.held());
+
+    session.play();
+    play_for(&harness, &mut session, 5_000);
+    assert!(
+        !harness.app_nap.held(),
+        "released when the Performance ends"
+    );
+}
