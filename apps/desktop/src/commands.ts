@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Edit, InputChoice, Meter, SessionState, Waveform } from "./session";
+import type { Edit, InputChoice, InsertionPoint, Meter, SessionState, Waveform } from "./session";
 
 export const newPresentation = (parent: string, title: string) =>
   invoke<SessionState>("new_presentation", { parent, title });
@@ -64,11 +64,15 @@ export const selectChannel = (channel: number) => invoke<void>("select_channel",
 
 export const closeRecordingBar = () => invoke<void>("close_recording_bar");
 
-export const startRecording = () => invoke<void>("start_recording");
+export const startRecording = (at: InsertionPoint) => invoke<void>("start_recording", { at });
 
 export const stopRecording = () => invoke<void>("stop_recording");
 
 export const cancelRecording = () => invoke<void>("cancel_recording");
+
+export const retryTranscription = (recording: string) => invoke<void>("retry_transcription", { recording });
+
+export const discardTranscription = (recording: string) => invoke<void>("discard_transcription", { recording });
 
 export function onMeter(render: (meter: Meter) => void) {
   void listen<Meter>("recording-meter", (event) => render(event.payload));

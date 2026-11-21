@@ -1,8 +1,23 @@
-import { copy, cut, drag, edit, nudge, onSessionState, paste, recordingWaveform, redo, renamePresentation, selectEvent, undo } from "./commands";
+import {
+  copy,
+  cut,
+  discardTranscription,
+  drag,
+  edit,
+  nudge,
+  onSessionState,
+  paste,
+  recordingWaveform,
+  redo,
+  renamePresentation,
+  retryTranscription,
+  selectEvent,
+  undo,
+} from "./commands";
 import { mountEventEditor } from "./event-editor";
 import { mountInspector } from "./inspector";
 import { eventNames, nextMoved } from "./named-events";
-import { renderRecordingBar } from "./recording-bar";
+import { mountRecordingBar } from "./recording-bar";
 import { sharedSelection } from "./selection";
 import type { SessionState } from "./session";
 import { nudgeOf } from "./timing-controls";
@@ -19,8 +34,9 @@ const selection = sharedSelection((ids) => {
   showInspector();
 });
 
+const script = document.querySelector<HTMLElement>("#script")!;
 const pane = mountTextPane(
-  document.querySelector<HTMLElement>("#script")!,
+  script,
   { edit, cut, copy, paste, undo, redo },
   {
     insertEventAt: (at) => {
@@ -52,13 +68,28 @@ const timeline = mountTimeline(
 
 const inspector = mountInspector(document.querySelector<HTMLFormElement>("#inspector")!, { edit });
 
+const recordingBar = mountRecordingBar(pane.insertionPoint);
+
 const error = document.querySelector<HTMLParagraphElement>("#error")!;
+
+function showError(reason: unknown) {
+  error.textContent = String(reason);
+  error.hidden = false;
+}
+
+script.addEventListener("click", (event) => {
+  const button = (event.target as Element).closest<HTMLElement>("[data-retry], [data-discard]");
+  const recording = button?.closest<HTMLElement>("[data-recording-id]")?.dataset.recordingId;
+  if (!button || !recording) return;
+  event.preventDefault();
+  const command = "retry" in button.dataset ? retryTranscription : discardTranscription;
+  command(recording).catch(showError);
+});
 
 title.addEventListener("change", async () => {
   error.hidden = true;
   await renamePresentation(title.value).catch((reason) => {
-    error.textContent = String(reason);
-    error.hidden = false;
+    showError(reason);
     title.value = savedTitle;
   });
 });
@@ -115,7 +146,7 @@ function render(state: SessionState) {
   pane.render(state);
   showInspector();
   timeline.render(state.words, state.namedEvents, state.movedEvents, state.scriptEnd, selection.ids());
-  renderRecordingBar(state.recordingBar);
+  recordingBar.render(state.recordingBar);
 }
 
 onSessionState(render);

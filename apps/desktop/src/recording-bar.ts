@@ -9,7 +9,7 @@ import {
   stopRecording,
 } from "./commands";
 import { channelOptions, escapeAction, formatElapsed, inputOptions, meterFill, shortcut } from "./recording-bar-view";
-import type { RecordingBarState } from "./session";
+import type { InsertionPoint, RecordingBarState } from "./session";
 
 const find = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 
@@ -59,7 +59,7 @@ function options(select: HTMLSelectElement, items: { value: string; label: strin
   );
 }
 
-export function renderRecordingBar(state: RecordingBarState | null) {
+function renderRecordingBar(state: RecordingBarState | null) {
   const wasRecording = bar?.recording ?? false;
   bar = state;
   section.hidden = state === null;
@@ -99,12 +99,27 @@ function requestCancel() {
   if (action === "keep") setConfirming(false);
 }
 
-async function toggleRecording() {
-  if (bar === null) {
-    await openRecordingBar();
-    return startRecording();
+/** The recording bar, starting each Recording at the Insertion Point the editor reports. */
+export function mountRecordingBar(insertionPoint: () => InsertionPoint) {
+  const startHere = () => startRecording(insertionPoint());
+
+  async function toggleRecording() {
+    if (bar === null) {
+      await openRecordingBar();
+      return startHere();
+    }
+    return bar.recording ? stopRecording() : startHere();
   }
-  return bar.recording ? stopRecording() : startRecording();
+
+  start.addEventListener("click", act(startHere));
+  document.addEventListener("keydown", (event) => {
+    const key = shortcut(event);
+    if (key === null) return;
+    event.preventDefault();
+    if (key === "toggle") act(toggleRecording)();
+    if (key === "escape") requestCancel();
+  });
+  return { render: renderRecordingBar };
 }
 
 onMeter(({ peak, clipped, recorded: ms }) => {
@@ -120,18 +135,9 @@ onMeter(({ peak, clipped, recorded: ms }) => {
 device.addEventListener("change", act(() => selectInput({ device: device.value || null, channel: 1 })));
 channel.addEventListener("change", act(() => selectChannel(Number(channel.value))));
 clip.addEventListener("click", () => setClipped(false));
-start.addEventListener("click", act(startRecording));
 stop.addEventListener("click", act(stopRecording));
 cancel.addEventListener("click", requestCancel);
 find("#discard-recording").addEventListener("click", act(cancelRecording));
 find("#keep-recording").addEventListener("click", () => setConfirming(false));
 close.addEventListener("click", act(closeRecordingBar));
 record.addEventListener("click", act(openRecordingBar));
-
-document.addEventListener("keydown", (event) => {
-  const key = shortcut(event);
-  if (key === null) return;
-  event.preventDefault();
-  if (key === "toggle") act(toggleRecording)();
-  if (key === "escape") requestCancel();
-});

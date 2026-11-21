@@ -12,12 +12,14 @@ use ttp_core::settings::Settings;
 use ttp_core::store::StoreError;
 use ttp_core::time::MonotonicTime;
 use ttp_core::waveform::{self, Waveform};
+use ttp_core::transcription::SidecarTranscriber;
 
 mod audio;
 mod macos;
 mod recording;
 
-const AUTOSAVE_POLL: Duration = Duration::from_millis(100);
+const TICK: Duration = Duration::from_millis(100);
+const SIDECAR: &str = "ttp-stt-sidecar";
 
 const SESSION_STATE: &str = "session-state";
 const START_WINDOW: &str = "start";
@@ -274,11 +276,18 @@ fn save_open_session(
     }
 }
 
-fn autosave(app: AppHandle) {
+/// Lands Transcriptions and autosaves, as the Session asks to be ticked regularly.
+fn tick(app: AppHandle) {
     loop {
-        std::thread::sleep(AUTOSAVE_POLL);
+        std::thread::sleep(TICK);
         save_open_session(&app, "autosave", Session::tick);
     }
+}
+
+/// Tauri puts the `externalBin` sidecar next to the app's own executable.
+fn sidecar_path() -> Result<PathBuf, std::io::Error> {
+    let executable = std::env::current_exe()?;
+    Ok(executable.with_file_name(SIDECAR))
 }
 
 fn show(app: &AppHandle, state: &App, mut session: Session) -> CommandResult<SessionState> {
@@ -321,21 +330,23 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let settings = Settings::load(app.path().app_config_dir()?.join("settings.json"));
+            let models = Arc::new(ModelManager::new(
+                app.path().app_data_dir()?.join("models"),
+                whisper_catalog(),
+            ));
             app.manage(App {
                 platform: Platform {
                     time: Arc::new(MonotonicTime::new()),
                     audio: Arc::new(audio::CpalSource::new()),
                     app_nap: Arc::new(macos::ProcessActivity),
+                    transcriber: Arc::new(SidecarTranscriber::new(sidecar_path()?, models.clone())),
                 },
                 session: Mutex::default(),
                 settings: Mutex::new(settings),
-                models: Arc::new(ModelManager::new(
-                    app.path().app_data_dir()?.join("models"),
-                    whisper_catalog(),
-                )),
+                models,
             });
             let handle = app.handle().clone();
-            std::thread::spawn(move || autosave(handle));
+            std::thread::spawn(move || tick(handle));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -364,7 +375,9 @@ pub fn run() {
             recording::close_recording_bar,
             recording::start_recording,
             recording::stop_recording,
-            recording::cancel_recording
+            recording::cancel_recording,
+            recording::retry_transcription,
+            recording::discard_transcription
         ])
         .build(tauri::generate_context!())
         .expect("error while building Time to Present")

@@ -1,6 +1,6 @@
 use tauri::State;
 use ttp_core::capture::{CaptureError, InputChoice};
-use ttp_core::session::Session;
+use ttp_core::session::{InsertionPoint, Session};
 
 use crate::{App, CommandResult, message, with_session};
 
@@ -48,8 +48,8 @@ pub fn close_recording_bar(state: State<'_, App>) -> CommandResult<()> {
 }
 
 #[tauri::command]
-pub fn start_recording(state: State<'_, App>) -> CommandResult<()> {
-    with_session(&state, Session::start_recording)
+pub fn start_recording(state: State<'_, App>, at: InsertionPoint) -> CommandResult<()> {
+    with_session(&state, |session| session.start_recording(at))
 }
 
 #[tauri::command]
@@ -60,4 +60,14 @@ pub fn stop_recording(state: State<'_, App>) -> CommandResult<()> {
 #[tauri::command]
 pub fn cancel_recording(state: State<'_, App>) -> CommandResult<()> {
     with_session(&state, Session::cancel_recording)
+}
+
+#[tauri::command]
+pub fn retry_transcription(state: State<'_, App>, recording: String) -> CommandResult<()> {
+    with_session(&state, |session| session.retry_transcription(&recording))
+}
+
+#[tauri::command]
+pub fn discard_transcription(state: State<'_, App>, recording: String) -> CommandResult<()> {
+    with_session(&state, |session| session.discard_transcription(&recording))
 }

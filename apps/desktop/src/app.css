@@ -78,6 +78,25 @@ body.editor {
   color: #c62828;
 }
 
+#script .pending-passage {
+  display: inline-block;
+  padding: 0 0.5em;
+  font-size: 0.85em;
+  color: #555;
+  border: 1px dashed #999;
+  border-radius: 0.4em;
+  user-select: none;
+}
+
+#script .pending-passage.failed {
+  color: #b00020;
+  border-color: #b00020;
+}
+
+#script .pending-passage button {
+  font-size: 0.9em;
+}
+
 #event-editor {
   display: grid;
   grid-template-columns: 1fr 2fr auto auto;

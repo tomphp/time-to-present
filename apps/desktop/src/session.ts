@@ -33,6 +33,26 @@ export interface SessionState {
   movedEvents: string[];
   scriptEnd: number;
   recordingBar: RecordingBarState | null;
+  pendingPassages: PendingPassage[];
+}
+
+/** The caret between Words where a Recording lands: before a Word, or at the end. */
+export interface InsertionPoint {
+  before: string | null;
+}
+
+export type PendingStatus =
+  | { kind: "queued" }
+  | { kind: "fetchingModel"; percent: number | null }
+  | { kind: "transcribing"; percent: number }
+  | { kind: "failed"; reason: string };
+
+/** A stopped Recording whose Transcription has not landed, anchored to the Words either side. */
+export interface PendingPassage {
+  recordingId: string;
+  after: string | null;
+  before: string | null;
+  status: PendingStatus;
 }
 
 export interface Input {

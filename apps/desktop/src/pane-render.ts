@@ -1,7 +1,8 @@
 import { indexOf, type Slot } from "./caret";
 import { chipsByAnchor } from "./named-events";
+import { passagesByPosition, pendingElement } from "./pending-passage";
 import { scriptLayout } from "./script-view";
-import { SCRIPT_START, type ScriptWord, type TimedEvent } from "./session";
+import { SCRIPT_START, type PendingPassage, type ScriptWord, type TimedEvent } from "./session";
 
 export const SLOT_TEXT = "​";
 
@@ -15,27 +16,40 @@ const NO_CHIPS: Chips = { events: [], moved: [], selected: null };
 
 /**
  * Renders the Script as paragraphs of Word spans, each after the chips of the Named Events
- * anchored to it, with the open slot (if any) where a typed Word would go.
+ * anchored to it and any Pending Passage waiting to land before it, with the open slot (if
+ * any) where a typed Word would go.
  */
-export function renderScript(root: HTMLElement, words: ScriptWord[], slot: Slot | null, chips = NO_CHIPS) {
+export function renderScript(
+  root: HTMLElement,
+  words: ScriptWord[],
+  slot: Slot | null,
+  chips = NO_CHIPS,
+  pending: PendingPassage[] = [],
+) {
   const slotBeforeWord = slot && words[indexOf(words, slot.slotAfter) + 1]?.id;
   const byAnchor = chipsByAnchor(chips.events);
   const chipsFor = (anchor: string) => (byAnchor.get(anchor) ?? []).map((event) => chipElement(event, chips));
+  const byPosition = passagesByPosition(words, pending);
+  const pendingBefore = (id: string | null) => (byPosition.get(id) ?? []).flatMap((passage) => [pendingElement(passage), " "]);
   const paragraphs = scriptLayout(words).map((lines) => {
     const paragraph = document.createElement("p");
     lines.forEach((line, lineIndex) => {
       if (lineIndex > 0) paragraph.append(document.createElement("br"));
       line.forEach((word, position) => {
         if (position > 0) paragraph.append(" ");
+        paragraph.append(...pendingBefore(word.id));
         if (slot && word.id === slotBeforeWord) paragraph.append(slotElement(slot), " ");
         paragraph.append(...chipsFor(word.id), wordElement(word.id, word.text, word.lowConfidence));
       });
     });
     return paragraph;
   });
-  if (paragraphs.length === 0 && (slot || byAnchor.has(SCRIPT_START))) paragraphs.push(document.createElement("p"));
+  const atEnd = pendingBefore(null).slice(0, -1);
+  if (paragraphs.length === 0 && (slot || byAnchor.has(SCRIPT_START) || atEnd.length)) paragraphs.push(document.createElement("p"));
   paragraphs[0]?.prepend(...chipsFor(SCRIPT_START));
-  if (slot && !slotBeforeWord) paragraphs[paragraphs.length - 1].append(" ", slotElement(slot));
+  const last = paragraphs[paragraphs.length - 1];
+  if (atEnd.length) last.append(...(words.length ? [" ", ...atEnd] : atEnd));
+  if (slot && !slotBeforeWord) last.append(" ", slotElement(slot));
   root.replaceChildren(...paragraphs);
 }
 

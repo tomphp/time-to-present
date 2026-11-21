@@ -3,6 +3,7 @@ import { caretAfterPaste, passageText, pasteAt, selectedWords } from "./clipboar
 import { currentCaret, placeCaret, placeRange, selectedRange } from "./dom-caret";
 import { chipDropEdit, eventAnchorAt, sameChips, type ChipDrop, type EventAt } from "./named-events";
 import { renderScript } from "./pane-render";
+import { insertionPointAt, samePending } from "./pending-passage";
 import { sameLayout } from "./script-view";
 import type { Edit, ScriptWord, SessionState } from "./session";
 import { applyInput, type Input } from "./text-editing";
@@ -21,7 +22,7 @@ export interface EventHooks {
   selectEvent(id: string): void;
 }
 
-export type PaneScript = Pick<SessionState, "words" | "namedEvents" | "movedEvents">;
+export type PaneScript = Pick<SessionState, "words" | "namedEvents" | "movedEvents" | "pendingPassages">;
 
 const INPUT_TYPES: Record<string, Input | undefined> = {
   deleteContentBackward: { type: "deleteBackward" },
@@ -43,7 +44,7 @@ export function mountTextPane(
   events: EventHooks,
   onSelect: (range: Range) => void,
 ) {
-  let script: PaneScript = { words: [], namedEvents: [], movedEvents: [] };
+  let script: PaneScript = { words: [], namedEvents: [], movedEvents: [], pendingPassages: [] };
   let words: ScriptWord[] = [];
   let selectedEvent: string | null = null;
   let slot: Slot | null = null;
@@ -62,13 +63,26 @@ export function mountTextPane(
     pending = null;
     const caret = target && resolveCaret(target, words);
     slot = caret && isSlot(caret) ? caret : null;
-    renderScript(root, words, slot, { events: next.namedEvents, moved: next.movedEvents, selected: selectedEvent });
+    renderScript(
+      root,
+      words,
+      slot,
+      { events: next.namedEvents, moved: next.movedEvents, selected: selectedEvent },
+      next.pendingPassages,
+    );
     if (caret) placeCaret(root, caret);
+  }
+
+  /** Where a Recording lands: the caret, or where it last was once the focus has moved on. */
+  function insertionPoint() {
+    const caret = (root.contains(document.activeElement) && currentCaret(root)) || lastCaret;
+    return insertionPointAt(words, caret && resolveCaret(caret, words));
   }
 
   /** Renders new Session state, leaving the DOM and its selection alone when only timing changed. */
   function render(next: PaneScript) {
-    const timingOnly = !pending && sameLayout(words, next.words) && sameChips(script, next);
+    const timingOnly =
+      !pending && sameLayout(words, next.words) && sameChips(script, next) && samePending(script.pendingPassages, next.pendingPassages);
     if (timingOnly) {
       script = next;
       words = next.words;
@@ -245,7 +259,7 @@ export function mountTextPane(
     lastCaret = { slotAfter: lastId(words) };
   }
 
-  return { render, selectEvent, focus, select: (range: Range) => placeRange(root, range) };
+  return { render, selectEvent, focus, insertionPoint, select: (range: Range) => placeRange(root, range) };
 }
 
 function inputFrom(event: InputEvent): Input | null {
