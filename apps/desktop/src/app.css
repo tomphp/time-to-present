@@ -28,3 +28,58 @@ body.editor {
 #error {
   color: #c62828;
 }
+
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+#recording-bar {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  padding: 0.75rem;
+  border: 1px solid GrayText;
+  border-radius: 0.5rem;
+}
+
+#recording-bar[hidden],
+#recording-bar [hidden] {
+  display: none;
+}
+
+#recording-bar .controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.meter {
+  width: 8rem;
+  height: 0.5rem;
+  background: color-mix(in srgb, GrayText 30%, transparent);
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+
+#meter-fill {
+  width: 0;
+  height: 100%;
+  background: #2e7d32;
+}
+
+.clip {
+  opacity: 0.4;
+}
+
+.clip.lit {
+  opacity: 1;
+  color: white;
+  background: #c62828;
+}
+
+#elapsed {
+  font-variant-numeric: tabular-nums;
+}

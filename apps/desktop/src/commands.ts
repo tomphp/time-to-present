@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { SessionState } from "./session";
+import type { InputChoice, Meter, SessionState } from "./session";
 
 export const newPresentation = (parent: string, title: string) =>
   invoke<SessionState>("new_presentation", { parent, title });
@@ -42,4 +42,20 @@ export const openSettings = () => invoke<void>("open_settings");
 
 export function onModelProgress(render: (progress: ModelProgress) => void) {
   void listen<ModelProgress>("model-progress", (event) => render(event.payload));
+}
+
+export const openRecordingBar = () => invoke<void>("open_recording_bar");
+
+export const selectInput = (choice: InputChoice) => invoke<void>("select_input", { choice });
+
+export const closeRecordingBar = () => invoke<void>("close_recording_bar");
+
+export const startRecording = () => invoke<void>("start_recording");
+
+export const stopRecording = () => invoke<void>("stop_recording");
+
+export const cancelRecording = () => invoke<void>("cancel_recording");
+
+export function onMeter(render: (meter: Meter) => void) {
+  void listen<Meter>("recording-meter", (event) => render(event.payload));
 }

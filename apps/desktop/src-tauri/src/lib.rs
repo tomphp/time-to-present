@@ -4,18 +4,24 @@ use std::sync::{Arc, Mutex};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use ttp_core::models::{InstalledModel, ModelManager, Progress, whisper_catalog};
+use ttp_core::platform::Platform;
 use ttp_core::session::{Session, SessionState};
 use ttp_core::settings::Settings;
-use ttp_core::time::{MonotonicTime, TimeSource};
+use ttp_core::time::MonotonicTime;
+
+mod audio;
+mod macos;
+mod recording;
 
 const SESSION_STATE: &str = "session-state";
 const START_WINDOW: &str = "start";
 const EDITOR_WINDOW: &str = "editor";
 const SETTINGS_WINDOW: &str = "settings";
 const MODEL_PROGRESS: &str = "model-progress";
+const RECORDING_METER: &str = "recording-meter";
 
 struct App {
-    time: Arc<dyn TimeSource>,
+    platform: Platform,
     session: Mutex<Option<Session>>,
     settings: Mutex<Settings>,
     models: Arc<ModelManager>,
@@ -40,7 +46,7 @@ async fn new_presentation(
     parent: PathBuf,
     title: String,
 ) -> CommandResult<SessionState> {
-    let session = Session::create(&parent, &title, state.time.clone()).map_err(message)?;
+    let session = Session::create(&parent, &title, state.platform.clone()).map_err(message)?;
     show(&app, &state, session)
 }
 
@@ -50,7 +56,7 @@ async fn open_folder(
     state: State<'_, App>,
     folder: PathBuf,
 ) -> CommandResult<SessionState> {
-    let session = Session::open(&folder, state.time.clone()).map_err(|error| {
+    let session = Session::open(&folder, state.platform.clone()).map_err(|error| {
         if !folder.is_dir() {
             if let Err(error) = state.settings.lock().unwrap().forget_recent(&folder) {
                 eprintln!("could not update the Recent list: {error}");
@@ -156,6 +162,10 @@ fn show(app: &AppHandle, state: &App, mut session: Session) -> CommandResult<Ses
     session.subscribe(move |published| {
         let _ = publisher.emit(SESSION_STATE, published);
     });
+    let metering = app.clone();
+    session.subscribe_meter(move |meter| {
+        let _ = metering.emit(RECORDING_METER, meter);
+    });
     let opened = session.state();
     if let Err(error) = state.settings.lock().unwrap().add_recent(&opened.folder) {
         eprintln!("could not update the Recent list: {error}");
@@ -188,7 +198,11 @@ pub fn run() {
         .setup(|app| {
             let settings = Settings::load(app.path().app_config_dir()?.join("settings.json"));
             app.manage(App {
-                time: Arc::new(MonotonicTime::new()),
+                platform: Platform {
+                    time: Arc::new(MonotonicTime::new()),
+                    audio: Arc::new(audio::CpalSource::new()),
+                    app_nap: Arc::new(macos::ProcessActivity),
+                },
                 session: Mutex::default(),
                 settings: Mutex::new(settings),
                 models: Arc::new(ModelManager::new(
@@ -207,7 +221,13 @@ pub fn run() {
             installed_models,
             remove_model,
             open_settings,
-            session_state
+            session_state,
+            recording::open_recording_bar,
+            recording::select_input,
+            recording::close_recording_bar,
+            recording::start_recording,
+            recording::stop_recording,
+            recording::cancel_recording
         ])
         .run(tauri::generate_context!())
         .expect("error while running Time to Present");

@@ -1,4 +1,5 @@
 import { onSessionState, renamePresentation } from "./commands";
+import { renderRecordingBar } from "./recording-bar";
 import { scriptLayout } from "./script-view";
 import type { SessionState } from "./session";
 
@@ -27,6 +28,7 @@ function render(state: SessionState) {
   document.title = state.title;
   title.value = state.title;
   script.replaceChildren(...paragraphs(state));
+  renderRecordingBar(state.recordingBar);
 }
 
 function paragraphs(state: SessionState): HTMLElement[] {
