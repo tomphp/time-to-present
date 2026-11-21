@@ -36,6 +36,14 @@
       </p>
       <button id="close-recording-bar" type="button">Close</button>
     </section>
+    <form id="event-editor" aria-label="Named Event" hidden>
+      <label>Name <input name="name" list="event-names" autocomplete="off" spellcheck="false" /></label>
+      <datalist id="event-names"></datalist>
+      <label>Data <textarea name="data" rows="3" spellcheck="false" placeholder="Optional JSON"></textarea></label>
+      <p role="alert" hidden></p>
+      <button type="submit">Save</button>
+      <button type="button" data-cancel>Cancel</button>
+    </form>
     <article id="script" aria-label="Script"></article>
     <script type="module" src="/src/editor.ts"></script>
   </body>

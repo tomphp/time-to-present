@@ -9,10 +9,24 @@ export interface ScriptWord {
   breakAfter?: BreakAfter;
 }
 
+export const SCRIPT_START = "scriptStart";
+
+export interface TimedEvent {
+  id: string;
+  name: string;
+  data?: unknown;
+  /** A Word id, or SCRIPT_START. */
+  anchor: string;
+  offset: number;
+  time: number;
+}
+
 export interface SessionState {
   folder: string;
   title: string;
   words: ScriptWord[];
+  namedEvents: TimedEvent[];
+  movedEvents: string[];
   scriptEnd: number;
   recordingBar: RecordingBarState | null;
 }
@@ -49,4 +63,6 @@ export type Edit =
   | { kind: "delete"; words: string[] }
   | { kind: "setBreak"; word: string; breakAfter: BreakAfter | null }
   | { kind: "insertWord"; after: string | null; text: string }
+  | { kind: "insertEvent"; anchor: string; offset: number; name: string; data?: unknown }
+  | { kind: "setEvent"; event: string; name: string; data?: unknown }
   | { kind: "batch"; edits: Edit[] };

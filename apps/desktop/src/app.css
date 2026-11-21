@@ -33,6 +33,51 @@ body.editor {
   text-underline-offset: 0.2em;
 }
 
+#script .event-chip {
+  display: inline-block;
+  margin-right: 0.25em;
+  padding: 0 0.4em;
+  font-size: 0.75em;
+  line-height: 1.5;
+  vertical-align: 0.15em;
+  border-radius: 0.75em;
+  background: color-mix(in srgb, #1565c0 18%, transparent);
+  cursor: pointer;
+  user-select: none;
+}
+
+#script .event-chip.selected {
+  outline: 2px solid #1565c0;
+}
+
+#script .event-chip.moved::after {
+  content: "Moved";
+  margin-left: 0.4em;
+  padding: 0 0.3em;
+  border-radius: 0.5em;
+  color: white;
+  background: #e0a000;
+}
+
+#event-editor {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto auto;
+  gap: 0.5rem;
+  align-items: start;
+  margin: 1rem 0;
+}
+
+#event-editor[hidden],
+#event-editor [hidden] {
+  display: none;
+}
+
+#event-editor [role="alert"] {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #c62828;
+}
+
 #error {
   color: #c62828;
 }

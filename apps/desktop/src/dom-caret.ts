@@ -30,10 +30,17 @@ function elementFor(root: HTMLElement, caret: Caret) {
     : root.querySelector(`[data-word-id="${caret.word}"]`);
 }
 
-/** Maps a DOM position to a Caret: inside a Word or slot span, or at the nearest Word boundary. */
+/**
+ * Maps a DOM position to a Caret: inside a Word or slot span, or at the nearest Word boundary.
+ * A position inside an event chip counts as the boundary before the chip.
+ */
 function caretAt(root: HTMLElement, node: Node, offset: number): Caret | null {
   if (!root.contains(node)) return null;
   const element = node instanceof Text ? node.parentElement : (node as Element);
+  const chip = element?.closest("[data-event-id]");
+  if (chip?.parentNode && root.contains(chip)) {
+    return caretAt(root, chip.parentNode, Array.from(chip.parentNode.childNodes).indexOf(chip));
+  }
   if (element instanceof HTMLElement && element.dataset.slotAfter !== undefined) {
     return { slotAfter: element.dataset.slotAfter || null };
   }

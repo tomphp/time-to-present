@@ -19,6 +19,7 @@ export const renamePresentation = (title: string) => invoke<void>("rename_presen
 export const edit = (edit: Edit) => invoke<SessionState>("edit", { edit });
 export const undo = () => invoke<SessionState>("undo");
 export const redo = () => invoke<SessionState>("redo");
+export const selectEvent = (event: string) => invoke<SessionState>("select_event", { event });
 
 export function onSessionState(render: (state: SessionState) => void) {
   void listen<SessionState>("session-state", (event) => render(event.payload));

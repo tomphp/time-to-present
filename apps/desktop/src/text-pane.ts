@@ -1,5 +1,6 @@
 import { collapsed, isSlot, lastId, resolveCaret, type CaretTarget, type Slot } from "./caret";
 import { currentCaret, placeCaret, selectedRange } from "./dom-caret";
+import { eventAnchorAt, type EventAt } from "./named-events";
 import { renderScript } from "./pane-render";
 import type { Edit, ScriptWord, SessionState } from "./session";
 import { applyInput, type Input } from "./text-editing";
@@ -9,6 +10,13 @@ export interface Commands {
   undo(): Promise<SessionState>;
   redo(): Promise<SessionState>;
 }
+
+export interface EventHooks {
+  insertEventAt(at: EventAt): void;
+  selectEvent(id: string): void;
+}
+
+export type PaneScript = Pick<SessionState, "words" | "namedEvents" | "movedEvents">;
 
 const INPUT_TYPES: Record<string, Input | undefined> = {
   deleteContentBackward: { type: "deleteBackward" },
@@ -23,8 +31,10 @@ const INPUT_TYPES: Record<string, Input | undefined> = {
  * The editable text pane. Every keystroke becomes a Session edit and the DOM is only ever
  * rendered from state; inputs queue up so a fast burst lands one after another.
  */
-export function mountTextPane(root: HTMLElement, commands: Commands) {
+export function mountTextPane(root: HTMLElement, commands: Commands, events: EventHooks) {
+  let script: PaneScript = { words: [], namedEvents: [], movedEvents: [] };
   let words: ScriptWord[] = [];
+  let selectedEvent: string | null = null;
   let slot: Slot | null = null;
   let pending: CaretTarget | null = null;
   let lastCaret: CaretTarget | null = null;
@@ -34,14 +44,27 @@ export function mountTextPane(root: HTMLElement, commands: Commands) {
   root.contentEditable = "true";
   root.spellcheck = false;
 
-  function render(next: ScriptWord[]) {
-    words = next;
+  function render(next: PaneScript) {
+    script = next;
+    words = next.words;
     const target = pending ?? (root.contains(document.activeElement) ? currentCaret(root) : null);
     pending = null;
     const caret = target && resolveCaret(target, words);
     slot = caret && isSlot(caret) ? caret : null;
-    renderScript(root, words, slot);
+    renderScript(root, words, slot, { events: next.namedEvents, moved: next.movedEvents, selected: selectedEvent });
     if (caret) placeCaret(root, caret);
+  }
+
+  function selectEvent(id: string | null) {
+    selectedEvent = id;
+    render(script);
+    if (id) root.querySelector(`[data-event-id="${id}"]`)?.scrollIntoView({ block: "nearest" });
+  }
+
+  /** Puts the caret back where it was before an event took the focus. */
+  function focus() {
+    pending = lastCaret ?? { slotAfter: lastId(words) };
+    render(script);
   }
 
   function enqueue(work: () => Promise<void>) {
@@ -62,22 +85,43 @@ export function mountTextPane(root: HTMLElement, commands: Commands) {
       lastCaret = outcome?.caret ?? range.start;
       if (!outcome) return;
       pending = outcome.caret;
-      if (!outcome.edit) return render(words);
-      await commands.edit(outcome.edit).then((state) => render(state.words), reportAndDrop);
+      if (!outcome.edit) return render(script);
+      await commands.edit(outcome.edit).then(render, reportAndDrop);
     });
   });
 
   root.addEventListener("keydown", (event) => {
-    if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
-    event.preventDefault();
-    const command = event.shiftKey ? commands.redo : commands.undo;
-    enqueue(() => command().then((state) => render(state.words), reportAndDrop));
+    if (!(event.metaKey || event.ctrlKey)) return;
+    const key = event.key.toLowerCase();
+    if (key === "z") {
+      event.preventDefault();
+      const command = event.shiftKey ? commands.redo : commands.undo;
+      enqueue(() => command().then(render, reportAndDrop));
+    }
+    if (key === "e") {
+      event.preventDefault();
+      const domCaret = selectedRange(root)?.start ?? null;
+      const domIsStale = queued > 0;
+      enqueue(async () => {
+        const caret = (domIsStale && lastCaret ? resolveCaret(lastCaret, words) : domCaret) ?? { slotAfter: lastId(words) };
+        lastCaret = caret;
+        events.insertEventAt(eventAnchorAt(words, caret));
+      });
+    }
+  });
+
+  root.addEventListener("click", (event) => {
+    const chip = (event.target as Element).closest<HTMLElement>("[data-event-id]");
+    if (chip) {
+      lastCaret = currentCaret(root) ?? lastCaret;
+      events.selectEvent(chip.dataset.eventId!);
+    }
   });
 
   document.addEventListener("selectionchange", () => {
     if (!slot || queued > 0) return;
     const caret = currentCaret(root);
-    if (caret && !isSlot(caret)) render(words);
+    if (caret && !isSlot(caret)) render(script);
   });
 
   function reportAndDrop(error: unknown) {
@@ -86,7 +130,7 @@ export function mountTextPane(root: HTMLElement, commands: Commands) {
     lastCaret = { slotAfter: lastId(words) };
   }
 
-  return { render };
+  return { render, selectEvent, focus };
 }
 
 function inputFrom(event: InputEvent): Input | null {
