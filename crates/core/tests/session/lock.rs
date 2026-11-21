@@ -1,5 +1,7 @@
+use ttp_core::capture::InputChoice;
 use ttp_core::clock::{ClockState, StreamEvent};
 use ttp_core::script::{Edit, EditError};
+use ttp_core::session::{InsertionPoint, Session};
 
 use crate::support::{Harness, Stream, correct};
 
@@ -172,4 +174,34 @@ fn closing_the_session_broadcasts_closed_last() {
         }]
     );
     assert_eq!(harness.open(&folder).state().words[0].word.text, "Hullo,");
+}
+
+fn record_at_end(harness: &Harness, session: &mut Session) {
+    session.open_recording_bar(InputChoice::default());
+    session.start_recording(InsertionPoint::default()).unwrap();
+    harness.audio.play(&[0.1; 480]);
+    session.stop_recording().unwrap();
+}
+
+#[test]
+fn a_transcription_heard_while_the_clock_is_playing_lands_once_it_stops() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    record_at_end(&harness, &mut session);
+    session.play();
+    let stream = Stream::of(&mut session);
+
+    harness.transcriber.hear(&[("Thanks", 100, 400)]);
+    session.poll().unwrap();
+
+    assert_eq!(session.state().pending_passages.len(), 1);
+    assert_eq!(session.state().words.len(), 3);
+    assert!(stream.take().iter().all(|event| !matches!(event, StreamEvent::Snapshot(_))));
+
+    session.pause();
+    session.poll().unwrap();
+
+    assert!(session.state().pending_passages.is_empty());
+    assert_eq!(session.state().words[3].word.text, "Thanks");
+    assert!(stream.take().iter().any(|event| matches!(event, StreamEvent::Snapshot(_))));
 }

@@ -58,6 +58,8 @@ pub(super) struct Pending {
     recording: Recording,
     job: JobId,
     passage: PendingPassage,
+    /// Words heard under the edit lock, waiting for the clock to stop.
+    heard: Option<Vec<HeardWord>>,
 }
 
 impl Pending {
@@ -80,7 +82,13 @@ impl Pending {
 }
 
 impl Session {
+    /// Lands what the Transcriptions have reported. A Script change is a Script edit, so Words
+    /// heard while the clock is playing wait, and land on the first poll after it stops.
     pub(super) fn land_transcriptions(&mut self) {
+        let locked = self.clock.is_playing();
+        if !locked {
+            self.land_held();
+        }
         let events = self.transcriptions.drain();
         if events.is_empty() {
             return;
@@ -97,6 +105,10 @@ impl Session {
                 TranscriptionEvent::Heard(words) if words.is_empty() => failed(NO_SPEECH),
                 TranscriptionEvent::NoSpeech => failed(NO_SPEECH),
                 TranscriptionEvent::Failed(reason) => failed(&reason),
+                TranscriptionEvent::Heard(words) if locked => {
+                    self.pending[index].heard = Some(words);
+                    PendingStatus::Transcribing { percent: 100 }
+                }
                 TranscriptionEvent::Heard(words) => {
                     self.land(index, &words);
                     continue;
@@ -105,6 +117,13 @@ impl Session {
             self.pending[index].passage.status = status;
         }
         self.publish();
+    }
+
+    fn land_held(&mut self) {
+        while let Some(index) = self.pending.iter().position(|pending| pending.heard.is_some()) {
+            let heard = self.pending[index].heard.take().unwrap_or_default();
+            self.land(index, &heard);
+        }
     }
 
     /// Splices the heard Words in as one undo step. Other passages pending at the same spot
@@ -185,6 +204,7 @@ impl Session {
                 before,
                 status: PendingStatus::Queued,
             },
+            heard: None,
         });
     }
 

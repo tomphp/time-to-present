@@ -29,8 +29,9 @@ function mountPane(locked: boolean) {
   };
   const hooks = { insertEventAt: vi.fn(), selectEvent: vi.fn() };
   const onSelect = vi.fn();
-  mountTextPane(root, commands, hooks, onSelect).render(state(locked));
-  return { commands, hooks };
+  const pane = mountTextPane(root, commands, hooks, onSelect);
+  pane.render(state(locked));
+  return { commands, hooks, pane };
 }
 
 function selectAll() {
@@ -56,6 +57,17 @@ describe("the edit lock on the text pane", () => {
 
     expect(root.contentEditable).toBe("false");
     expect(root.classList.contains("locked")).toBe(true);
+  });
+
+  it("locks and unlocks a pane whose Script has not changed", () => {
+    const { pane } = mountPane(false);
+
+    pane.render(state(true));
+    expect(root.contentEditable).toBe("false");
+
+    pane.render(state(false));
+    expect(root.contentEditable).toBe("true");
+    expect(root.classList.contains("locked")).toBe(false);
   });
 
   it("unlocks again on the next state", () => {

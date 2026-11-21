@@ -60,7 +60,6 @@ export function mountTextPane(
   function repaint(next: PaneScript) {
     script = next;
     words = next.words;
-    setLocked(next.locked);
     const target = pending ?? (root.contains(document.activeElement) ? currentCaret(root) : null);
     pending = null;
     const caret = target && resolveCaret(target, words);
@@ -86,6 +85,7 @@ export function mountTextPane(
    * Transcription progress changed.
    */
   function render(next: PaneScript) {
+    setLocked(next.locked);
     const sameShape =
       !pending && sameLayout(words, next.words) && sameChips(script, next) && samePlacement(script.pendingPassages, next.pendingPassages);
     if (!sameShape) return repaint(next);
