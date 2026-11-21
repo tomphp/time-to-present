@@ -190,6 +190,16 @@ fn server_status(state: State<'_, App>) -> ServerStatus {
 }
 
 #[tauri::command]
+fn open_in_browser(state: State<'_, App>) -> CommandResult<()> {
+    let url = state.server.status().url;
+    std::process::Command::new("open")
+        .arg(url)
+        .spawn()
+        .map(drop)
+        .map_err(message)
+}
+
+#[tauri::command]
 fn edit(state: State<'_, App>, edit: Edit) -> CommandResult<SessionState> {
     with_session(&state, |session| {
         session.edit(edit)?;
@@ -430,6 +440,7 @@ pub fn run() {
             open_settings,
             session_state,
             server_status,
+            open_in_browser,
             edit,
             cut,
             copy,

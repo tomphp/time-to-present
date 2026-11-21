@@ -1,6 +1,24 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { onSessionState, onStreamEvent, pause, play, reset, seek, setSpeed } from "./commands";
+import { onServerStatus, onSessionState, onStreamEvent, openInBrowser, pause, play, reset, seek, setSpeed } from "./commands";
 import { find } from "./dom";
+import { formatElapsed } from "./recording-bar-view";
+import {
+  clockIcon,
+  connectionSummary,
+  endedSummary,
+  eventTicks,
+  FOCUS_WARNING,
+  focusLost,
+  foldRun,
+  NO_APP_WARNING,
+  NOT_STARTED,
+  playNeedsConfirmation,
+  progress,
+  remaining,
+  speedChanged,
+  speedLabel,
+} from "./performance-bar";
+import { serverStatusView } from "./server-status-view";
 import { sameLayout, scriptLayout } from "./script-view";
 import type { ScriptWord, TimedEvent } from "./session";
 import { navigation } from "./teleprompter-seek";
@@ -21,7 +39,29 @@ const readingLine = find<HTMLSpanElement>("#reading-line");
 const column = find<HTMLElement>("#column");
 const paused = find<HTMLParagraphElement>("#paused");
 
+const bar = {
+  warning: find<HTMLParagraphElement>("#bar-warning"),
+  state: find<HTMLSpanElement>("#bar-state"),
+  elapsed: find<HTMLSpanElement>("#bar-elapsed"),
+  remaining: find<HTMLSpanElement>("#bar-remaining"),
+  progress: find<HTMLElement>("#bar-progress"),
+  fill: find<HTMLElement>("#bar-fill"),
+  speed: find<HTMLSpanElement>("#bar-speed"),
+  ended: find<HTMLSpanElement>("#bar-ended"),
+  url: find<HTMLSpanElement>("#bar-url"),
+  copy: find<HTMLButtonElement>("#bar-copy"),
+  open: find<HTMLButtonElement>("#bar-open"),
+  apps: find<HTMLSpanElement>("#bar-apps"),
+  notice: find<HTMLParagraphElement>("#bar-notice"),
+};
+
 let words: ScriptWord[] = [];
+let scriptEnd = 0;
+let connectedApps = 0;
+let noAppWarned = false;
+let focused = document.hasFocus();
+let run = NOT_STARTED;
+let ticks: HTMLElement[] = [];
 let events: TimedEvent[] = [];
 let armedHome: number | null = null;
 let spans: HTMLSpanElement[] = [];
@@ -70,8 +110,40 @@ function follow(target: HTMLSpanElement) {
   column.style.transform = `translateY(${offset}px)`;
 }
 
+function renderTicks() {
+  ticks.forEach((tick) => tick.remove());
+  ticks = eventTicks(events, scriptEnd).map((position, index) => {
+    const tick = document.createElement("i");
+    tick.title = events[index].name;
+    tick.style.left = `${position * 100}%`;
+    bar.progress.append(tick);
+    return tick;
+  });
+}
+
+function renderWarning() {
+  const warning = focusLost(followed.state, focused) ? FOCUS_WARNING : noAppWarned ? NO_APP_WARNING : "";
+  bar.warning.textContent = warning;
+  bar.warning.hidden = warning === "";
+}
+
+function renderBar(scriptTime: number) {
+  const ended = followed.state === "ended";
+  bar.state.textContent = clockIcon(followed.state);
+  bar.elapsed.textContent = formatElapsed(scriptTime);
+  bar.remaining.textContent = remaining(scriptTime, scriptEnd, followed.speed);
+  bar.fill.style.width = `${progress(scriptTime, scriptEnd) * 100}%`;
+  bar.speed.textContent = speedLabel(followed.speed);
+  bar.speed.classList.toggle("changed", speedChanged(followed.speed));
+  bar.ended.hidden = !ended;
+  bar.ended.textContent = endedSummary(run, scriptEnd);
+  renderWarning();
+}
+
 function frame() {
-  const next = currentWord(words, followed.state, scriptTimeAt(followed, performance.now()));
+  const scriptTime = scriptTimeAt(followed, performance.now());
+  renderBar(scriptTime);
+  const next = currentWord(words, followed.state, scriptTime);
   if (next !== current) highlight(next);
   const target = spans[current ?? 0];
   if (target) follow(target);
@@ -97,18 +169,41 @@ document.addEventListener("keydown", (event) => {
   if (toggle) {
     armedHome = null;
     event.preventDefault();
-    if (!event.repeat) void (toggle === "play" ? play() : pause()).catch(console.error);
+    if (event.repeat) return;
+    if (toggle === "play" && playNeedsConfirmation(followed.state, connectedApps, noAppWarned)) noAppWarned = true;
+    else void (toggle === "play" ? play() : pause()).catch(console.error);
   } else if (navigate(event)) event.preventDefault();
 });
 
 new ResizeObserver(() => (scroll = null)).observe(column);
 
+window.addEventListener("focus", () => (focused = true));
+window.addEventListener("blur", () => (focused = false));
+bar.copy.addEventListener("click", () => void navigator.clipboard.writeText(bar.url.textContent ?? "").catch(console.error));
+bar.open.addEventListener("click", () => void openInBrowser().catch(console.error));
+
+onServerStatus((status) => {
+  const view = serverStatusView(status);
+  const { url, apps } = connectionSummary(status);
+  bar.url.textContent = url;
+  bar.apps.textContent = apps;
+  bar.notice.textContent = view.notices.join(" · ");
+  bar.notice.hidden = view.notices.length === 0;
+  connectedApps = status.connectedApps;
+  if (connectedApps > 0) noAppWarned = false;
+});
+
 onSessionState((state) => {
   events = state.namedEvents;
+  scriptEnd = state.scriptEnd;
+  renderTicks();
   renderScript(state.words);
 });
 void onStreamEvent((event) => {
-  followed = followClock(followed, event, performance.now());
+  const at = performance.now();
+  followed = followClock(followed, event, at);
+  run = foldRun(run, event, at);
+  if (followed.state !== "ready") noAppWarned = false;
   paused.hidden = followed.state !== "paused";
 });
 requestAnimationFrame(frame);

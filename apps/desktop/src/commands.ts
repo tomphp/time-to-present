@@ -113,3 +113,5 @@ export const openTeleprompter = () => invoke<void>("open_teleprompter");
 
 export const onStreamEvent = (render: (event: StreamEvent) => void) =>
   connectStream({ listen: (onEvent) => listen<StreamEvent>("session-event", (event) => onEvent(event.payload)), snapshot }, render);
+
+export const openInBrowser = () => invoke<void>("open_in_browser");
