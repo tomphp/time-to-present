@@ -1,0 +1,99 @@
+use std::fs;
+use std::path::PathBuf;
+
+use tempfile::TempDir;
+use ttp_core::settings::Settings;
+
+fn settings_in(dir: &TempDir) -> Settings {
+    Settings::load(dir.path().join("settings.json"))
+}
+
+fn folder(dir: &TempDir, name: &str) -> PathBuf {
+    let path = dir.path().join(name);
+    fs::create_dir(&path).unwrap();
+    path
+}
+
+#[test]
+fn settings_start_empty_when_nothing_has_been_saved() {
+    let dir = TempDir::new().unwrap();
+
+    assert!(settings_in(&dir).recent().is_empty());
+}
+
+#[test]
+fn the_recent_list_is_most_recent_first_without_duplicates_and_survives_a_reload() {
+    let dir = TempDir::new().unwrap();
+    let (a, b) = (folder(&dir, "a"), folder(&dir, "b"));
+    let mut settings = settings_in(&dir);
+
+    settings.add_recent(&a).unwrap();
+    settings.add_recent(&b).unwrap();
+    settings.add_recent(&a).unwrap();
+
+    assert_eq!(settings.recent(), [a.clone(), b.clone()]);
+    assert_eq!(settings_in(&dir).recent(), [a, b]);
+}
+
+#[test]
+fn the_recent_list_keeps_only_the_latest_entries() {
+    let dir = TempDir::new().unwrap();
+    let mut settings = settings_in(&dir);
+    let folders: Vec<_> = (0..12).map(|i| folder(&dir, &i.to_string())).collect();
+
+    for f in &folders {
+        settings.add_recent(f).unwrap();
+    }
+
+    assert_eq!(settings.recent().len(), 10);
+    assert_eq!(settings.recent()[0], folders[11]);
+}
+
+#[test]
+fn missing_folders_are_dropped_from_the_recent_list_and_reported() {
+    let dir = TempDir::new().unwrap();
+    let (kept, gone) = (folder(&dir, "kept"), folder(&dir, "gone"));
+    let mut settings = settings_in(&dir);
+    settings.add_recent(&gone).unwrap();
+    settings.add_recent(&kept).unwrap();
+    fs::remove_dir(&gone).unwrap();
+
+    let dropped = settings.drop_missing().unwrap();
+
+    assert_eq!(dropped, [gone]);
+    assert_eq!(settings_in(&dir).recent(), [kept]);
+}
+
+#[test]
+fn a_recent_entry_can_be_forgotten() {
+    let dir = TempDir::new().unwrap();
+    let a = folder(&dir, "a");
+    let mut settings = settings_in(&dir);
+    settings.add_recent(&a).unwrap();
+
+    settings.forget_recent(&a).unwrap();
+
+    assert!(settings_in(&dir).recent().is_empty());
+}
+
+#[test]
+fn keys_this_version_does_not_know_are_kept_when_saving() {
+    let dir = TempDir::new().unwrap();
+    fs::write(dir.path().join("settings.json"), r#"{"port": 4747}"#).unwrap();
+    let a = folder(&dir, "a");
+
+    settings_in(&dir).add_recent(&a).unwrap();
+
+    let saved: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(dir.path().join("settings.json")).unwrap())
+            .unwrap();
+    assert_eq!(saved["port"], 4747);
+}
+
+#[test]
+fn an_unreadable_settings_file_falls_back_to_defaults() {
+    let dir = TempDir::new().unwrap();
+    fs::write(dir.path().join("settings.json"), "not json").unwrap();
+
+    assert!(settings_in(&dir).recent().is_empty());
+}

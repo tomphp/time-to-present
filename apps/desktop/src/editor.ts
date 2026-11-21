@@ -1,13 +1,28 @@
-import { onSessionState } from "./commands";
+import { onSessionState, renamePresentation } from "./commands";
 import { scriptLayout } from "./script-view";
 import type { SessionState } from "./session";
 
-const title = document.querySelector<HTMLHeadingElement>("#title")!;
+const title = document.querySelector<HTMLInputElement>("#title")!;
 const script = document.querySelector<HTMLElement>("#script")!;
+
+const error = document.querySelector<HTMLParagraphElement>("#error")!;
+
+title.addEventListener("change", async () => {
+  error.hidden = true;
+  await renamePresentation(title.value).catch((reason) => {
+    error.textContent = String(reason);
+    error.hidden = false;
+    title.value = document.title;
+  });
+});
+
+title.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") title.blur();
+});
 
 function render(state: SessionState) {
   document.title = state.title;
-  title.textContent = state.title;
+  title.value = state.title;
   script.replaceChildren(...paragraphs(state));
 }
 

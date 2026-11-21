@@ -6,7 +6,8 @@
     <link rel="stylesheet" href="/src/app.css" />
   </head>
   <body class="editor">
-    <h1 id="title"></h1>
+    <input id="title" aria-label="Title" spellcheck="false" />
+    <p id="error" role="alert" hidden></p>
     <article id="script" aria-label="Script"></article>
     <script type="module" src="/src/editor.ts"></script>
   </body>

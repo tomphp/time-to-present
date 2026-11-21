@@ -1,16 +1,46 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+use serde_json::Value;
 
 use super::{FORMAT_VERSION, Presentation, StoreError};
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct Header {
-    format_version: u32,
+type Migration = fn(&mut Value);
+
+/// `MIGRATIONS[n]` upgrades a document from `formatVersion` n to n + 1.
+const MIGRATIONS: [Migration; FORMAT_VERSION as usize] = [name_becomes_title];
+
+fn name_becomes_title(document: &mut Value) {
+    if let Some(name) = document
+        .as_object_mut()
+        .and_then(|fields| fields.remove("name"))
+    {
+        document["title"] = name;
+    }
 }
 
-pub fn version(json: &str) -> Result<u32, StoreError> {
-    let Header { format_version } = serde_json::from_str(json)?;
-    Ok(format_version)
+pub struct Parsed {
+    pub presentation: Presentation,
+    pub migrated: bool,
+}
+
+pub fn parse(json: &str) -> Result<Parsed, StoreError> {
+    let mut document: Value = serde_json::from_str(json)?;
+    let found = document["formatVersion"]
+        .as_u64()
+        .and_then(|version| u32::try_from(version).ok())
+        .ok_or_else(|| StoreError::Malformed("formatVersion".to_string()))?;
+    if found > FORMAT_VERSION {
+        return Err(StoreError::NewerFormat {
+            found,
+            supported: FORMAT_VERSION,
+        });
+    }
+    for migration in &MIGRATIONS[found as usize..] {
+        migration(&mut document);
+    }
+    Ok(Parsed {
+        presentation: serde_json::from_value(document)?,
+        migrated: found < FORMAT_VERSION,
+    })
 }
 
 pub fn to_json(presentation: &Presentation) -> Result<String, StoreError> {

@@ -1,8 +1,10 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use ttp_core::session::{Session, SessionState};
+use ttp_core::settings::Settings;
 use ttp_core::time::{MonotonicTime, TimeSource};
 
 const SESSION_STATE: &str = "session-state";
@@ -12,6 +14,13 @@ const EDITOR_WINDOW: &str = "editor";
 struct App {
     time: Arc<dyn TimeSource>,
     session: Mutex<Option<Session>>,
+    settings: Mutex<Settings>,
+}
+
+#[derive(Serialize)]
+struct Recent {
+    folders: Vec<PathBuf>,
+    dropped: Vec<PathBuf>,
 }
 
 type CommandResult<T> = Result<T, String>;
@@ -37,8 +46,36 @@ async fn open_folder(
     state: State<'_, App>,
     folder: PathBuf,
 ) -> CommandResult<SessionState> {
-    let session = Session::open(&folder, state.time.clone()).map_err(message)?;
+    let session = Session::open(&folder, state.time.clone()).map_err(|error| {
+        if !folder.is_dir() {
+            let _ = state.settings.lock().unwrap().forget_recent(&folder);
+            return format!(
+                "{} no longer exists, so it was removed from Recent",
+                folder.display()
+            );
+        }
+        message(error)
+    })?;
     show(&app, &state, session)
+}
+
+#[tauri::command]
+fn recent_presentations(state: State<'_, App>) -> CommandResult<Recent> {
+    let mut settings = state.settings.lock().unwrap();
+    let dropped = settings.drop_missing().map_err(message)?;
+    Ok(Recent {
+        folders: settings.recent().to_vec(),
+        dropped,
+    })
+}
+
+#[tauri::command]
+fn rename_presentation(app: AppHandle, state: State<'_, App>, title: String) -> CommandResult<()> {
+    let mut session = state.session.lock().unwrap();
+    let session = session.as_mut().ok_or("no Presentation is open")?;
+    session.rename(&title).map_err(message)?;
+    set_editor_title(&app, &session.state().title);
+    Ok(())
 }
 
 #[tauri::command]
@@ -52,6 +89,7 @@ fn show(app: &AppHandle, state: &App, mut session: Session) -> CommandResult<Ses
         let _ = publisher.emit(SESSION_STATE, published);
     });
     let opened = session.state();
+    let _ = state.settings.lock().unwrap().add_recent(&opened.folder);
     *state.session.lock().unwrap() = Some(session);
     if app.get_webview_window(EDITOR_WINDOW).is_none() {
         WebviewWindowBuilder::new(app, EDITOR_WINDOW, WebviewUrl::App("editor.html".into()))
@@ -59,6 +97,8 @@ fn show(app: &AppHandle, state: &App, mut session: Session) -> CommandResult<Ses
             .inner_size(900.0, 700.0)
             .build()
             .map_err(message)?;
+    } else {
+        set_editor_title(app, &opened.title);
     }
     if let Some(start) = app.get_webview_window(START_WINDOW) {
         start.close().map_err(message)?;
@@ -66,16 +106,29 @@ fn show(app: &AppHandle, state: &App, mut session: Session) -> CommandResult<Ses
     Ok(opened)
 }
 
+fn set_editor_title(app: &AppHandle, title: &str) {
+    if let Some(editor) = app.get_webview_window(EDITOR_WINDOW) {
+        let _ = editor.set_title(title);
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .manage(App {
-            time: Arc::new(MonotonicTime::new()),
-            session: Mutex::default(),
+        .setup(|app| {
+            let settings = Settings::load(app.path().app_config_dir()?.join("settings.json"));
+            app.manage(App {
+                time: Arc::new(MonotonicTime::new()),
+                session: Mutex::default(),
+                settings: Mutex::new(settings),
+            });
+            Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             new_presentation,
             open_folder,
+            recent_presentations,
+            rename_presentation,
             session_state
         ])
         .run(tauri::generate_context!())

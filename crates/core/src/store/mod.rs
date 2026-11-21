@@ -36,6 +36,8 @@ pub enum StoreError {
     NotAPresentation(PathBuf),
     #[error("this Presentation uses format {found}, newer than this app supports ({supported})")]
     NewerFormat { found: u32, supported: u32 },
+    #[error("presentation.json has no usable {0}")]
+    Malformed(String),
     #[error("{0}")]
     Io(#[from] std::io::Error),
     #[error("presentation.json is not valid: {0}")]
@@ -50,14 +52,11 @@ pub fn open(folder: &Path) -> Result<Presentation, StoreError> {
                 _ => error.into(),
             }
         })?;
-    let format_version = format::version(&json)?;
-    if format_version > FORMAT_VERSION {
-        return Err(StoreError::NewerFormat {
-            found: format_version,
-            supported: FORMAT_VERSION,
-        });
+    let parsed = format::parse(&json)?;
+    if parsed.migrated {
+        save(folder, &parsed.presentation)?;
     }
-    Ok(serde_json::from_str(&json)?)
+    Ok(parsed.presentation)
 }
 
 pub fn create(parent: &Path, title: &str) -> Result<PathBuf, StoreError> {

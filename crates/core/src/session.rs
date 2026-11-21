@@ -51,6 +51,20 @@ impl Session {
         self.listeners.push(Box::new(listener));
     }
 
+    pub fn rename(&mut self, title: &str) -> Result<(), StoreError> {
+        let title = title.trim();
+        if title.is_empty() {
+            return Err(StoreError::EmptyTitle);
+        }
+        let mut renamed = self.presentation.clone();
+        renamed.title = title.to_string();
+        store::save(&self.folder, &renamed)?;
+        self.presentation = renamed;
+        let state = self.state();
+        self.listeners.iter().for_each(|listener| listener(&state));
+        Ok(())
+    }
+
     pub fn state(&self) -> SessionState {
         SessionState {
             folder: self.folder.clone(),
