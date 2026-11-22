@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use tempfile::TempDir;
 use ttp_core::capture::InputChoice;
-use ttp_core::perform::{PerformanceLayout, PerformanceSettings, PixelSize, PresentationSize};
+use ttp_core::perform::{PerformanceLayout, PerformanceSettings};
 use ttp_core::settings::{ApproachCue, Settings};
 
 fn settings_in(dir: &TempDir) -> Settings {
@@ -188,17 +188,15 @@ fn performing_defaults_to_two_windows_on_displays_chosen_for_them() {
     assert_eq!(performance.layout, PerformanceLayout::TwoWindows);
     assert_eq!(performance.teleprompter_display, None);
     assert_eq!(performance.presentation_display, None);
-    assert_eq!(performance.presentation_size, PresentationSize::default());
 }
 
 #[test]
-fn the_performance_layout_displays_and_size_are_remembered_on_this_machine() {
+fn the_performance_layout_and_displays_are_remembered_on_this_machine() {
     let dir = TempDir::new().unwrap();
     let chosen = PerformanceSettings {
         layout: PerformanceLayout::TeleprompterOnly,
         teleprompter_display: Some("Built-in Retina Display".into()),
         presentation_display: Some("Projector".into()),
-        presentation_size: PresentationSize::FillDisplay,
     };
 
     settings_in(&dir).set_performance(chosen.clone()).unwrap();
@@ -222,22 +220,14 @@ fn the_combined_layout_is_remembered_on_this_machine() {
 }
 
 #[test]
-fn a_vertical_presentation_size_is_remembered_on_this_machine() {
-    let dir = TempDir::new().unwrap();
-    let vertical = PresentationSize::Pixels(PixelSize::new(1080, 1920).unwrap());
-    let chosen = PerformanceSettings {
-        presentation_size: vertical,
-        ..PerformanceSettings::default()
-    };
-
-    settings_in(&dir).set_performance(chosen).unwrap();
-
-    assert_eq!(settings_in(&dir).performance().presentation_size, vertical);
-}
-
-#[test]
-fn a_size_saved_by_an_older_version_falls_back_to_1920_by_1080() {
-    for old in ["1280x720", "1920x1080", "fit"] {
+fn a_presentation_size_left_in_the_settings_by_an_older_version_is_ignored() {
+    let older_sizes = [
+        serde_json::json!("fit"),
+        serde_json::json!("1280x720"),
+        serde_json::json!("fillDisplay"),
+        serde_json::json!({"width": 1080, "height": 1920}),
+    ];
+    for old in older_sizes {
         let dir = TempDir::new().unwrap();
         let a = folder(&dir, "a");
         let saved = serde_json::json!({
@@ -249,17 +239,12 @@ fn a_size_saved_by_an_older_version_falls_back_to_1920_by_1080() {
         let settings = settings_in(&dir);
 
         assert_eq!(settings.recent(), [a]);
-        assert_eq!(settings.performance().layout, PerformanceLayout::Combined);
         assert_eq!(
-            settings.performance().presentation_size,
-            PresentationSize::default()
+            *settings.performance(),
+            PerformanceSettings {
+                layout: PerformanceLayout::Combined,
+                ..PerformanceSettings::default()
+            }
         );
     }
-}
-
-#[test]
-fn performance_settings_with_a_size_out_of_bounds_are_refused() {
-    let chosen = serde_json::json!({"presentationSize": {"width": 100, "height": 1920}});
-
-    assert!(serde_json::from_value::<PerformanceSettings>(chosen).is_err());
 }

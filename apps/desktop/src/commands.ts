@@ -11,6 +11,7 @@ import type {
   InsertionPoint,
   Meter,
   PerformanceSettings,
+  PresentationSize,
   ServerStatus,
   SessionState,
   SizePreset,
@@ -48,9 +49,11 @@ export const undo = () => invoke<SessionState>("undo");
 export const redo = () => invoke<SessionState>("redo");
 export const selectEvent = (event: string) => invoke<SessionState>("select_event", { event });
 
+export const sessionState = () => invoke<SessionState | null>("session_state");
+
 export function onSessionState(render: (state: SessionState) => void) {
   void listen<SessionState>("session-state", (event) => render(event.payload));
-  void invoke<SessionState | null>("session_state").then((state) => state && render(state));
+  void sessionState().then((state) => state && render(state));
 }
 
 export function onServerStatus(render: (status: ServerStatus) => void) {
@@ -120,6 +123,7 @@ export const sizePresets = () => invoke<SizePreset[]>("size_presets");
 export const performanceSettings = () => invoke<PerformanceSettings>("performance_settings");
 export const setPerformanceSettings = (performance: PerformanceSettings) =>
   invoke<void>("set_performance_settings", { performance });
+export const setPresentationSize = (size: PresentationSize) => invoke<void>("set_presentation_size", { size });
 export const forwardKey = (key: ForwardedKey) => invoke<void>("forward_key", { key });
 export const leaveFullscreen = () => invoke<void>("leave_fullscreen");
 export const toggleFullscreen = () => invoke<void>("toggle_fullscreen");

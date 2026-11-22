@@ -45,8 +45,9 @@ pub fn parse(json: &str) -> Result<Parsed, StoreError> {
 
 pub fn to_json(presentation: &Presentation) -> Result<String, StoreError> {
     Ok(format!(
-        "{{\n  \"formatVersion\": {FORMAT_VERSION},\n  \"title\": {},\n  \"recordings\": {},\n  \"words\": {},\n  \"namedEvents\": {}\n}}\n",
+        "{{\n  \"formatVersion\": {FORMAT_VERSION},\n  \"title\": {},\n  \"presentationSize\": {},\n  \"recordings\": {},\n  \"words\": {},\n  \"namedEvents\": {}\n}}\n",
         serde_json::to_string(&presentation.title)?,
+        serde_json::to_string(&presentation.presentation_size)?,
         one_per_line(&presentation.recordings)?,
         one_per_line(&presentation.script.words)?,
         one_per_line(&presentation.script.named_events)?,

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 mod format;
 mod wav;
 
+use crate::perform::PresentationSize;
 use crate::script::Script;
 use crate::template;
 
@@ -23,6 +24,8 @@ pub struct Recording {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct Presentation {
     pub title: String,
+    #[serde(default, rename = "presentationSize")]
+    pub presentation_size: PresentationSize,
     pub recordings: Vec<Recording>,
     #[serde(flatten)]
     pub script: Script,
@@ -75,6 +78,7 @@ pub fn create(parent: &Path, title: &str) -> Result<PathBuf, StoreError> {
     write_template(&folder.join(APP_SOURCE_DIR))?;
     let presentation = Presentation {
         title: title.to_string(),
+        presentation_size: PresentationSize::default(),
         recordings: Vec::new(),
         script: Script::default(),
     };

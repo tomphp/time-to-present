@@ -1,7 +1,14 @@
-import { displays, performanceSettings, setPerformanceSettings, sizePresets } from "./commands";
+import {
+  displays,
+  performanceSettings,
+  sessionState,
+  setPerformanceSettings,
+  setPresentationSize,
+  sizePresets,
+} from "./commands";
 import { find } from "./dom";
 import { AUTOMATIC, chosenSettings, displayChoices } from "./perform-menu-view";
-import { sizeChoices, sizeValue } from "./presentation-size-view";
+import { chosenSize, sizeChoices, sizeValue } from "./presentation-size-view";
 import { act } from "./report-error";
 import type { Display, PresentationSize, SizePreset } from "./session";
 
@@ -29,9 +36,14 @@ function fillSizes(presets: SizePreset[], saved: PresentationSize) {
 }
 
 async function show() {
-  const [settings, connected, presets] = await Promise.all([performanceSettings(), displays(), sizePresets()]);
+  const [settings, connected, presets, session] = await Promise.all([
+    performanceSettings(),
+    displays(),
+    sizePresets(),
+    sessionState(),
+  ]);
   layout.value = settings.layout;
-  fillSizes(presets, settings.presentationSize);
+  if (session) fillSizes(presets, session.presentationSize);
   fill(teleprompterDisplay, connected, settings.teleprompterDisplay);
   fill(presentationDisplay, connected, settings.presentationDisplay);
 }
@@ -42,17 +54,19 @@ function remember(): Promise<void> {
       layout: layout.value,
       teleprompterDisplay: teleprompterDisplay.value,
       presentationDisplay: presentationDisplay.value,
-      presentationSize: presentationSize.value,
     }),
   );
 }
 
-/** The Perform menu: the Performance Layout, each window's display and the Presentation Window's size. */
+const resize = () => setPresentationSize(chosenSize(presentationSize.value));
+
+/** The Perform menu: this machine's Performance Layout and displays, and the Presentation's own size. */
 export function mountPerformMenu() {
   menu.addEventListener("toggle", () => {
     if (menu.open) act(show)();
   });
-  for (const select of [layout, teleprompterDisplay, presentationDisplay, presentationSize]) {
+  for (const select of [layout, teleprompterDisplay, presentationDisplay]) {
     select.addEventListener("change", act(remember));
   }
+  presentationSize.addEventListener("change", act(resize));
 }

@@ -21,6 +21,7 @@ mod moved;
 mod nudge;
 mod open;
 mod orphans;
+mod presentation_size;
 mod preview;
 mod properties;
 mod protocol;

@@ -1,4 +1,3 @@
-import { chosenSize } from "./presentation-size-view";
 import type { Display, PerformanceLayout, PerformanceSettings } from "./session";
 
 /** Lets the core choose: the main display for the Teleprompter, another one for the Presentation. */
@@ -28,7 +27,6 @@ export function chosenSettings(menu: MenuValues): PerformanceSettings {
     layout: oneOf(LAYOUTS, menu.layout),
     teleprompterDisplay: chosenDisplay(menu.teleprompterDisplay),
     presentationDisplay: chosenDisplay(menu.presentationDisplay),
-    presentationSize: chosenSize(menu.presentationSize),
   };
 }
 

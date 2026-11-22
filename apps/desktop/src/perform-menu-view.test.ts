@@ -32,7 +32,6 @@ describe("chosen settings", () => {
     layout: "teleprompterOnly",
     teleprompterDisplay: AUTOMATIC,
     presentationDisplay: "Projector",
-    presentationSize: "1080x1920",
   };
 
   test("leave Automatic displays to the core and keep chosen ones", () => {
@@ -40,7 +39,6 @@ describe("chosen settings", () => {
       layout: "teleprompterOnly",
       teleprompterDisplay: null,
       presentationDisplay: "Projector",
-      presentationSize: { width: 1080, height: 1920 },
     });
   });
 
@@ -48,8 +46,7 @@ describe("chosen settings", () => {
     expect(chosenSettings({ ...menu, layout: "combined" }).layout).toBe("combined");
   });
 
-  test("refuse a layout or size the core does not know", () => {
+  test("refuse a layout the core does not know", () => {
     expect(() => chosenSettings({ ...menu, layout: "sideways" })).toThrow("sideways");
-    expect(() => chosenSettings({ ...menu, presentationSize: "4k" })).toThrow("4k");
   });
 });

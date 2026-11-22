@@ -28,6 +28,7 @@ export interface TimedEvent {
 export interface SessionState {
   folder: string;
   title: string;
+  presentationSize: PresentationSize;
   words: ScriptWord[];
   namedEvents: TimedEvent[];
   movedEvents: string[];
@@ -193,7 +194,6 @@ export interface PerformanceSettings {
   layout: PerformanceLayout;
   teleprompterDisplay: string | null;
   presentationDisplay: string | null;
-  presentationSize: PresentationSize;
 }
 
 export interface Display {
