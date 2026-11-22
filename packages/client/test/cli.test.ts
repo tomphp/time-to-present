@@ -170,6 +170,11 @@ describe("ttp on edge cases", () => {
     expect(run(["events"], folder)).toEqual(succeeds("75:00.000  end  at start\n"));
   });
 
+  it("rounds a hand-edited fractional offset to whole milliseconds", () => {
+    const folder = presentation({ namedEvents: [{ id: "e1", name: "cue", anchor: "scriptStart", offset: 59_999.6 }] });
+    expect(run(["events"], folder)).toEqual(succeeds("1:00.000  cue  at start\n"));
+  });
+
   it.each([
     ["not valid JSON", "{ nope", "not valid JSON"],
     ["no formatVersion", JSON.stringify({ words: [], namedEvents: [] }), "formatVersion"],
