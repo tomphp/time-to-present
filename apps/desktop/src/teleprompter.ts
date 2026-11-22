@@ -302,8 +302,9 @@ const display = mountDisplay({
   storage: localStorage,
   screenKey,
   render(next, blanked) {
-    options = next;
     stage.classList.toggle("blanked", blanked);
+    if (next === options) return;
+    options = next;
     applyOptions();
   },
   report: (report) => void reportMenuState(report).catch(console.error),

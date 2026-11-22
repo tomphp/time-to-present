@@ -47,11 +47,11 @@ describe("the Teleprompter's display", () => {
   });
 
   it("reports an unchanged mirror for size and Reading Line changes", () => {
-    const { display, report } = mount();
+    const { display, report, render } = mount();
 
     display.perform("readingLineUp");
 
     expect(report).toHaveBeenLastCalledWith(idle);
-    expect(display.options().readingLine).toBeCloseTo(0.28);
+    expect(render.mock.lastCall![0].readingLine).toBeCloseTo(0.28);
   });
 });

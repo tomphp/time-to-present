@@ -21,8 +21,6 @@ export function mountDisplay({ storage, screenKey, render, report }: DisplayHost
 
   show();
   return {
-    options: () => options,
-    show,
     perform(action: DisplayAction) {
       if (action === "blank") blanked = !blanked;
       else {
