@@ -180,6 +180,11 @@ fn write_template(app_source: &Path) -> Result<(), StoreError> {
     Ok(())
 }
 
+/// Safe as one folder name on every OS; Windows drops trailing dots and spaces from names.
 fn folder_name(title: &str) -> String {
-    title.replace(['/', ':'], "-")
+    let name = title.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "-");
+    match name.trim_end_matches(['.', ' ']) {
+        "" => name.replace('.', "-"),
+        trimmed => trimmed.to_string(),
+    }
 }

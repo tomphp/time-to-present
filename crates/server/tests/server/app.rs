@@ -90,6 +90,10 @@ async fn files_under_app_ttp_are_shadowed_by_the_reserved_prefix_and_warned_abou
         "/%2e/_ttp/notes.txt",
         "//_ttp/notes.txt",
         "/_TTP/notes.txt",
+        "/_ttp%5Cnotes.txt",
+        "/.%5C_ttp/notes.txt",
+        "/_ttp./notes.txt",
+        "/_ttp%20/notes.txt",
     ] {
         assert_eq!(harness.raw_status(disguised).await, 404, "{disguised}");
     }
@@ -107,7 +111,11 @@ async fn the_built_template_is_served_from_app() {
     let harness = Harness::start().await;
     let folder = harness.open_hello();
     let template = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/presentation");
-    let vite = template.join("../../node_modules/.bin/vite");
+    let vite = template.join(if cfg!(windows) {
+        "../../node_modules/.bin/vite.cmd"
+    } else {
+        "../../node_modules/.bin/vite"
+    });
     let status = Command::new(&vite)
         .args(["build", "--logLevel", "error", "--outDir"])
         .arg(folder.join("app"))

@@ -81,3 +81,26 @@ fn a_title_with_path_separators_still_makes_one_folder_in_the_parent() {
     assert_eq!(state.title, "Q3 / Q4: review");
     assert_eq!(state.folder, harness.parent().join("Q3 - Q4- review"));
 }
+
+#[test]
+fn a_title_with_characters_windows_forbids_in_names_still_makes_one_folder() {
+    let harness = Harness::new();
+
+    let state = harness
+        .create(r#"Why? A\B "<really>" | *maybe*... "#)
+        .state();
+
+    assert_eq!(
+        state.folder,
+        harness.parent().join("Why- A-B --really-- - -maybe-")
+    );
+}
+
+#[test]
+fn a_title_of_only_dots_still_makes_its_own_folder() {
+    let harness = Harness::new();
+
+    let state = harness.create("...").state();
+
+    assert_eq!(state.folder, harness.parent().join("---"));
+}

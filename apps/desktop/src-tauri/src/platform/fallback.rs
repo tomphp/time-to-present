@@ -12,7 +12,12 @@ pub fn request_microphone_access() -> Access {
 pub fn leave_full_screen_out_of_the_menu() {}
 
 pub fn open_in_browser(url: &str) -> std::io::Result<()> {
-    Command::new("xdg-open").arg(url).spawn().map(drop)
+    let opener = if cfg!(windows) {
+        "explorer"
+    } else {
+        "xdg-open"
+    };
+    Command::new(opener).arg(url).spawn().map(drop)
 }
 
 pub struct ProcessActivity;

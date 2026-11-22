@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +20,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libasound2-dev librsvg2-dev patchelf \
             libayatana-appindicator3-dev libxdo-dev libssl-dev
+      - name: Ensure LLVM (libclang for bindgen) and CMake for building whisper
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $llvm = "C:\Program Files\LLVM\bin"
+          if (-not (Test-Path "$llvm\libclang.dll")) { choco install llvm --yes --no-progress }
+          if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) {
+            choco install cmake --yes --no-progress
+            $env:PATH = "C:\Program Files\CMake\bin;$env:PATH"
+            "C:\Program Files\CMake\bin" >> $env:GITHUB_PATH
+          }
+          "LIBCLANG_PATH=$llvm" >> $env:GITHUB_ENV
+          & "$llvm\clang.exe" --version
+          cmake --version
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
