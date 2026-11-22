@@ -10,8 +10,11 @@ export interface Clip {
 /** An Audio Run: from Script Time `start`, its Recording sounds unbroken from `from` until `until`. */
 export type AudioRun = Clip & { start: number };
 
-/** A piece of an Audio Run, sounding from Script Time `at`; `key` names it whatever the clock's position. */
-export type Piece = Clip & { key: string; at: number };
+/**
+ * A piece of an Audio Run, sounding from Script Time `at`; `key` names it whatever the clock's position.
+ * It ramps in or out where its start or end is a cut, not a join with the piece beside it.
+ */
+export type Piece = Clip & { key: string; at: number; rampIn: boolean; rampOut: boolean };
 
 export interface ClockPosition {
   scriptTime: number;
@@ -119,7 +122,9 @@ export function audioSchedule(words: ScriptWord[], scriptEnd: number, clock: Clo
       const from = Math.max(edge, joinAt);
       const until = edges[index + 1];
       if (from >= until) return [];
-      return [{ key: `${run.start}:${edge}`, recording: run.recording, at: run.start + (from - run.from) * speed, from, until }];
+      const rampIn = from === run.from || from === joinAt;
+      const rampOut = until === run.until;
+      return [{ key: `${run.start}:${edge}`, recording: run.recording, at: run.start + (from - run.from) * speed, from, until, rampIn, rampOut }];
     });
   });
 }
@@ -142,6 +147,9 @@ export interface Anchor {
   scriptTime: number;
   speed: number;
 }
+
+/** How long, in seconds, a gain ramp at a cut takes. */
+export const RAMP_SECONDS = 0.005;
 
 export interface PieceTiming {
   when: number;

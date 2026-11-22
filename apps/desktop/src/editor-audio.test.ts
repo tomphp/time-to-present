@@ -15,6 +15,7 @@ interface Played {
   clip: Clip;
   start: ReturnType<typeof vi.fn>;
   stop: ReturnType<typeof vi.fn>;
+  gain: { setValueAtTime: ReturnType<typeof vi.fn>; linearRampToValueAtTime: ReturnType<typeof vi.fn> };
 }
 
 const settle = () => new Promise((resolve) => setTimeout(resolve));
@@ -27,10 +28,16 @@ function harness(script = { words, scriptEnd: SCRIPT_END }) {
     currentTime: number;
   };
   output.decodeAudioData = vi.fn(async (data: ArrayBuffer) => data as unknown as AudioBuffer);
+  const gains = new Map<object, Played["gain"]>();
+  output.createGain = () => {
+    const gain = { gain: { setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() }, connect: vi.fn() };
+    gains.set(gain, gain.gain);
+    return gain as unknown as GainNode;
+  };
   output.createBufferSource = () => {
-    const node = { connect: vi.fn(), start: vi.fn(), stop: vi.fn(), buffer: null as unknown };
+    const node = { connect: vi.fn((gain: object) => gains.get(gain) && (played.at(-1)!.gain = gains.get(gain)!)), start: vi.fn(), stop: vi.fn(), buffer: null as unknown };
     Object.defineProperty(node, "buffer", {
-      set: (clip: Clip) => played.push({ clip, start: node.start, stop: node.stop }),
+      set: (clip: Clip) => played.push({ clip, start: node.start, stop: node.stop, gain: undefined as never }),
     });
     return node as unknown as AudioBufferSourceNode;
   };
@@ -228,6 +235,41 @@ describe("a long Audio Run", () => {
     await settle();
 
     expect(starts(sounding(played))[0]).toEqual([3_000, expect.closeTo(0.2), 0, expect.closeTo(1.1)]);
+  });
+});
+
+describe("gain ramps", () => {
+  const longRun = {
+    words: Array.from({ length: 6 }, (_, index) => spoken(`w${index + 1}`, index * 700, index * 700, 600)),
+    scriptEnd: 4_100,
+  };
+  const rampsOf = ({ gain }: Played) => [gain.setValueAtTime.mock.calls, gain.linearRampToValueAtTime.mock.calls];
+
+  it("ramps in at the start of a Run and out at its end, and not at joins between its pieces", async () => {
+    const { clock, previewing, played, advance, stream } = harness(longRun);
+    clock("playing", 0);
+    previewing(true);
+    await settle();
+    advance(1_000);
+    stream({ type: "tick", scriptTime: 1_000 });
+    await settle();
+
+    const [first, middle, last] = played;
+    expect(rampsOf(first)).toEqual([[[0, 0]], [[1, 0.005]]]);
+    expect(rampsOf(middle)).toEqual([[], []]);
+    expect(rampsOf(last)[0]).toEqual([[1, expect.closeTo(4.095)]]);
+    expect(rampsOf(last)[1]).toEqual([[0, expect.closeTo(4.1)]]);
+  });
+
+  it("ramps in where a Run is joined part way after a seek", async () => {
+    const { clock, previewing, played } = harness(longRun);
+    clock("playing", 1_500);
+
+    previewing(true);
+    await settle();
+
+    expect(rampsOf(played[0])[0][0]).toEqual([0, 0]);
+    expect(rampsOf(played[0])[1][0]).toEqual([1, 0.005]);
   });
 });
 

@@ -1,11 +1,11 @@
-import { audioSchedule, pieceTiming, type Anchor, type Clip, type ClockPosition, type Piece } from "./audio-schedule";
+import { audioSchedule, pieceTiming, RAMP_SECONDS, type Anchor, type Clip, type ClockPosition, type Piece } from "./audio-schedule";
 import { clockPosition, DISCONNECTED, type ClockPanel } from "./clock-view";
 import type { ScriptWord, StreamEvent } from "./session";
 
 export type FetchClip = (clip: Clip) => Promise<ArrayBuffer>;
 
 /** The part of an AudioContext the editor plays through. */
-export type AudioOutput = Pick<AudioContext, "currentTime" | "destination" | "decodeAudioData" | "createBufferSource" | "resume">;
+export type AudioOutput = Pick<AudioContext, "currentTime" | "destination" | "decodeAudioData" | "createBufferSource" | "createGain" | "resume">;
 
 export interface AudioScript {
   words: ScriptWord[];
@@ -52,8 +52,10 @@ export function editorAudio(
     const buffer = await audio().decodeAudioData(await fetchClip(clip));
     const node = audio().createBufferSource();
     node.buffer = buffer;
-    node.connect(audio().destination);
-    return node;
+    const gain = audio().createGain();
+    node.connect(gain);
+    gain.connect(audio().destination);
+    return { node, gain: gain.gain };
   }
 
   function soundedUntil({ anchor }: Course) {
@@ -83,11 +85,20 @@ export function editorAudio(
   }
 
   async function schedule(scheduling: Course, piece: Piece) {
-    const node = await source(piece);
+    const { node, gain } = await source(piece);
     const timing = course === scheduling && pieceTiming(piece, scheduling.anchor, audio().currentTime);
     if (!timing) return;
     scheduling.sources.push(node);
     node.start(timing.when, timing.offset, timing.duration);
+    const end = timing.when + timing.duration;
+    if (piece.rampIn) {
+      gain.setValueAtTime(0, timing.when);
+      gain.linearRampToValueAtTime(1, timing.when + RAMP_SECONDS);
+    }
+    if (piece.rampOut) {
+      gain.setValueAtTime(1, end - RAMP_SECONDS);
+      gain.linearRampToValueAtTime(0, end);
+    }
   }
 
   return {
@@ -107,7 +118,7 @@ export function editorAudio(
     async listen(clip: Clip) {
       const asked = ++listens;
       listening?.stop();
-      const node = await source(clip);
+      const { node } = await source(clip);
       if (asked !== listens) return;
       listening?.stop();
       listening = node;

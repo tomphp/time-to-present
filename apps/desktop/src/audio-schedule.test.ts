@@ -27,7 +27,15 @@ const TEST1_END = 60_919;
 const longPassage = Array.from({ length: 6 }, (_, index) => spoken(`w${index + 1}`, index * 700, 600, index * 700, index * 700 + 600));
 
 const run = (start: number, from: number, until: number, recording = "r1"): AudioRun => ({ recording, start, from, until });
-const piece = (key: string, at: number, from: number, until: number): Piece => ({ key, recording: "r1", at, from, until });
+const piece = (key: string, at: number, from: number, until: number, rampIn = true, rampOut = true): Piece => ({
+  key,
+  recording: "r1",
+  at,
+  from,
+  until,
+  rampIn,
+  rampOut,
+});
 const at = (scriptTime: number, speed = 1) => ({ scriptTime, speed });
 
 const soundedTwice = (pieces: Clip[]) =>
@@ -129,24 +137,31 @@ describe("audioSchedule", () => {
 
   it("cuts a long Run at Words' audio into pieces of up to 2 s that sound back to back", () => {
     expect(audioSchedule(longPassage, 4_100, at(0))).toEqual([
-      piece("0:0", 0, 0, 1_400),
-      piece("0:1400", 1_400, 1_400, 2_800),
-      piece("0:2800", 2_800, 2_800, 4_100),
+      piece("0:0", 0, 0, 1_400, true, false),
+      piece("0:1400", 1_400, 1_400, 2_800, false, false),
+      piece("0:2800", 2_800, 2_800, 4_100, false, true),
     ]);
   });
 
   it("makes a Word longer than a piece a piece of its own", () => {
     const long = [spoken("w1", 0, 300, 0, 300), spoken("w2", 400, 2_600, 400, 3_000), spoken("w3", 3_100, 300, 3_100, 3_400)];
 
-    expect(audioSchedule(long, 3_400, at(0))).toEqual([piece("0:0", 0, 0, 400), piece("0:400", 400, 400, 3_100), piece("0:3100", 3_100, 3_100, 3_400)]);
+    expect(audioSchedule(long, 3_400, at(0))).toEqual([
+      piece("0:0", 0, 0, 400, true, false),
+      piece("0:400", 400, 400, 3_100, false, false),
+      piece("0:3100", 3_100, 3_100, 3_400, false, true),
+    ]);
   });
 
   it("joins a Run where it would be by now, keeping each piece's key", () => {
-    expect(audioSchedule(longPassage, 4_100, at(1_500))).toEqual([piece("0:1400", 1_500, 1_500, 2_800), piece("0:2800", 2_800, 2_800, 4_100)]);
+    expect(audioSchedule(longPassage, 4_100, at(1_500))).toEqual([
+      piece("0:1400", 1_500, 1_500, 2_800, true, false),
+      piece("0:2800", 2_800, 2_800, 4_100, false, true),
+    ]);
   });
 
   it("joins part way rounded up to a whole ms of Recording Time, so nothing heard sounds again", () => {
-    expect(audioSchedule(longPassage, 4_100, at(1_500.4))[0]).toEqual(piece("0:1400", 1_501, 1_501, 2_800));
+    expect(audioSchedule(longPassage, 4_100, at(1_500.4))[0]).toEqual(piece("0:1400", 1_501, 1_501, 2_800, true, false));
     expect(audioSchedule(passage, PASSAGE_END, at(401, 3))[0]).toEqual(piece("400:1200", 403, 1_201, 1_350));
   });
 
@@ -168,6 +183,13 @@ describe("audioSchedule", () => {
   it("starts with the next Run once the clock is past where one ran out", () => {
     expect(audioSchedule(passage, PASSAGE_END, at(860, 2)).map(({ key }) => key)).toEqual(["850:1650", "1500:2300"]);
     expect(audioSchedule(passage, PASSAGE_END, at(1_800))).toEqual([]);
+  });
+
+  it("ramps only where a piece starts or ends at a cut: a Run's edges, and where it was joined part way", () => {
+    const ramps = (clock: ReturnType<typeof at>) => audioSchedule(longPassage, 4_100, clock).map(({ rampIn, rampOut }) => [rampIn, rampOut]);
+
+    expect(ramps(at(0))).toEqual([[true, false], [false, false], [false, true]]);
+    expect(ramps(at(1_500))).toEqual([[true, false], [false, true]]);
   });
 
   it("never sounds Test1's Retimed, overlapping final three Words twice", () => {
