@@ -31,7 +31,7 @@
   height: 3.5rem;
   overflow: hidden;
   border-radius: var(--radius-xs);
-  background: color-mix(in srgb, var(--accent) 22%, var(--surface));
+  background: var(--accent-tint);
   color: var(--accent);
   font-size: var(--text-tiny);
 }

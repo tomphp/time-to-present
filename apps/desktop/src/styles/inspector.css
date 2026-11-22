@@ -6,7 +6,7 @@
 }
 
 #inspector input {
-  width: 5em;
+  width: var(--field-narrow-w);
 }
 
 #inspector [hidden] {

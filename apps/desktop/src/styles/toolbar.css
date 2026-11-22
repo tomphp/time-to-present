@@ -18,7 +18,7 @@
 .menu-panel {
   position: absolute;
   z-index: 1;
-  min-width: 16rem;
+  min-width: var(--menu-w);
 }
 
 .clock {
@@ -50,7 +50,7 @@
 }
 
 .custom-size input {
-  width: 5em;
+  width: var(--field-narrow-w);
 }
 
 .custom-size input[aria-invalid="true"] {

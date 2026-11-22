@@ -22,6 +22,7 @@
   --accent: #6d4dff;
   --accent-text: #fff;
   --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --accent-tint: color-mix(in srgb, var(--accent) 22%, var(--surface));
   --primary-bg: linear-gradient(135deg, #6d4dff, #c04dff);
   --record: #ff2d55;
   --record-text: #fff;
@@ -30,6 +31,7 @@
   --event-soft: color-mix(in srgb, var(--event) 13%, transparent);
   --ok: #12b981;
   --warn: #f59e0b;
+  --warn-soft: color-mix(in srgb, var(--warn) 10%, transparent);
   --current: #ffe45c;
   --current-text: #17151f;
   --warn-text: #17151f;
@@ -46,6 +48,14 @@
   --control-h: 34px;
   --btn-pad-x: 14px;
   --icon-size: 16px;
+  --field-narrow-w: 5em;
+  --menu-w: 16rem;
+  --chip-gap: 0.25em;
+  --chip-pad-x: 0.5em;
+  --chip-text: 0.65em;
+  --chip-leading: 1.9;
+  --chip-lift: 0.2em;
+  --underline-offset: 0.2em;
   --icon-stroke: 2;
   --hairline: 1px;
   --focus-ring: 2px;

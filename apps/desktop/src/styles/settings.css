@@ -30,5 +30,5 @@ body.settings h1 {
 }
 
 #approach-cue input[type="number"] {
-  width: 5em;
+  width: var(--field-narrow-w);
 }

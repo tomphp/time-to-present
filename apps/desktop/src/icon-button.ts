@@ -1,12 +1,12 @@
 import { icon, type IconName } from "./icons";
 
-export interface IconButton {
+export interface IconButtonOptions {
   icon: IconName;
   label: string;
   shortcut?: string;
 }
 
-export function iconButton({ icon: name, label, shortcut }: IconButton): HTMLButtonElement {
+export function iconButton({ icon: name, label, shortcut }: IconButtonOptions): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "icon-btn";

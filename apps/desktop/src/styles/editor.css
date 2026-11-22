@@ -37,7 +37,7 @@ body.editor {
 
 #script .low-confidence {
   text-decoration: underline wavy var(--warn);
-  text-underline-offset: 0.2em;
+  text-underline-offset: var(--underline-offset);
 }
 
 #script .re-recorded {
@@ -47,10 +47,10 @@ body.editor {
 
 #script .event-chip {
   display: inline-block;
-  margin-right: 0.25em;
-  padding: 0 0.5em;
-  font: var(--weight-strong) 0.65em / 1.9 var(--font-ui);
-  vertical-align: 0.2em;
+  margin-right: var(--chip-gap);
+  padding: 0 var(--chip-pad-x);
+  font: var(--weight-strong) var(--chip-text) / var(--chip-leading) var(--font-ui);
+  vertical-align: var(--chip-lift);
   border-radius: var(--radius-sm);
   color: var(--event);
   background: var(--event-soft);
@@ -66,8 +66,8 @@ body.editor {
 
 #script .event-chip.moved::after {
   content: "Moved";
-  margin-left: 0.4em;
-  padding: 0 0.4em;
+  margin-left: var(--chip-gap);
+  padding: 0 var(--chip-gap);
   border-radius: var(--radius-xs);
   color: var(--warn-text);
   background: var(--warn);
@@ -80,10 +80,10 @@ body.editor {
 
 #script .pending-passage {
   display: inline-block;
-  padding: 0 0.5em;
+  padding: 0 var(--chip-pad-x);
   font: var(--text-ui) / var(--ui-leading) var(--font-ui);
   color: var(--muted);
-  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  background: var(--warn-soft);
   border: var(--hairline) dashed var(--warn);
   border-radius: var(--radius-sm);
   user-select: none;
