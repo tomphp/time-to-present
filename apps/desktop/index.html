@@ -3,21 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <title>Time to Present</title>
-    <link rel="stylesheet" href="/src/app.css" />
+    <link rel="stylesheet" href="/src/styles/start.css" />
   </head>
   <body class="start">
     <h1>Time to Present</h1>
     <form id="new-presentation">
       <label>Title <input name="title" required autofocus /></label>
-      <button type="submit">New Presentation…</button>
+      <button class="btn primary" type="submit">New Presentation…</button>
     </form>
-    <button id="open-folder" type="button">Open Folder…</button>
+    <button id="open-folder" class="btn" type="button">Open Folder…</button>
     <section id="recent" hidden>
       <h2>Recent</h2>
       <ul id="recent-list"></ul>
     </section>
-    <button id="check-microphone" type="button">Check microphone</button>
-    <button id="open-settings" type="button">Settings…</button>
+    <button id="check-microphone" class="btn" type="button">Check microphone</button>
+    <button id="open-settings" class="btn" type="button">Settings…</button>
     <p id="notice" role="status" hidden></p>
     <p id="error" role="alert" hidden></p>
     <script type="module" src="/src/start.ts"></script>

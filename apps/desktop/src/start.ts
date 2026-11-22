@@ -41,6 +41,7 @@ async function showRecent() {
     ...folders.map((folder) => {
       const button = document.createElement("button");
       button.type = "button";
+      button.className = "btn";
       button.textContent = folderName(folder);
       button.title = folder;
       button.addEventListener("click", () =>

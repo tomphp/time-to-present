@@ -1,0 +1,84 @@
+:root {
+  color-scheme: light dark;
+
+  --font-ui: "SF Pro Rounded", ui-rounded, -apple-system, system-ui, sans-serif;
+  --font-script: "SF Pro Rounded", ui-rounded, -apple-system, system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, monospace;
+  --text-ui: 13.5px;
+  --text-small: 12px;
+  --text-tiny: 11px;
+  --text-heading: 17px;
+  --text-script: 20px;
+  --ui-leading: 1.4;
+  --script-leading: 1.65;
+  --script-weight: 500;
+  --weight-strong: 700;
+
+  --bg: #eeedf4;
+  --surface: #fff;
+  --surface-2: #e8e6f1;
+  --text: #17151f;
+  --muted: #6e6a80;
+  --accent: #6d4dff;
+  --accent-text: #fff;
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --primary-bg: linear-gradient(135deg, #6d4dff, #c04dff);
+  --record: #ff2d55;
+  --record-text: #fff;
+  --danger: var(--record);
+  --event: #0ea5e9;
+  --event-soft: color-mix(in srgb, var(--event) 13%, transparent);
+  --ok: #12b981;
+  --warn: #f59e0b;
+  --current: #ffe45c;
+  --current-text: #17151f;
+  --warn-text: #17151f;
+  --tooltip-bg: #17151f;
+  --tooltip-text: #f2f0fa;
+
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --gap: 10px;
+  --gutter: 10px;
+  --pad: 20px;
+  --control-h: 34px;
+  --btn-pad-x: 14px;
+  --icon-size: 16px;
+  --icon-stroke: 2;
+  --hairline: 1px;
+  --focus-ring: 2px;
+  --marker-w: 2px;
+
+  --disabled-opacity: 0.45;
+  --locked-opacity: 0.7;
+  --hover-brightness: 1.08;
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  --shadow: 0 2px 8px #1a10501a;
+  --shadow-pop: 0 16px 40px #1a105033;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #09090d;
+    --surface: #14141c;
+    --surface-2: #1f1f2b;
+    --text: #f2f0fa;
+    --muted: #8e8aa3;
+    --accent: #9b85ff;
+    --record: #ff4d6d;
+    --event: #38bdf8;
+    --tooltip-bg: #f2f0fa;
+    --tooltip-text: #17151f;
+
+    --shadow: 0 2px 8px #00000080;
+    --shadow-pop: 0 16px 40px #000000c0;
+  }
+}

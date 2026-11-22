@@ -1,0 +1,58 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--gutter) var(--pad);
+}
+
+.menu {
+  position: relative;
+}
+
+.menu summary {
+  cursor: default;
+  list-style: "▾";
+}
+
+.menu-panel {
+  position: absolute;
+  z-index: 1;
+  min-width: 16rem;
+}
+
+.clock {
+  display: flex;
+  gap: var(--space-4);
+  align-items: baseline;
+  margin-left: auto;
+}
+
+#clock-state {
+  color: var(--muted);
+}
+
+#current-word {
+  font-weight: var(--weight-strong);
+}
+
+.server {
+  font-size: var(--text-small);
+  color: var(--muted);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.shown-size {
+  margin: 0;
+  font-size: var(--text-small);
+  color: var(--muted);
+}
+
+.custom-size input {
+  width: 5em;
+}
+
+.custom-size input[aria-invalid="true"] {
+  outline: var(--focus-ring) solid var(--danger);
+}

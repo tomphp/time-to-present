@@ -1,0 +1,134 @@
+@import "./tokens.css";
+@import "./components.css";
+@import "./toolbar.css";
+@import "./recording-bar.css";
+@import "./inspector.css";
+@import "./timeline.css";
+
+body.editor {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: var(--gutter);
+}
+
+#server-notice,
+#error {
+  margin: var(--gutter) var(--pad);
+}
+
+#script {
+  min-height: 3em;
+  margin-top: var(--gutter);
+  font: var(--script-weight) var(--text-script) / var(--script-leading) var(--font-script);
+  outline: none;
+  white-space: pre-wrap;
+}
+
+#script.locked {
+  opacity: var(--locked-opacity);
+  cursor: default;
+}
+
+#script .word.current {
+  color: var(--current-text);
+  background: var(--current);
+  border-radius: var(--radius-xs);
+}
+
+#script .low-confidence {
+  text-decoration: underline wavy var(--warn);
+  text-underline-offset: 0.2em;
+}
+
+#script .re-recorded {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+#script .event-chip {
+  display: inline-block;
+  margin-right: 0.25em;
+  padding: 0 0.5em;
+  font: var(--weight-strong) 0.65em / 1.9 var(--font-ui);
+  vertical-align: 0.2em;
+  border-radius: var(--radius-sm);
+  color: var(--event);
+  background: var(--event-soft);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#script .event-chip.selected {
+  color: var(--surface);
+  background: var(--event);
+}
+
+#script .event-chip.moved::after {
+  content: "Moved";
+  margin-left: 0.4em;
+  padding: 0 0.4em;
+  border-radius: var(--radius-xs);
+  color: var(--warn-text);
+  background: var(--warn);
+}
+
+#script .event-chip.dragging {
+  opacity: var(--disabled-opacity);
+  cursor: grabbing;
+}
+
+#script .pending-passage {
+  display: inline-block;
+  padding: 0 0.5em;
+  font: var(--text-ui) / var(--ui-leading) var(--font-ui);
+  color: var(--muted);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  border: var(--hairline) dashed var(--warn);
+  border-radius: var(--radius-sm);
+  user-select: none;
+}
+
+#script .pending-passage.failed {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+#script .pending-passage button {
+  font-size: var(--text-small);
+}
+
+#script .live-transcript {
+  color: var(--muted);
+  font-style: italic;
+  user-select: none;
+}
+
+#script .live-transcript .live-failure {
+  color: var(--danger);
+  font-style: normal;
+  font-size: var(--text-small);
+}
+
+#event-editor {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto auto;
+  gap: var(--space-4);
+  align-items: end;
+  margin: var(--gutter) 0;
+}
+
+#event-editor label {
+  display: grid;
+  gap: var(--space-2);
+}
+
+#event-editor[hidden],
+#event-editor [hidden] {
+  display: none;
+}
+
+#event-editor [role="alert"] {
+  grid-column: 1 / -1;
+  margin: 0;
+}

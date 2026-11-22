@@ -1,0 +1,22 @@
+#inspector {
+  display: flex;
+  gap: var(--gap);
+  align-items: center;
+  margin: var(--gutter) 0;
+}
+
+#inspector input {
+  width: 5em;
+}
+
+#inspector [hidden] {
+  display: none;
+}
+
+#inspector [role="alert"] {
+  margin: 0;
+}
+
+#inspector[hidden] {
+  display: none;
+}

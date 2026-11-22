@@ -18,6 +18,7 @@ async function showModels() {
     ...models.map(({ name, bytes }) => {
       const remove = document.createElement("button");
       remove.type = "button";
+      remove.className = "btn";
       remove.textContent = "Remove";
       remove.addEventListener("click", () =>
         removeModel(name).then(showModels, showError),

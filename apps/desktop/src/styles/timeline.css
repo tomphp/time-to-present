@@ -1,0 +1,90 @@
+#timeline {
+  margin-top: var(--gutter);
+  overflow-x: auto;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#timeline.locked {
+  opacity: var(--locked-opacity);
+  cursor: default;
+}
+
+#timeline .track {
+  position: relative;
+  height: 5.5rem;
+}
+
+#timeline .tick {
+  position: absolute;
+  top: var(--space-2);
+  padding-left: var(--space-2);
+  border-left: var(--hairline) solid var(--surface-2);
+  font: var(--text-tiny) var(--font-mono);
+  color: var(--muted);
+}
+
+#timeline .block {
+  position: absolute;
+  top: 1.5rem;
+  box-sizing: border-box;
+  height: 3.5rem;
+  overflow: hidden;
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface));
+  color: var(--accent);
+  font-size: var(--text-tiny);
+}
+
+#timeline .block.typed {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+#timeline .block.selected {
+  outline: var(--focus-ring) solid var(--accent);
+  outline-offset: calc(-1 * var(--focus-ring));
+}
+
+#timeline .block span {
+  display: block;
+  padding: var(--space-1) var(--space-2);
+  white-space: nowrap;
+  color: var(--text);
+}
+
+#timeline .block canvas {
+  display: block;
+  pointer-events: none;
+}
+
+#timeline .flag {
+  z-index: 1;
+  position: absolute;
+  top: 0;
+  box-sizing: border-box;
+  height: 1.4rem;
+  padding: 0 var(--space-3);
+  border-left: var(--marker-w) solid var(--event);
+  background: var(--event-soft);
+  color: var(--event);
+  font-size: var(--text-tiny);
+  font-weight: var(--weight-strong);
+  line-height: 1.4rem;
+  white-space: nowrap;
+  cursor: grab;
+}
+
+#timeline .flag.moved {
+  border-left-color: var(--warn);
+}
+
+#timeline .playhead {
+  z-index: 2;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: var(--marker-w) solid var(--record);
+  pointer-events: none;
+}

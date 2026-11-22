@@ -3,17 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <title>Time to Present</title>
-    <link rel="stylesheet" href="/src/app.css" />
+    <link rel="stylesheet" href="/src/styles/editor.css" />
   </head>
   <body class="editor">
-    <header class="toolbar">
+    <header class="toolbar card">
       <input id="title" aria-label="Title" spellcheck="false" />
-      <button id="remove-unused" type="button">Remove unused recordings</button>
-      <button id="record" type="button" title="Record (⌘R)">Record</button>
-      <button id="perform" type="button" title="Perform (⌘⇧P)">Perform</button>
+      <button id="remove-unused" class="btn" type="button">Remove unused recordings</button>
+      <button id="record" class="btn record" type="button" title="Record (⌘R)">Record</button>
+      <button id="perform" class="btn primary" type="button" title="Perform (⌘⇧P)">Perform</button>
       <details id="perform-menu" class="menu">
         <summary aria-label="Performance Layout" title="Performance Layout"></summary>
-        <div class="menu-panel">
+        <div class="menu-panel popover">
           <label
             >Layout
             <select id="perform-layout">
@@ -37,18 +37,18 @@
         </div>
       </details>
       <div id="clock" class="clock" aria-label="Performance clock">
-        <button id="play-pause" type="button">Play</button>
-        <button id="preview" type="button" title="Preview from the cursor">Preview</button>
-        <button id="listen" type="button" title="Listen to the selected Word">Listen</button>
+        <button id="play-pause" class="btn" type="button">Play</button>
+        <button id="preview" class="btn" type="button" title="Preview from the cursor">Preview</button>
+        <button id="listen" class="btn" type="button" title="Listen to the selected Word">Listen</button>
         <span id="clock-state" aria-label="Clock state"></span>
-        <span id="clock-elapsed" aria-label="Script Time">0:00</span>
+        <span id="clock-elapsed" class="time" aria-label="Script Time">0:00</span>
         <span id="current-word" aria-label="Current Word"></span>
       </div>
       <span id="server-summary" class="server" aria-label="Presentation App server"></span>
     </header>
     <p id="server-notice" role="status" hidden></p>
     <p id="error" role="alert" hidden></p>
-    <section id="recording-bar" aria-label="Recording bar" hidden>
+    <section id="recording-bar" class="card" aria-label="Recording bar" hidden>
       <p id="recording-denied" hidden>
         Time to Present can't use the microphone. Open System Settings › Privacy &amp; Security ›
         Microphone, turn on Time to Present, then quit and reopen it.
@@ -60,41 +60,41 @@
         <div class="meter" role="meter" aria-label="Input level" aria-valuemin="0" aria-valuemax="1">
           <div id="meter-fill"></div>
         </div>
-        <button id="clip" class="clip" type="button" title="Clipped. Click to reset.">Clip</button>
-        <span id="elapsed" aria-label="Elapsed">0:00</span>
-        <button id="start-recording" type="button">Start</button>
-        <button id="stop-recording" type="button">Stop</button>
-        <button id="cancel-recording" type="button">Cancel</button>
+        <button id="clip" class="btn clip" type="button" title="Clipped. Click to reset.">Clip</button>
+        <span id="elapsed" class="time" aria-label="Elapsed">0:00</span>
+        <button id="start-recording" class="btn record" type="button">Start</button>
+        <button id="stop-recording" class="btn" type="button">Stop</button>
+        <button id="cancel-recording" class="btn" type="button">Cancel</button>
       </div>
       <p id="confirm-cancel" hidden>
         Discard this recording?
-        <button id="discard-recording" type="button">Discard</button>
-        <button id="keep-recording" type="button">Keep recording</button>
+        <button id="discard-recording" class="btn" type="button">Discard</button>
+        <button id="keep-recording" class="btn" type="button">Keep recording</button>
       </p>
-      <button id="close-recording-bar" type="button">Close</button>
+      <button id="close-recording-bar" class="btn" type="button">Close</button>
     </section>
-    <form id="event-editor" aria-label="Named Event" hidden>
+    <form id="event-editor" class="card" aria-label="Named Event" hidden>
       <label>Name <input name="name" list="event-names" autocomplete="off" spellcheck="false" /></label>
       <datalist id="event-names"></datalist>
       <label>Data <textarea name="data" rows="3" spellcheck="false" placeholder="Optional JSON"></textarea></label>
       <p role="alert" hidden></p>
-      <button type="submit">Save</button>
-      <button type="button" data-cancel>Cancel</button>
+      <button class="btn primary" type="submit">Save</button>
+      <button class="btn" type="button" data-cancel>Cancel</button>
     </form>
-    <form id="inspector" aria-label="Timing" hidden>
+    <form id="inspector" class="card" aria-label="Timing" hidden>
       <span data-word>
         <label>Gap ms <input name="gap" inputmode="numeric" autocomplete="off" /></label>
         <label>Duration ms <input name="duration" inputmode="numeric" autocomplete="off" /></label>
         <label>Retime % <input name="percent" inputmode="decimal" value="100" autocomplete="off" /></label>
-        <button type="submit">Retime</button>
+        <button class="btn" type="submit">Retime</button>
       </span>
       <span data-event>
         <label>Offset ms <input name="offset" inputmode="numeric" autocomplete="off" /></label>
       </span>
       <p role="alert" hidden></p>
     </form>
-    <article id="script" aria-label="Script"></article>
-    <section id="timeline" aria-label="Script Time timeline"></section>
+    <article id="script" class="card" aria-label="Script"></article>
+    <section id="timeline" class="card" aria-label="Script Time timeline"></section>
     <script type="module" src="/src/editor.ts"></script>
   </body>
 </html>
