@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { describe, expect, it } from "vitest";
 import { simulate, type SourceListener, type StreamEvent } from "../src";
-import { scriptOf, type PresentationScript } from "./presentation";
+import { resolveScript, type PresentationScript } from "../src/presentation-script";
 
 type Step =
   | { action: "advance"; ms: number }
@@ -18,7 +18,7 @@ interface Fixture {
 const fixtures = import.meta.glob<Fixture>("../../../protocol-fixtures/*.json", { eager: true, import: "default" });
 
 function run({ script, steps }: Fixture) {
-  const simulator = simulate(scriptOf(script), { clock: "manual" });
+  const simulator = simulate(resolveScript(script), { clock: "manual" });
   const produced: StreamEvent[] = [];
   const record: SourceListener = { event: (event) => produced.push(event), lost: () => {} };
   const afterItsSnapshot = (listener: SourceListener): SourceListener => {

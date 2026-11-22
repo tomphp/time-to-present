@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import pkg from "../package.json";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const cliDocs = ["README.md", "llms-full.txt", "../../templates/presentation/AGENTS.md"];
 const exportedNames = [...read("src/index.ts").matchAll(/\b(?:type\s+)?([A-Z][A-Za-z]+|simulate|connect)\b(?=[,\s}])/g)].map(
   (match) => match[1],
 );
@@ -23,4 +24,12 @@ describe("package docs", () => {
     const protocol = read("docs/protocol.md");
     for (const type of ["snapshot", "clock", "tick", "word", "namedEvent", "closed"]) expect(protocol).toContain(`\`${type}\``);
   });
+
+  it.each(cliDocs)("documents the ttp CLI in %s", (path) => {
+    const doc = read(path);
+    const missing = ["ttp text", "ttp events", "--events", "--json"].filter((text) => !doc.includes(text));
+    expect(missing).toEqual([]);
+  });
+
+  it("indexes the ttp CLI in llms.txt", () => expect(read("llms.txt")).toContain("npx ttp"));
 });

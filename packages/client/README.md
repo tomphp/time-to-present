@@ -60,6 +60,52 @@ With no desktop app, use `simulate()` as above. `connection` is `reconnecting` w
 stream is lost or the Presentation is closed, and `error` holds why a Client closed itself,
 such as a protocol version mismatch.
 
+## Reading the Script from the command line
+
+The `ttp` command prints a Presentation's Script without the Recordings, audio
+positions and Gaps of `presentation.json`, and works out each Script Time the way the
+desktop app does. It reads the file from disk, so the desktop app need not be running.
+From `app-src/`:
+
+```sh
+npx ttp text            # the Script Text: the Words as plain prose
+npx ttp text --events   # with each Named Event marked where it fires
+npx ttp events          # every Named Event in firing order
+npx ttp events --json   # the same, in the NamedEvent shape of a SimulatedScript
+```
+
+`ttp text` keeps the Script's breaks: a new line at a line break and a blank line at a
+paragraph break. `--events` puts each Named Event's `[name data]` marker just before
+the Word it is anchored to, or at the very start for one anchored to the start of the
+Script, with several in one place in firing order:
+
+```text
+[slide {"index":1}] Good morning, everyone.
+
+[slide {"index":2}] Today we rehearse
+with a teleprompter.
+```
+
+`ttp events` prints one line per Named Event: its Script Time as `m:ss.mmm`, its name,
+its data as compact JSON (left out when it has none) and its anchor Word:
+
+```text
+0:00.000  slide  {"index":1}  at start
+0:02.500  slide  {"index":2}  at "Today"
+```
+
+`ttp events --json` prints a JSON array of `{ id, name, data, scriptTime }`, the same as
+`namedEvents` in `/_ttp/v1/script`, to paste into a `SimulatedScript`. An event that
+resolves before 0 is at 0, and one whose anchor Word is gone is left out.
+
+`ttp` reads the `presentation.json` at the path you give, a Presentation folder or the
+file itself, else the first one it finds searching up from the current folder. It exits
+`0` on success, including an empty Script, `1` when it can't read the Presentation (none
+found, not valid, or a format newer than this Client: update `@time-to-present/client`),
+and `2` with the usage on an unknown command or flag. `npx ttp --help` and
+`npx ttp <command> --help` describe the rest. Install the Client first: without it,
+`npx` would fetch an unrelated `ttp` package from npm.
+
 ## Frameworks
 
 Every `Store` has `subscribe(fn)` (called at once, then on each change) and `get()`, bound,

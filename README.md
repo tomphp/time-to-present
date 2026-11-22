@@ -24,6 +24,9 @@ npm run typecheck
 npm run dev     # run the desktop app
 ```
 
+Run `npm run build -w @time-to-present/client` before using `npx ttp` in the workspace: the
+`ttp` bin is the Client's compiled `dist/cli.js`.
+
 To see a Script without recording one, use Open Folder on
 `crates/core/tests/fixtures/hello-world`. To watch the event stream while the
 editor's play/pause drives the clock, run `curl -N localhost:4747/_ttp/v1/events`
