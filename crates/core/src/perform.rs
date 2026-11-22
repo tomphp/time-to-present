@@ -172,12 +172,20 @@ pub struct PerformanceSettings {
     pub layout: PerformanceLayout,
     pub teleprompter_display: Option<String>,
     pub presentation_display: Option<String>,
-    #[serde(deserialize_with = "known_or_default")]
+    #[serde(deserialize_with = "current_or_older")]
     pub presentation_size: PresentationSize,
 }
 
+const OLDER_SIZES: [&str; 3] = ["1280x720", "1920x1080", "fit"];
+
 /// A size an older version wrote, such as `"fit"`, reads as the default.
-fn known_or_default<'de, D: Deserializer<'de>>(reader: D) -> Result<PresentationSize, D::Error> {
+fn current_or_older<'de, D: Deserializer<'de>>(reader: D) -> Result<PresentationSize, D::Error> {
     let written = serde_json::Value::deserialize(reader)?;
-    Ok(PresentationSize::deserialize(written).unwrap_or_default())
+    if written
+        .as_str()
+        .is_some_and(|old| OLDER_SIZES.contains(&old))
+    {
+        return Ok(PresentationSize::default());
+    }
+    PresentationSize::deserialize(written).map_err(serde::de::Error::custom)
 }

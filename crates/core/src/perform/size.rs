@@ -26,7 +26,11 @@ pub struct PixelSize {
 const PIXELS: RangeInclusive<u32> = 320..=7680;
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("{width}×{height} is not a Presentation Size: each way is 320 to 7680 pixels")]
+#[error(
+    "{width}×{height} is not a Presentation Size: each way is {} to {} pixels",
+    PIXELS.start(),
+    PIXELS.end()
+)]
 pub struct OutOfBounds {
     width: u32,
     height: u32,

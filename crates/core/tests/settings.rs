@@ -256,3 +256,10 @@ fn a_size_saved_by_an_older_version_falls_back_to_1920_by_1080() {
         );
     }
 }
+
+#[test]
+fn performance_settings_with_a_size_out_of_bounds_are_refused() {
+    let chosen = serde_json::json!({"presentationSize": {"width": 100, "height": 1920}});
+
+    assert!(serde_json::from_value::<PerformanceSettings>(chosen).is_err());
+}
