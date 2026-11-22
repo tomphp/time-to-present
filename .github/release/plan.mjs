@@ -13,6 +13,8 @@ const git = (cwd, ...args) => execFileSync("git", args, { cwd, encoding: "utf8" 
 
 export function planRelease(repo, commit = "HEAD") {
   const sha = git(repo, "rev-parse", "--verify", `${commit}^{commit}`);
+  const releasedAfter = laterReleaseTag(repo, sha);
+  if (releasedAfter) return { desktop: null, client: null, releasedAfter };
   const work = mkdtempSync(join(tmpdir(), "release-plan-"));
   try {
     const clone = join(work, "repo");
@@ -25,9 +27,17 @@ export function planRelease(repo, commit = "HEAD") {
   }
 }
 
+function laterReleaseTag(repo, sha) {
+  const releaseTags = (...filter) =>
+    git(repo, "tag", "--list", ...PACKAGES.map((name) => `${name}-v*`), ...filter).split("\n").filter(Boolean);
+  const onSha = releaseTags("--points-at", sha);
+  return releaseTags("--contains", sha).find((tag) => !onSha.includes(tag));
+}
+
 function planPackage(cog, name) {
   const changes = cog.changesSinceLastTag(name);
-  if (changes?.breaking) return { version: nextMajor(cog.currentVersion(name)), notes: changes.notes };
+  if (!changes) return null;
+  if (changes.breaking) return { version: nextMajor(cog.currentVersion(name)), notes: changes.notes };
   const version = cog.nextVersion(name);
   return version && { version, notes: changes.notes };
 }

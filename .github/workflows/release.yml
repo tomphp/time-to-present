@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+
+env:
+  HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+
+jobs:
+  plan:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      client-version: ${{ steps.plan.outputs.client-version }}
+      client-notes: ${{ steps.plan.outputs.client-notes }}
+      desktop-version: ${{ steps.plan.outputs.desktop-version }}
+      desktop-notes: ${{ steps.plan.outputs.desktop-notes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - uses: cocogitto/cocogitto-action@v4.2.0
+        with:
+          install-only: true
+      - id: plan
+        run: |
+          node .github/release/plan.mjs "$HEAD_SHA" | tee "$RUNNER_TEMP/plan.json"
+          delimiter="notes-$(openssl rand -hex 16)"
+          {
+            for component in client desktop; do
+              echo "$component-version=$(jq -r ".$component.version // empty" "$RUNNER_TEMP/plan.json")"
+              echo "$component-notes<<$delimiter"
+              jq -r ".$component.notes // empty" "$RUNNER_TEMP/plan.json"
+              echo "$delimiter"
+            done
+          } >> "$GITHUB_OUTPUT"
+
+  client:
+    needs: plan
+    if: needs.plan.outputs.client-version != ''
+    runs-on: ubuntu-latest
+    env:
+      PACKAGE: "@time-to-present/client"
+      VERSION: ${{ needs.plan.outputs.client-version }}
+      TAG: client-v${{ needs.plan.outputs.client-version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: node scripts/stamp.mjs client "$VERSION"
+      - run: npm run build -w "$PACKAGE"
+      - name: Publish to npm with trusted publishing
+        run: |
+          if [ "$(npm view "$PACKAGE@$VERSION" version 2>/dev/null)" = "$VERSION" ]; then
+            echo "$PACKAGE@$VERSION is already published; going on to tag it"
+          else
+            npm publish -w "$PACKAGE" --access public --no-provenance
+          fi
+      - name: Tag the release
+        run: |
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            tag -a "$TAG" -m "$TAG" "$HEAD_SHA"
+          git push origin "refs/tags/$TAG"
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOTES: ${{ needs.plan.outputs.client-notes }}
+        run: gh release create "$TAG" --verify-tag --title "Client $VERSION" --notes "$NOTES"

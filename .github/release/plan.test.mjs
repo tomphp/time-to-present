@@ -220,6 +220,34 @@ describe("release plan", { concurrency: true }, () => {
     assert.deepEqual({ desktop, client: client.version }, { desktop: null, client: "0.1.1" });
   });
 
+  test("nothing is planned when a component tag is on a later commit", async () => {
+    const repo = throwawayRepo();
+    repo.commit("fix: a Client fix", "packages/client/src/index.ts");
+    repo.commit("feat: a later Desktop App feature", "apps/desktop/src/main.ts");
+    repo.git("tag", "-a", "desktop-v0.2.0", "-m", "desktop-v0.2.0");
+
+    assert.deepEqual(await repo.plan("HEAD~1"), { desktop: null, client: null, releasedAfter: "desktop-v0.2.0" });
+  });
+
+  test("a component tag on the planned commit itself still plans the other component", async () => {
+    const repo = throwawayRepo();
+    repo.commit("feat: a feature across both", "packages/client/src/index.ts", "apps/desktop/src/main.ts");
+    repo.git("tag", "-a", "client-v0.2.0", "-m", "client-v0.2.0");
+
+    assert.deepEqual(await repo.nextVersions(), { desktop: "0.2.0", client: null });
+  });
+
+  test("a component tag on a commit that does not descend from the planned one is ignored", async () => {
+    const repo = throwawayRepo();
+    repo.git("switch", "-q", "-c", "side");
+    repo.commit("feat: a side Client feature", "packages/client/src/side.ts");
+    repo.git("tag", "-a", "client-v0.2.0", "-m", "client-v0.2.0");
+    repo.git("switch", "-q", "main");
+    repo.commit("fix: a Desktop App fix", "apps/desktop/src/main.ts");
+
+    assert.deepEqual(await repo.nextVersions(), { desktop: "0.1.1", client: null });
+  });
+
   test("planning leaves the repo's tags, commits and files as they were", async () => {
     const repo = throwawayRepo();
     repo.commit("feat: a Client feature", "packages/client/src/index.ts");
