@@ -197,6 +197,12 @@ fn tell_teleprompter_of_focus(window: &Window, focused: bool) {
     let _ = window.emit_to(TELEPROMPTER_WINDOW, APP_FOCUS, !windows.is_empty());
 }
 
+/// Whether the calling window is Fullscreen, for a page that loaded after the change was announced.
+#[tauri::command]
+pub fn is_fullscreen(window: WebviewWindow, state: State<'_, Fullscreen>) -> bool {
+    state.contains(window.label())
+}
+
 #[tauri::command]
 pub fn approach_cue(state: State<'_, App>) -> ApproachCue {
     state.settings.lock().unwrap().approach_cue()

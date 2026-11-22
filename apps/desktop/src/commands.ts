@@ -137,6 +137,7 @@ export function onAppFocus(handle: (focused: boolean) => void) {
 
 export function onFullscreenChanged(handle: (fullscreen: boolean) => void) {
   void listen<boolean>("fullscreen-changed", (event) => handle(event.payload));
+  void invoke<boolean>("is_fullscreen").then((fullscreen) => fullscreen && handle(true));
 }
 
 export const setApproachCue = (cue: ApproachCueSettings) => invoke<void>("set_approach_cue", { cue });

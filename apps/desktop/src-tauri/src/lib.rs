@@ -485,6 +485,7 @@ pub fn run() {
             clock::seek,
             clock::set_speed,
             clock::reset,
+            perform::is_fullscreen,
             perform::approach_cue,
             perform::set_approach_cue,
             perform::perform,
