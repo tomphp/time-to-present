@@ -3,7 +3,7 @@ import type { RecentPresentation } from "./commands";
 export const folderName = (path: string) => path.split("/").filter(Boolean).pop() ?? path;
 
 /** The Recent listbox: a click selects a row, double-click or Return opens it. */
-export function recentList(list: HTMLUListElement, open: (folder: string) => void) {
+export function recentList(list: HTMLUListElement, empty: HTMLElement, open: (folder: string) => void) {
   let folders: string[] = [];
   let selected: number | null = null;
 
@@ -31,18 +31,30 @@ export function recentList(list: HTMLUListElement, open: (folder: string) => voi
     return item;
   }
 
+  function move(by: 1 | -1) {
+    if (folders.length === 0) return;
+    const from = selected ?? (by === 1 ? -1 : folders.length);
+    select(Math.min(Math.max(from + by, 0), folders.length - 1));
+  }
+
+  const keys: Record<string, () => void> = {
+    Enter: () => selected !== null && open(folders[selected]),
+    ArrowDown: () => move(1),
+    ArrowUp: () => move(-1),
+  };
+
   list.addEventListener("keydown", (event) => {
-    const last = folders.length - 1;
-    if (event.key === "Enter" && selected !== null) open(folders[selected]);
-    else if (event.key === "ArrowDown" && last >= 0) select(selected === null ? 0 : Math.min(selected + 1, last));
-    else if (event.key === "ArrowUp" && last >= 0) select(selected === null ? last : Math.max(selected - 1, 0));
-    else return;
+    const action = keys[event.key];
+    if (!action) return;
     event.preventDefault();
+    action();
   });
 
   return (presentations: RecentPresentation[]) => {
     folders = presentations.map(({ folder }) => folder);
     selected = null;
     list.replaceChildren(...presentations.map(row));
+    list.hidden = presentations.length === 0;
+    empty.hidden = presentations.length > 0;
   };
 }

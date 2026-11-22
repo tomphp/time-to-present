@@ -70,11 +70,9 @@ export function mountStart(commands: StartCommands) {
     button.addEventListener("click", () => void action());
   }
 
-  const listRecent = recentList(find<HTMLUListElement>("#recent-list"), openFolder);
+  const listRecent = recentList(find<HTMLUListElement>("#recent-list"), find("#recent-empty"), openFolder);
   void commands.recentPresentations().then(({ presentations, dropped }) => {
     listRecent(presentations);
-    find("#recent-list").hidden = presentations.length === 0;
-    find("#recent-empty").hidden = presentations.length > 0;
     if (dropped.length > 0) showNotice(`Removed from Recent, no longer found: ${dropped.map(folderName).join(", ")}`);
   }, showError);
 

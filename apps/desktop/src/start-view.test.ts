@@ -4,7 +4,6 @@ import page from "../index.html?raw";
 import type { Recent } from "./commands";
 import { mountStart, type StartCommands } from "./start-view";
 
-
 let commands: { [K in keyof StartCommands]: ReturnType<typeof vi.fn> & StartCommands[K] };
 let start: ReturnType<typeof mountStart>;
 
@@ -64,6 +63,17 @@ describe("New Presentation", () => {
     expect(visible("#title-dialog")).toBe(false);
     expect(commands.pickFolder).not.toHaveBeenCalled();
     expect(commands.newPresentation).not.toHaveBeenCalled();
+  });
+
+  it("keeps the window behind out of reach while it asks", async () => {
+    await mount();
+    const behind = [find(".start-actions"), find(".recent")];
+
+    start.newPresentation();
+    expect(behind.map((element) => element.hasAttribute("inert"))).toEqual([true, true]);
+
+    typeTitle("Keynote");
+    expect(behind.map((element) => element.hasAttribute("inert"))).toEqual([false, false]);
   });
 
   it("keeps asking while the title is blank", async () => {

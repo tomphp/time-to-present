@@ -5,8 +5,15 @@ export function titleDialog(form: HTMLFormElement): () => Promise<string | null>
   let answer: ((title: string | null) => void) | null = null;
   let opener: HTMLElement | null = null;
 
+  function show(open: boolean) {
+    sheet.hidden = !open;
+    for (const behind of sheet.parentElement!.children) {
+      if (behind !== sheet) behind.toggleAttribute("inert", open);
+    }
+  }
+
   function close(title: string | null) {
-    sheet.hidden = true;
+    show(false);
     opener?.focus();
     answer?.(title);
     answer = null;
@@ -26,7 +33,7 @@ export function titleDialog(form: HTMLFormElement): () => Promise<string | null>
     answer?.(null);
     if (sheet.hidden) opener = document.activeElement as HTMLElement | null;
     input.value = "";
-    sheet.hidden = false;
+    show(true);
     input.focus();
     return new Promise((resolve) => (answer = resolve));
   };

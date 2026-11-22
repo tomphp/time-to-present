@@ -37,39 +37,12 @@ body.start h2 {
   height: var(--app-icon-size);
 }
 
-.action {
-  display: flex;
-  align-items: center;
+.btn.action {
+  justify-content: start;
   gap: var(--space-4);
-  box-sizing: border-box;
   width: 100%;
   height: var(--action-h);
-  padding: 0 var(--btn-pad-x);
-  border: 0;
   border-radius: var(--radius);
-  font-weight: var(--weight-strong);
-  color: var(--text);
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  cursor: default;
-}
-
-.action:hover {
-  background: var(--surface-2);
-}
-
-.action.primary {
-  color: var(--accent-text);
-  background: var(--primary-bg);
-}
-
-.action.primary:hover {
-  filter: brightness(var(--hover-brightness));
-}
-
-.action:focus-visible {
-  outline: var(--focus-ring) solid var(--accent);
-  outline-offset: var(--space-1);
 }
 
 .recent {
