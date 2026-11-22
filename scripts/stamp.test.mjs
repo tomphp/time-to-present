@@ -86,3 +86,98 @@ test("stamp rejects an unknown command", () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /usage/i);
 });
+
+const desktopFiles = [
+  "Cargo.toml",
+  "Cargo.lock",
+  "apps/desktop/src-tauri/tauri.conf.json",
+  "apps/desktop/src-tauri/Cargo.toml",
+  "crates/core/Cargo.toml",
+  "crates/server/Cargo.toml",
+  "crates/stt-sidecar/Cargo.toml",
+  "templates/presentation/package.json",
+];
+
+function copyOfDesktopFiles() {
+  const root = mkdtempSync(join(tmpdir(), "stamp-"));
+  for (const file of desktopFiles) {
+    mkdirSync(dirname(join(root, file)), { recursive: true });
+    cpSync(join(repo, file), join(root, file));
+  }
+  return root;
+}
+
+const read = (root, path) => readFileSync(join(root, path), "utf8");
+const changedLines = (before, after) => {
+  const old = before.split("\n");
+  return after.split("\n").flatMap((line, i) => (line === old[i] ? [] : [[old[i], line]]));
+};
+
+test("stamp desktop writes the version into the Tauri config and nothing else there", () => {
+  const root = copyOfDesktopFiles();
+  const path = "apps/desktop/src-tauri/tauri.conf.json";
+  const before = read(root, path);
+
+  const result = stamp(root, "desktop", "3.1.0", "2.5.0");
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(changedLines(before, read(root, path)), [['  "version": "0.1.0",', '  "version": "3.1.0",']]);
+});
+
+test("stamp desktop writes the Cargo workspace version and nothing else there", () => {
+  const root = copyOfDesktopFiles();
+  const before = read(root, "Cargo.toml");
+
+  stamp(root, "desktop", "3.1.0", "2.5.0");
+
+  assert.deepEqual(changedLines(before, read(root, "Cargo.toml")), [['version = "0.1.0"', 'version = "3.1.0"']]);
+});
+
+test("stamp desktop writes the workspace crates' versions in Cargo.lock and nothing else", () => {
+  const root = copyOfDesktopFiles();
+  const before = read(root, "Cargo.lock");
+
+  stamp(root, "desktop", "3.1.0", "2.5.0");
+
+  const changes = changedLines(before, read(root, "Cargo.lock"));
+  assert.equal(changes.length, 4);
+  for (const [old, line] of changes) {
+    assert.equal(old, 'version = "0.1.0"');
+    assert.equal(line, 'version = "3.1.0"');
+  }
+  const names = [...read(root, "Cargo.lock").matchAll(/name = "([^"]+)"\nversion = "3\.1\.0"/g)].map((m) => m[1]);
+  assert.deepEqual(names.sort(), ["time-to-present", "ttp-core", "ttp-server", "ttp-stt-sidecar"]);
+});
+
+test("stamp desktop points the template at the Client range and nothing else there", () => {
+  const root = copyOfDesktopFiles();
+  const path = "templates/presentation/package.json";
+  const before = readJson(root, path);
+
+  stamp(root, "desktop", "3.1.0", "2.5.0");
+
+  const after = readJson(root, path);
+  assert.equal(after.dependencies["@time-to-present/client"], "^2.5.0");
+  after.dependencies["@time-to-present/client"] = before.dependencies["@time-to-present/client"];
+  assert.deepEqual(after, before);
+});
+
+test("stamp desktop is idempotent", () => {
+  const root = copyOfDesktopFiles();
+  stamp(root, "desktop", "3.1.0", "2.5.0");
+  const once = desktopFiles.map((file) => read(root, file));
+
+  stamp(root, "desktop", "3.1.0", "2.5.0");
+
+  assert.deepEqual(desktopFiles.map((file) => read(root, file)), once);
+});
+
+test("stamp desktop rejects a missing or malformed version without touching the files", () => {
+  const root = copyOfDesktopFiles();
+  const before = desktopFiles.map((file) => read(root, file));
+
+  for (const args of [["desktop"], ["desktop", "3.1.0"], ["desktop", "3.1.0", "latest"], ["desktop", "x", "2.5.0"]]) {
+    assert.notEqual(stamp(root, ...args).status, 0, args.join(" "));
+  }
+  assert.deepEqual(desktopFiles.map((file) => read(root, file)), before);
+});
