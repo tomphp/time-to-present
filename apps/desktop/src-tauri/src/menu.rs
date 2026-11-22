@@ -7,7 +7,7 @@ use ttp_core::menu::{FocusedWindow, KeyWindow, MenuContext, WindowReport, menu_i
 
 use crate::fullscreen::Fullscreen;
 use crate::perform::PRESENTATION_WINDOW;
-use crate::{App as AppState, EDITOR_WINDOW, TELEPROMPTER_WINDOW, macos};
+use crate::{App as AppState, EDITOR_WINDOW, TELEPROMPTER_WINDOW, platform};
 use layout::Items;
 
 mod layout;
@@ -25,7 +25,7 @@ struct Reports(Mutex<HashMap<String, WindowReport>>);
 /// The menu bar: the app's commands, each with its shortcut, around the standard Edit and Window
 /// menus, with View > Full Screen switching Performance windows in place of the native item.
 pub fn install(app: &App) -> tauri::Result<()> {
-    macos::leave_full_screen_out_of_the_menu();
+    platform::leave_full_screen_out_of_the_menu();
     let (menu, items) = layout::menu_bar(app)?;
     app.set_menu(menu)?;
     app.manage(items);

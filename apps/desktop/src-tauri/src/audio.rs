@@ -33,7 +33,7 @@ impl CpalSource {
 
 impl AudioSource for CpalSource {
     fn request_access(&self) -> Access {
-        crate::macos::request_microphone_access()
+        crate::platform::request_microphone_access()
     }
 
     fn inputs(&self) -> Vec<Input> {

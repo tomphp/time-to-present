@@ -22,9 +22,9 @@ mod audio;
 mod clock;
 mod displays;
 mod fullscreen;
-mod macos;
 mod menu;
 mod perform;
+mod platform;
 mod recording;
 mod window_set;
 
@@ -235,11 +235,7 @@ fn server_status(state: State<'_, App>) -> ServerStatus {
 #[tauri::command]
 fn open_in_browser(state: State<'_, App>) -> CommandResult<()> {
     let url = state.server.status().url;
-    std::process::Command::new("open")
-        .arg(url)
-        .spawn()
-        .map(drop)
-        .map_err(message)
+    platform::open_in_browser(&url).map_err(message)
 }
 
 #[tauri::command]
@@ -396,7 +392,7 @@ fn emit_server_status(app: &AppHandle) {
 /// Tauri puts the `externalBin` sidecar next to the app's own executable.
 fn sidecar_path() -> Result<PathBuf, std::io::Error> {
     let executable = std::env::current_exe()?;
-    Ok(executable.with_file_name(SIDECAR))
+    Ok(executable.with_file_name(format!("{SIDECAR}{}", std::env::consts::EXE_SUFFIX)))
 }
 
 fn show(app: &AppHandle, state: &App, mut session: Session) -> CommandResult<SessionState> {
@@ -459,7 +455,7 @@ pub fn run() {
                 platform: Platform {
                     time: Arc::new(MonotonicTime::new()),
                     audio: Arc::new(audio::CpalSource::new()),
-                    app_nap: Arc::new(macos::ProcessActivity),
+                    app_nap: Arc::new(platform::ProcessActivity),
                     transcriber: Arc::new(SidecarTranscriber::new(sidecar_path()?, models.clone())),
                     live: Arc::new(SidecarLiveTranscriber::new(sidecar_path()?, models.clone())),
                 },

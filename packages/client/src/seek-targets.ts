@@ -1,5 +1,5 @@
-import type { ScriptWord } from "./protocol";
-import type { Timeline } from "./timeline";
+import type { ScriptWord } from "./protocol.js";
+import type { Timeline } from "./timeline.js";
 
 export type Direction = "back" | "forward";
 

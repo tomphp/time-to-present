@@ -47,11 +47,13 @@ pub(crate) fn shadow_warning(folder: &Path) -> Option<String> {
 }
 
 /// Judged on the first folder the file server would open: `.` and empty segments are skipped,
-/// and macOS matches names whatever their case.
+/// macOS and Windows match names whatever their case, and Windows also splits on `\` and
+/// drops trailing dots and spaces.
 fn is_reserved(path: &str) -> bool {
     let decoded = percent_decode_str(path).decode_utf8_lossy();
     let first = decoded
-        .split('/')
-        .find(|segment| !segment.is_empty() && *segment != ".");
+        .split(['/', '\\'])
+        .map(|segment| segment.trim_end_matches(['.', ' ']))
+        .find(|segment| !segment.is_empty());
     first.is_some_and(|segment| segment.eq_ignore_ascii_case(RESERVED))
 }

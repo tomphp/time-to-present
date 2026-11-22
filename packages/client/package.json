@@ -4,6 +4,7 @@
   "type": "module",
   "exports": "./src/index.ts",
   "files": [
+    "dist",
     "src",
     "docs",
     "examples",
@@ -12,6 +13,7 @@
     "llms-full.txt"
   ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
   },

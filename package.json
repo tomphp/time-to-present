@@ -7,7 +7,7 @@
     "templates/presentation"
   ],
   "scripts": {
-    "test": "cargo test && npm test --workspaces --if-present",
+    "test": "cargo test && npm test --workspaces --if-present && node --test \"scripts/*.test.mjs\"",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "dev": "npm run tauri -w @time-to-present/desktop -- dev"
   }

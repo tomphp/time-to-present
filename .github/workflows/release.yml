@@ -1,0 +1,214 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+
+jobs:
+  plan:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      client-version: ${{ steps.plan.outputs.client-version }}
+      client-notes: ${{ steps.plan.outputs.client-notes }}
+      desktop-version: ${{ steps.plan.outputs.desktop-version }}
+      desktop-notes: ${{ steps.plan.outputs.desktop-notes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - uses: cocogitto/cocogitto-action@v4.2.0
+        with:
+          install-only: true
+      - id: plan
+        run: |
+          node .github/release/plan.mjs "$HEAD_SHA" > "$RUNNER_TEMP/plan.json"
+          cat "$RUNNER_TEMP/plan.json"
+          delimiter="notes-$(openssl rand -hex 16)"
+          {
+            for component in client desktop; do
+              echo "$component-version=$(jq -r ".$component.version // empty" "$RUNNER_TEMP/plan.json")"
+              echo "$component-notes<<$delimiter"
+              jq -r ".$component.notes // empty" "$RUNNER_TEMP/plan.json"
+              echo "$delimiter"
+            done
+          } >> "$GITHUB_OUTPUT"
+
+  client:
+    needs: plan
+    if: needs.plan.outputs.client-version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      PACKAGE: "@time-to-present/client"
+      VERSION: ${{ needs.plan.outputs.client-version }}
+      TAG: client-v${{ needs.plan.outputs.client-version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: node scripts/stamp.mjs client "$VERSION"
+      - run: npm run build -w "$PACKAGE"
+      - name: Publish to npm with trusted publishing
+        run: |
+          if ! published=$(npm view "$PACKAGE@$VERSION" version 2> "$RUNNER_TEMP/npm-view.log"); then
+            grep -q E404 "$RUNNER_TEMP/npm-view.log" || { cat "$RUNNER_TEMP/npm-view.log" >&2; exit 1; }
+          fi
+          if [ "$published" = "$VERSION" ]; then
+            echo "$PACKAGE@$VERSION is already published; going on to tag it"
+          else
+            npm publish -w "$PACKAGE" --access public --no-provenance
+          fi
+      - name: Tag the release
+        run: |
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            tag -a "$TAG" -m "$TAG" "$HEAD_SHA"
+          git push origin "refs/tags/$TAG"
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOTES: ${{ needs.plan.outputs.client-notes }}
+        run: gh release create "$TAG" --verify-tag --title "Client $VERSION" --notes "$NOTES"
+
+  desktop-build:
+    needs: [plan, client]
+    if: >-
+      !cancelled() && needs.plan.outputs.desktop-version != ''
+      && contains(fromJSON('["success", "skipped"]'), needs.client.result)
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            bundles: dmg
+            installers: dmg/*.dmg
+          - os: windows-latest
+            bundles: nsis
+            installers: nsis/*-setup.exe
+          # The oldest supported Ubuntu, so the AppImage and deb run on older glibc too.
+          - os: ubuntu-22.04
+            bundles: appimage,deb
+            installers: appimage/*.AppImage deb/*.deb
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      VERSION: ${{ needs.plan.outputs.desktop-version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: ./.github/actions/desktop-toolchain
+      - name: Stamp the Desktop App with the latest Client release
+        run: |
+          client_tag=$(git for-each-ref --count=1 --sort=-v:refname --merged "$HEAD_SHA" \
+            --format='%(refname:lstrip=2)' 'refs/tags/client-v*')
+          node scripts/stamp.mjs desktop "$VERSION" "${client_tag#client-v}"
+      - name: Build the installers, signing ad hoc on macOS
+        env:
+          APPLE_SIGNING_IDENTITY: "-"
+          BUNDLES: ${{ matrix.bundles }}
+        run: npm run tauri -w @time-to-present/desktop -- build --bundles "$BUNDLES"
+      - name: Check the dmg's app keeps the hardened runtime and entitlements
+        if: runner.os == 'macOS'
+        run: |
+          shopt -s failglob
+          mount="$RUNNER_TEMP/dmg"
+          hdiutil attach -quiet -nobrowse -readonly -mountpoint "$mount" target/release/bundle/dmg/*.dmg
+          trap 'hdiutil detach -quiet "$mount"' EXIT
+          app="$mount/Time to Present.app"
+          codesign --verify --strict --verbose=2 "$app"
+          codesign -dv "$app" 2>&1 | grep -E 'flags=0x[0-9a-f]+\([^)]*adhoc[^)]*runtime'
+          codesign -d --entitlements - "$app" | grep com.apple.security.device.audio-input
+      - name: Collect the installers with no spaces in their names
+        env:
+          INSTALLERS: ${{ matrix.installers }}
+        run: |
+          shopt -s failglob
+          mkdir -p "$RUNNER_TEMP/installers"
+          cd target/release/bundle
+          for installer in $INSTALLERS; do
+            name=$(basename "$installer")
+            cp "$installer" "$RUNNER_TEMP/installers/${name// /-}"
+          done
+          ls -l "$RUNNER_TEMP/installers"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ runner.os }}
+          path: ${{ runner.temp }}/installers/*
+          if-no-files-found: error
+
+  desktop-release:
+    needs: [plan, desktop-build]
+    if: >-
+      !cancelled() && needs.desktop-build.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.plan.outputs.desktop-version }}
+      TAG: desktop-v${{ needs.plan.outputs.desktop-version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          path: ${{ runner.temp }}/installers
+          merge-multiple: true
+      - name: Write the checksums
+        working-directory: ${{ runner.temp }}/installers
+        run: |
+          sha256sum -- * > "$RUNNER_TEMP/checksums.txt"
+          cat "$RUNNER_TEMP/checksums.txt"
+      - name: Tag the release
+        run: |
+          if [ "$(git rev-parse -q --verify "refs/tags/$TAG^{commit}")" = "$HEAD_SHA" ]; then
+            echo "$TAG is already on $HEAD_SHA; going on to release it"
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            tag -a "$TAG" -m "$TAG" "$HEAD_SHA"
+          git push origin "refs/tags/$TAG"
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOTES: ${{ needs.plan.outputs.desktop-notes }}
+        run: |
+          { printf '%s\n\n' "$NOTES"; cat .github/release/desktop-install.md; } > "$RUNNER_TEMP/notes.md"
+          gh release create "$TAG" --verify-tag --title "Desktop App $VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md" "$RUNNER_TEMP"/installers/* "$RUNNER_TEMP/checksums.txt"

@@ -1,6 +1,6 @@
-import type { Clock } from "./protocol";
-import type { Direction, SeekTargets } from "./seek-targets";
-import type { Unsubscribe } from "./store";
+import type { Clock } from "./protocol.js";
+import type { Direction, SeekTargets } from "./seek-targets.js";
+import type { Unsubscribe } from "./store.js";
 
 export interface KeyboardControls {
   clock(): Clock;

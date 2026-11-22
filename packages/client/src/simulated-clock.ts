@@ -1,5 +1,5 @@
-import { PROTOCOL_VERSION, type Clock, type ClockCause, type Snapshot, type StreamEvent } from "./protocol";
-import type { Timeline } from "./timeline";
+import { PROTOCOL_VERSION, type Clock, type ClockCause, type Snapshot, type StreamEvent } from "./protocol.js";
+import type { Timeline } from "./timeline.js";
 
 const TICK_INTERVAL = 100;
 /** Before anything has fired, so that Words and Named Events at Script Time 0 cross on play. */

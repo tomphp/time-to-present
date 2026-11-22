@@ -1,7 +1,7 @@
-import { channel, deliver } from "./channel";
-import type { Source } from "./source";
-import type { Unsubscribe } from "./store";
-import type { StreamState } from "./stream-state";
+import { channel, deliver } from "./channel.js";
+import type { Source } from "./source.js";
+import type { Unsubscribe } from "./store.js";
+import type { StreamState } from "./stream-state.js";
 
 /** The Script Time between clock changes, for smooth motion. */
 export interface Time {

@@ -4,21 +4,31 @@ edition.workspace = true
 version.workspace = true
 license.workspace = true
 
+# No tests of its own: on Windows, test binaries lack the manifest Tauri embeds in the app.
 [lib]
 name = "time_to_present_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+test = false
+doctest = false
+
+[[bin]]
+name = "time-to-present"
+path = "src/main.rs"
+test = false
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-block2 = "0.6"
 cpal = "0.18"
-objc2 = "0.6"
-objc2-av-foundation = { version = "0.3", default-features = false, features = ["std", "block2", "AVCaptureDevice", "AVMediaFormat"] }
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSObject", "NSProcessInfo", "NSString", "NSUserDefaults"] }
 serde.workspace = true
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 ttp-core = { path = "../../../crates/core" }
 ttp-server = { path = "../../../crates/server" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+block2 = "0.6"
+objc2 = "0.6"
+objc2-av-foundation = { version = "0.3", default-features = false, features = ["std", "block2", "AVCaptureDevice", "AVMediaFormat"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSObject", "NSProcessInfo", "NSString", "NSUserDefaults"] }

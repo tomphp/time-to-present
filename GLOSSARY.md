@@ -125,8 +125,12 @@ A complete picture of where the Performance is, sent whenever a client connects,
 
 ### Presentation App and Client
 
+**Desktop App**:
+The installable Time to Present program that the presenter runs to record, edit and perform. It is released separately from the Client.
+_Avoid_: app, desktop
+
 **Presentation App**:
-The web app the presenter builds for a Presentation, served during a Performance and driven by its Named Events. It is separate from the Time to Present app itself.
+The web app the presenter builds for a Presentation, served during a Performance and driven by its Named Events. It is separate from the **Desktop App**.
 _Avoid_: Slides, deck, front end
 
 **Client**:
@@ -140,7 +144,7 @@ _Avoid_: Event handler (handlers reacting to single events do not survive a seek
 A small observable value in the Client that you can read at any time and subscribe to for changes. Everything stateful in the Client is one.
 
 **Simulator**:
-A stand-in for the Performance that runs a Script on an in-browser clock and emits the same protocol, so a Presentation App can be built and tested without the desktop app.
+A stand-in for the Performance that runs a Script on an in-browser clock and emits the same protocol, so a Presentation App can be built and tested without the **Desktop App**.
 
 **protocol fixture**:
 A language-neutral example of a Script, a series of clock actions, and the exact events they must produce. The core and the Simulator are both tested against the same ones so they cannot drift apart.

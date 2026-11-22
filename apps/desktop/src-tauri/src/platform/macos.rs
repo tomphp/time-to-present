@@ -1,3 +1,4 @@
+use std::process::Command;
 use std::sync::mpsc;
 
 use block2::RcBlock;
@@ -36,6 +37,10 @@ pub fn request_microphone_access() -> Access {
 pub fn leave_full_screen_out_of_the_menu() {
     NSUserDefaults::standardUserDefaults()
         .setBool_forKey(false, ns_string!("NSFullScreenMenuItemEverywhere"));
+}
+
+pub fn open_in_browser(url: &str) -> std::io::Result<()> {
+    Command::new("open").arg(url).spawn().map(drop)
 }
 
 pub struct ProcessActivity;

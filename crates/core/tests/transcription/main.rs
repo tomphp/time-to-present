@@ -1,3 +1,6 @@
+//! These tests fake the sidecar with `#!/bin/sh` scripts; the sidecar's protocol tests cover Windows.
+#![cfg(unix)]
+
 #[path = "../models/support.rs"]
 mod models;
 

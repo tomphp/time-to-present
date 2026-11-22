@@ -1,6 +1,6 @@
-export { connect, type Client, type ConnectOptions, type ConnectionState } from "./client";
-export type { Folded, Reducers } from "./fold";
-export type { Hooks } from "./hooks";
+export { connect, type Client, type ConnectOptions, type ConnectionState } from "./client.js";
+export type { Folded, Reducers } from "./fold.js";
+export type { Hooks } from "./hooks.js";
 export {
   PROTOCOL_VERSION,
   type Clock,
@@ -15,9 +15,9 @@ export {
   type Snapshot,
   type StreamEvent,
   type Word,
-} from "./protocol";
-export type { Source, SourceListener } from "./source";
-export type { Store, Unsubscribe } from "./store";
-export type { Time } from "./time";
-export { simulate, type ManualSimulator, type SimulateOptions, type Simulator } from "./simulator";
-export type { SimulatedScript } from "./timeline";
+} from "./protocol.js";
+export type { Source, SourceListener } from "./source.js";
+export type { Store, Unsubscribe } from "./store.js";
+export type { Time } from "./time.js";
+export { simulate, type ManualSimulator, type SimulateOptions, type Simulator } from "./simulator.js";
+export type { SimulatedScript } from "./timeline.js";

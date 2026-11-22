@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/desktop-toolchain
+      - run: node scripts/build-sidecar.mjs
+      - run: npm test
+      - run: npm run typecheck
+      - run: cargo build --workspace
+      - run: cargo test --workspace
+
+  commits:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: cocogitto/cocogitto-action@v4.2.0
+        with:
+          install-only: true
+      - name: Check conventional commits since the latest component tags
+        run: |
+          base=$(git tag --list 'desktop-v*' 'client-v*' --sort=-creatordate | head -n 1)
+          if [ -z "$base" ]; then
+            base=$(git merge-base origin/main HEAD)
+          fi
+          cog check --ignore-merge-commits "$base..HEAD"
+
+  release-rehearsal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - uses: cocogitto/cocogitto-action@v4.2.0
+        with:
+          install-only: true
+      - run: node --test '.github/release/*.test.mjs'
+
+  packed-client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - run: ./scripts/check-packed-client.sh

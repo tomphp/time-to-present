@@ -145,8 +145,9 @@ The session ended cleanly. It is the last event.
 engine that hears runs of constant sample values as Words. No model or whisper.cpp is needed.
 
 whisper.cpp is behind the `whisper` feature (`metal` adds the GPU) and needs `cmake`. Built without
-it, the sidecar answers every session with an `error`. `scripts/build-sidecar.sh` builds the release
-sidecar with Metal and stages it in `apps/desktop/src-tauri/binaries/` for Tauri's `externalBin`.
+it, the sidecar answers every session with an `error`. `scripts/build-sidecar.mjs` builds the
+release sidecar, with Metal on macOS and on the CPU elsewhere, and stages it in
+`apps/desktop/src-tauri/binaries/` for Tauri's `externalBin`.
 `npm run dev` and the release build run it first. Building `apps/desktop/src-tauri` on its own
 needs it staged.
 
