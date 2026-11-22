@@ -26,12 +26,12 @@ jobs:
       desktop-version: ${{ steps.plan.outputs.desktop-version }}
       desktop-notes: ${{ steps.plan.outputs.desktop-notes }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.HEAD_SHA }}
           fetch-depth: 0
           fetch-tags: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: lts/*
       - uses: cocogitto/cocogitto-action@v4.2.0
@@ -63,12 +63,12 @@ jobs:
       VERSION: ${{ needs.plan.outputs.client-version }}
       TAG: client-v${{ needs.plan.outputs.client-version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.HEAD_SHA }}
           fetch-depth: 0
           fetch-tags: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: lts/*
           cache: npm
@@ -123,7 +123,7 @@ jobs:
     env:
       VERSION: ${{ needs.plan.outputs.desktop-version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.HEAD_SHA }}
           fetch-depth: 0
@@ -162,7 +162,7 @@ jobs:
             cp "$installer" "$RUNNER_TEMP/installers/${name// /-}"
           done
           ls -l "$RUNNER_TEMP/installers"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: desktop-${{ runner.os }}
           path: ${{ runner.temp }}/installers/*
@@ -179,12 +179,12 @@ jobs:
       VERSION: ${{ needs.plan.outputs.desktop-version }}
       TAG: desktop-v${{ needs.plan.outputs.desktop-version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.HEAD_SHA }}
           fetch-depth: 0
           fetch-tags: true
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: desktop-*
           path: ${{ runner.temp }}/installers
