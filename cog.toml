@@ -1,0 +1,13 @@
+ignore_merge_commits = true
+disable_changelog = true
+disable_bump_commit = true
+generate_mono_repository_global_tag = false
+monorepo_version_separator = "-"
+tag_prefix = "v"
+
+[monorepo.packages.desktop]
+path = "apps/desktop"
+include = ["crates/**", "templates/presentation/**", "scripts/**", "Cargo.toml", "Cargo.lock"]
+
+[monorepo.packages.client]
+path = "packages/client"
