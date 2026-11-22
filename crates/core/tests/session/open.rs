@@ -59,3 +59,25 @@ fn a_presentation_written_by_a_newer_version_is_refused() {
         }
     ));
 }
+
+#[test]
+fn a_stored_word_shorter_than_the_spoken_minimum_opens_unchanged() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let file = folder.join("presentation.json");
+    let stored = std::fs::read_to_string(&file).unwrap().replace(
+        r#""duration":300,"recordingId":"r1","audioStart":1200,"audioEnd":1500"#,
+        r#""duration":0,"recordingId":"r1","audioStart":1200,"audioEnd":1200"#,
+    );
+    assert!(stored.contains(r#""duration":0,"#));
+    std::fs::write(&file, &stored).unwrap();
+
+    let state = harness.open(&folder).state();
+
+    let hello = &state.words[0].word;
+    assert_eq!(
+        (hello.duration, hello.audio_start, hello.audio_end),
+        (0, Some(1200), Some(1200))
+    );
+    assert_eq!(word_starts(&state)[1], ("w2", "world.", 550));
+    assert_eq!(std::fs::read_to_string(&file).unwrap(), stored);
+}

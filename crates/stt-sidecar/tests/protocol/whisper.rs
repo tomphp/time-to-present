@@ -69,6 +69,10 @@ fn whisper_transcribes_a_spoken_fixture_into_timed_words() {
         })
         .collect();
     assert!(times.is_sorted(), "{times:?}");
+    assert!(
+        times.chunks(2).all(|word| word[1] > word[0]),
+        "every Word ends after it starts: {times:?}"
+    );
     assert!(*times.last().unwrap() <= 2900, "{times:?}");
     assert!(out.events.iter().any(|event| event["type"] == "progress"));
 }

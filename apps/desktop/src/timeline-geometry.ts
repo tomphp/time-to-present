@@ -2,6 +2,7 @@ import { SCRIPT_START, type Edit, type ScriptWord, type Waveform } from "./sessi
 
 const PX_PER_SECOND = 200;
 const EDGE_PX = 6;
+export const MIN_BLOCK_PX = 6;
 
 export interface Block {
   id: string;
@@ -20,8 +21,9 @@ export const xOf = (ms: number) => (ms * PX_PER_SECOND) / 1000;
 
 export const msAt = (x: number) => (x * 1000) / PX_PER_SECOND;
 
+/** A Block per Word at its Script Time, as wide as it lasts but never narrower than can be seen and picked. */
 export const timelineBlocks = (words: ScriptWord[]): Block[] =>
-  words.map(({ id, start, duration }) => ({ id, left: xOf(start), width: xOf(duration) }));
+  words.map(({ id, start, duration }) => ({ id, left: xOf(start), width: Math.max(xOf(duration), MIN_BLOCK_PX) }));
 
 export function secondTicks(scriptEnd: number): number[] {
   return Array.from({ length: Math.floor(scriptEnd / 1000) + 1 }, (_, second) => second * 1000);

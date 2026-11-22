@@ -76,7 +76,11 @@ Positions within the Script, as if played start to finish. It is relative: deriv
 _Avoid_: Timestamp, audio time
 
 **Script Time timeline**:
-The editor view that shows the Words and Named Events laid out along Script Time and lets you adjust their timing by dragging.
+The editor view that shows a Word Block for each Word and the Named Events laid out along Script Time, and lets you adjust their timing by dragging.
+
+**Word Block**:
+The rectangle that shows one Word on the Script Time timeline, starting at its Script Time and as wide as its duration, but never narrower than a minimum visible width. It is spoken or typed, and a spoken one shows its waveform.
+_Avoid_: segment, clip
 
 **Move**:
 Dragging a Word along the timeline to change its Gap, which shifts everything after it.

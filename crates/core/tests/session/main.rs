@@ -34,6 +34,7 @@ mod rename;
 mod retime;
 mod script;
 mod split;
+mod spoken_minimum;
 mod support;
 mod timing;
 mod transcription;

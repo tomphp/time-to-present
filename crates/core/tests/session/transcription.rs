@@ -161,16 +161,21 @@ fn an_overlapping_heard_word_is_clamped_to_the_next_start_so_script_time_follows
 }
 
 #[test]
-fn a_clamped_heard_word_never_ends_before_it_starts() {
+fn a_clamped_heard_word_lasts_at_least_the_minimum() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);
     record(&harness, &mut session, before("w2"));
 
-    harness.transcriber.hear(&[("a", 500, 600), ("b", 450, 700)]);
+    harness
+        .transcriber
+        .hear(&[("a", 500, 600), ("b", 450, 700)]);
     session.poll().unwrap();
 
     let a = &session.state().words[1].word;
-    assert_eq!((a.duration, a.audio_end), (0, Some(500)));
+    assert_eq!(
+        (a.duration, a.audio_start, a.audio_end),
+        (80, Some(420), Some(500))
+    );
 }
 
 #[test]

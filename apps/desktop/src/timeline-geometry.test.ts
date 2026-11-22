@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { scriptWord } from "./test-words";
-import { dragEdit, flagDragEdit, hitTest, msAt, secondTicks, timelineBlocks, waveformBars, xOf } from "./timeline-geometry";
+import { MIN_BLOCK_PX, dragEdit, flagDragEdit, hitTest, msAt, secondTicks, timelineBlocks, waveformBars, xOf } from "./timeline-geometry";
 
 const words = [
   scriptWord("w1", "Hello,", { start: 400, duration: 300 }),
@@ -26,6 +26,39 @@ describe("time and x", () => {
   it("marks every whole second up to the Script End", () => {
     expect(secondTicks(2500)).toEqual([0, 1000, 2000]);
     expect(secondTicks(0)).toEqual([0]);
+  });
+});
+
+describe("minimum Word Block width", () => {
+  const mixed = [
+    scriptWord("spoken", "Hi", { start: 0, duration: 300, recordingId: "r1", audioStart: 0, audioEnd: 300 }),
+    scriptWord("unloaded", "there", { start: 300, duration: 0, recordingId: "r2", audioStart: 0, audioEnd: 0 }),
+    scriptWord("brief", "you", { start: 300, duration: 10, recordingId: "r1", audioStart: 300, audioEnd: 310 }),
+    scriptWord("typed", "all", { start: 400, duration: 0 }),
+  ];
+  const widened = timelineBlocks(mixed);
+
+  it("is 6 px", () => {
+    expect(MIN_BLOCK_PX).toBe(6);
+  });
+
+  it("draws one Block per Word in Script order, never narrower than the minimum", () => {
+    expect(widened).toEqual([
+      { id: "spoken", left: 0, width: 60 },
+      { id: "unloaded", left: 60, width: 6 },
+      { id: "brief", left: 60, width: 6 },
+      { id: "typed", left: 80, width: 6 },
+    ]);
+  });
+
+  it("picks a widened Block across its whole width, with a grip a quarter of it at each edge", () => {
+    expect(hitTest(widened, 80)).toEqual({ word: "typed", grip: "start" });
+    expect(hitTest(widened, 83)).toEqual({ word: "typed", grip: "body" });
+    expect(hitTest(widened, 85.9)).toEqual({ word: "typed", grip: "end" });
+  });
+
+  it("gives an overlap to the earlier Block", () => {
+    expect(hitTest(widened, 63)).toEqual({ word: "unloaded", grip: "body" });
   });
 });
 
@@ -89,6 +122,13 @@ describe("waveformBars", () => {
     const spoken = scriptWord("w1", "Hi", { recordingId: "r1", audioStart: 20, audioEnd: 60 });
 
     expect(waveformBars(waveform, spoken, 3)).toEqual([0.9, 0.9, 0.4]);
+  });
+
+  it("draws a widened Word's own audio across its whole Block, then silence", () => {
+    const brief = scriptWord("w1", "Hi", { recordingId: "r1", audioStart: 20, audioEnd: 30, duration: 10 });
+    const [{ width }] = timelineBlocks([brief]);
+
+    expect(waveformBars(waveform, brief, width)).toEqual([0.9, 0.9, 0, 0, 0, 0]);
   });
 
   it("draws silence past the Word's audio and past the end of its Recording", () => {
