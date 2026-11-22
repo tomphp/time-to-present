@@ -31,5 +31,6 @@ runs:
         cache: npm
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
-    - shell: bash
+    - name: Install npm dependencies
+      shell: bash
       run: npm ci

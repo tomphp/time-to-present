@@ -112,6 +112,7 @@ jobs:
           - os: windows-latest
             bundles: nsis
             installers: nsis/*-setup.exe
+          # The oldest supported Ubuntu, so the AppImage and deb run on older glibc too.
           - os: ubuntu-22.04
             bundles: appimage,deb
             installers: appimage/*.AppImage deb/*.deb
@@ -130,19 +131,25 @@ jobs:
       - uses: ./.github/actions/desktop-toolchain
       - name: Stamp the Desktop App with the latest Client release
         run: |
-          client_tag=$(git tag --merged "$HEAD_SHA" --list 'client-v*' --sort=-v:refname | head -n 1)
+          client_tag=$(git for-each-ref --count=1 --sort=-v:refname --merged "$HEAD_SHA" \
+            --format='%(refname:lstrip=2)' 'refs/tags/client-v*')
           node scripts/stamp.mjs desktop "$VERSION" "${client_tag#client-v}"
       - name: Build the installers, signing ad hoc on macOS
         env:
           APPLE_SIGNING_IDENTITY: "-"
-        run: npm run tauri -w @time-to-present/desktop -- build --bundles "${{ matrix.bundles }}"
-      - name: Check the signature keeps the hardened runtime and entitlements
+          BUNDLES: ${{ matrix.bundles }}
+        run: npm run tauri -w @time-to-present/desktop -- build --bundles "$BUNDLES"
+      - name: Check the dmg's app keeps the hardened runtime and entitlements
         if: runner.os == 'macOS'
         run: |
-          app="target/release/bundle/macos/Time to Present.app"
+          shopt -s failglob
+          mount="$RUNNER_TEMP/dmg"
+          hdiutil attach -quiet -nobrowse -readonly -mountpoint "$mount" target/release/bundle/dmg/*.dmg
+          trap 'hdiutil detach -quiet "$mount"' EXIT
+          app="$mount/Time to Present.app"
           codesign --verify --strict --verbose=2 "$app"
           codesign -dv "$app" 2>&1 | grep -E 'flags=0x[0-9a-f]+\([^)]*adhoc[^)]*runtime'
-          codesign -d --entitlements - "$app" | grep -q com.apple.security.device.audio-input
+          codesign -d --entitlements - "$app" | grep com.apple.security.device.audio-input
       - name: Collect the installers with no spaces in their names
         env:
           INSTALLERS: ${{ matrix.installers }}
@@ -163,7 +170,8 @@ jobs:
 
   desktop-release:
     needs: [plan, desktop-build]
-    if: ${{ !cancelled() && needs.desktop-build.result == 'success' }}
+    if: >-
+      !cancelled() && needs.desktop-build.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
