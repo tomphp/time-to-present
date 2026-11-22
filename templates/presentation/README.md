@@ -24,3 +24,9 @@ npm install --save /path/to/time-to-present/packages/client
 
 That links the package from source, and `package.json` then points at your checkout. Once it is
 published, set the dependency back to a version range such as `^0.1.0`.
+
+`npx ttp` runs the package's compiled `dist/cli.js`, so build it in the checkout first:
+
+```sh
+cd /path/to/time-to-present/packages/client && npm run build
+```

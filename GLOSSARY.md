@@ -18,6 +18,10 @@ _Avoid_: Welcome window
 The ordered Words of a Presentation, with the Gaps between them and the Named Events anchored to them. It is the single timed text that every Performance plays.
 _Avoid_: Transcript, timeline
 
+**Script Text**:
+The Words of the Script as plain prose, with no timing: a new line where the Script has a line break and a blank line where it has a paragraph break.
+_Avoid_: Transcript
+
 **Word**:
 One spoken or typed word of the Script, including its punctuation, with a stable identity, a Gap before it and a duration. A spoken Word also links back to the audio it came from.
 

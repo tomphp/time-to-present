@@ -55,3 +55,31 @@ if grep -E 'node_modules/@time-to-present/client/.*(\.tsx?)$' files.txt | grep -
   exit 1
 fi
 grep -q 'node_modules/@time-to-present/client/dist/index.d.ts' files.txt
+
+fixtures="$repo/crates/core/tests/fixtures"
+ttp="$consumer/node_modules/.bin/ttp"
+expected_text=$'Good morning, everyone.\n\nToday we rehearse\nwith a teleprompter.'
+expected_events='[
+  {
+    "id": "e1",
+    "name": "slide",
+    "data": {
+      "index": 1
+    },
+    "scriptTime": 0
+  },
+  {
+    "id": "e2",
+    "name": "slide",
+    "data": {
+      "index": 2
+    },
+    "scriptTime": 2500
+  }
+]'
+[ "$("$ttp" text "$fixtures/rehearsal")" = "$expected_text" ] || { echo "ttp text printed the wrong Script Text" >&2; exit 1; }
+[ "$("$ttp" events "$fixtures/rehearsal" --json)" = "$expected_events" ] || { echo "ttp events --json printed the wrong events" >&2; exit 1; }
+if "$ttp" text "$fixtures/from-the-future" 2> /dev/null; then
+  echo "ttp read a presentation.json newer than it knows" >&2
+  exit 1
+fi

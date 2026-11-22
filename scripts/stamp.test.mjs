@@ -30,6 +30,7 @@ test("stamp client writes the version and points exports at dist", () => {
   const after = readJson(root, clientManifest);
   assert.equal(after.version, "1.4.2");
   assert.deepEqual(after.exports, { types: "./dist/index.d.ts", default: "./dist/index.js" });
+  assert.deepEqual(after.bin, { ttp: "./dist/cli.js" });
   assert.deepEqual({ ...after, version: before.version, exports: before.exports }, before);
 });
 

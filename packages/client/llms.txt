@@ -3,6 +3,7 @@
 > Library a Presentation App uses to follow a Time to Present Performance: connect to the event stream, fold Named Events into seek-safe state, and run offline with a Simulator.
 
 - [README](README.md): quickstart, seek safety, dev setup (Vite proxy of /_ttp to localhost:4747), React, Svelte and Vue recipes
+- [Command line](README.md#reading-the-script-from-the-command-line): `npx ttp text` and `npx ttp events` print the Script Text and Named Events of a presentation.json, instead of reading it
 - [Full reference](llms-full.txt): the whole API and protocol in one file
 - [Protocol](docs/protocol.md): event stream and Script over HTTP, for non-JS clients
 - [Folder format](docs/folder-format.md): the Presentation folder and optional app-src/
