@@ -64,10 +64,14 @@ fn pick_folder(app: &AppHandle) {
         );
 }
 
+/// Opening loads the Presentation, so it runs off the main thread, as the Start Window's does.
 fn open(app: &AppHandle, folder: PathBuf) {
-    if let Err(error) = open_presentation(app, &app.state(), &folder) {
-        report_failure(app, &error);
-    }
+    let app = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        if let Err(error) = open_presentation(&app, &app.state(), &folder) {
+            report_failure(&app, &error);
+        }
+    });
 }
 
 fn report_failure(app: &AppHandle, error: &str) {

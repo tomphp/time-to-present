@@ -237,23 +237,49 @@ fn play_pause_offers_to_pause_while_the_clock_plays() {
 }
 
 #[test]
-fn re_record_selection_needs_selected_words_and_an_editable_script() {
+fn re_record_selection_needs_selected_words_and_no_recording_under_way() {
     let selected = EditorReport {
         selection: true,
         ..EDITOR
     };
-    let locked = EditorReport {
+    let recording = EditorReport {
+        recording: true,
         locked: true,
         ..selected
     };
 
     assert!(!in_editor(MenuCommand::ReRecordSelection, EDITOR).enabled);
     assert!(in_editor(MenuCommand::ReRecordSelection, selected).enabled);
-    assert!(!in_editor(MenuCommand::ReRecordSelection, locked).enabled);
+    assert!(!in_editor(MenuCommand::ReRecordSelection, recording).enabled);
 }
 
 #[test]
-fn the_edit_lock_disables_script_commands_but_not_stopping() {
+fn recording_works_while_the_clock_plays() {
+    let playing = EditorReport {
+        selection: true,
+        clock: Some(ClockState::Playing),
+        locked: true,
+        ..EDITOR
+    };
+
+    assert!(in_editor(MenuCommand::Record, playing).enabled);
+    assert!(in_editor(MenuCommand::ReRecordSelection, playing).enabled);
+}
+
+#[test]
+fn retime_needs_selected_words_and_add_named_event_does_not() {
+    let selected = EditorReport {
+        selection: true,
+        ..EDITOR
+    };
+
+    assert!(!in_editor(MenuCommand::Retime, EDITOR).enabled);
+    assert!(in_editor(MenuCommand::Retime, selected).enabled);
+    assert!(in_editor(MenuCommand::AddNamedEvent, EDITOR).enabled);
+}
+
+#[test]
+fn the_edit_lock_disables_script_commands() {
     let playing = EditorReport {
         selection: true,
         clock: Some(ClockState::Playing),
@@ -261,7 +287,6 @@ fn the_edit_lock_disables_script_commands_but_not_stopping() {
         ..EDITOR
     };
     for command in [
-        MenuCommand::Record,
         MenuCommand::AddNamedEvent,
         MenuCommand::Retime,
         MenuCommand::PlayFromCursor,
@@ -404,7 +429,7 @@ fn the_teleprompter_display_keys_are_in_their_titles_and_not_accelerators() {
     assert_eq!(
         titles,
         [
-            "Blank Screen (B)",
+            "Blank Screen (B / .)",
             "Show Named Event Markers (E)",
             "Mirror (M)",
             "Flip (⇧M)",

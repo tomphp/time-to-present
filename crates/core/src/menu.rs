@@ -114,13 +114,15 @@ fn enabled(command: MenuCommand, context: &MenuContext) -> bool {
     }
 }
 
-/// The Edit Lock refuses Script commands while the clock plays or a Recording is captured.
+/// The Edit lock refuses Script edits while the clock plays or a Recording is under way, but a
+/// Recording can still start.
 fn editor_enables(command: MenuCommand, editor: EditorReport) -> bool {
     use MenuCommand::*;
     let editable = !editor.locked;
     match command {
-        Record => editor.recording || editable,
-        ReRecordSelection | Retime => editor.selection && editable,
+        Record => true,
+        ReRecordSelection => editor.selection && !editor.recording,
+        Retime => editor.selection && editable,
         AddNamedEvent | PlayFromCursor => editable,
         Listen => editor.listenable,
         PlayPause => matches!(
@@ -198,7 +200,7 @@ fn label(command: MenuCommand, context: &MenuContext) -> &'static str {
         ToggleInspector => "Hide Inspector",
         ToggleTimeline if reported(|editor| !editor.timeline_shown) => "Show Timeline",
         ToggleTimeline => "Hide Timeline",
-        Blank => "Blank Screen (B)",
+        Blank => "Blank Screen (B / .)",
         Markers => "Show Named Event Markers (E)",
         Mirror => "Mirror (M)",
         Flip => "Flip (⇧M)",

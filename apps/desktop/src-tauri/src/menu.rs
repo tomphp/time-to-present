@@ -61,8 +61,25 @@ pub fn window_destroyed(app: &AppHandle, label: &str) {
     focus_changed(app, label, false);
 }
 
-/// Shows what each item offers for the window with focus now.
+/// Shows what each item offers for the window with focus now. Updates run in turn on the main
+/// thread, so a late one never shows an older state.
 pub fn refresh(app: &AppHandle) {
+    on_main_thread(app, show_offered);
+}
+
+/// Lists the Recent Presentations under File > Open Recent.
+pub fn recent_changed(app: &AppHandle) {
+    on_main_thread(app, list_recent);
+}
+
+fn on_main_thread(app: &AppHandle, update: fn(&AppHandle)) {
+    let handle = app.clone();
+    if let Err(error) = app.run_on_main_thread(move || update(&handle)) {
+        eprintln!("updating the menu failed: {error}");
+    }
+}
+
+fn show_offered(app: &AppHandle) {
     let context = context(app);
     for (command, item) in &app.state::<Items>().commands {
         if let Err(error) = item.show(menu_item(*command, &context)) {
@@ -71,8 +88,7 @@ pub fn refresh(app: &AppHandle) {
     }
 }
 
-/// Lists the Recent Presentations under File > Open Recent.
-pub fn recent_changed(app: &AppHandle) {
+fn list_recent(app: &AppHandle) {
     let folders = app
         .state::<AppState>()
         .settings

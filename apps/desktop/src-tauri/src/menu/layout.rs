@@ -2,11 +2,13 @@ use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{App, Wry};
 use ttp_core::menu::{MenuCommand, MenuItemState};
 
-/// A line of a menu the shell builds: one of the model's items, a separator or a submenu.
+/// A line of a menu the shell builds: one of the model's items, a separator, a submenu or the
+/// Recent list.
 enum Entry {
     Command(MenuCommand),
     Separator,
     Submenu(&'static str, &'static [Entry]),
+    OpenRecent,
 }
 
 use Entry::{Command, Separator};
@@ -15,6 +17,7 @@ use MenuCommand::*;
 const FILE: &[Entry] = &[
     Command(NewPresentation),
     Command(OpenFolder),
+    Entry::OpenRecent,
     Separator,
     Command(RemoveUnusedRecordings),
 ];
@@ -102,15 +105,18 @@ pub struct Items {
 
 /// The menu bar in the Spec's order, with the items `refresh` updates and the empty Open Recent.
 pub fn menu_bar(app: &App) -> tauri::Result<(Menu<Wry>, Items)> {
-    let mut commands = Vec::new();
-    let mut submenu = |title: &str, entries: &[Entry]| build(app, title, entries, &mut commands);
-    let file = submenu("File", FILE)?;
-    let script = submenu("Script", SCRIPT)?;
-    let perform = submenu("Perform", PERFORM)?;
-    let view = submenu("View", VIEW)?;
-    let settings = item(app, Settings, &mut commands)?;
-    let open_recent = Submenu::new(app, "Open Recent", false)?;
-    file.insert(&open_recent, 2)?;
+    let mut builder = Builder {
+        app,
+        items: Items {
+            commands: Vec::new(),
+            open_recent: Submenu::new(app, "Open Recent", false)?,
+        },
+    };
+    let file = builder.submenu("File", FILE)?;
+    let script = builder.submenu("Script", SCRIPT)?;
+    let perform = builder.submenu("Perform", PERFORM)?;
+    let view = builder.submenu("View", VIEW)?;
+    let settings = builder.item(Settings)?;
     let menu = Menu::with_items(
         app,
         &[
@@ -123,53 +129,46 @@ pub fn menu_bar(app: &App) -> tauri::Result<(Menu<Wry>, Items)> {
             &window_menu(app)?,
         ],
     )?;
-    let items = Items {
-        commands,
-        open_recent,
-    };
-    Ok((menu, items))
+    Ok((menu, builder.items))
 }
 
-fn build(
-    app: &App,
-    title: &str,
-    entries: &[Entry],
-    commands: &mut Vec<(MenuCommand, Item)>,
-) -> tauri::Result<Submenu<Wry>> {
-    let submenu = Submenu::new(app, title, true)?;
-    for entry in entries {
-        match entry {
-            Command(command) => item(app, *command, commands)?.append_to(&submenu)?,
-            Separator => submenu.append(&PredefinedMenuItem::separator(app)?)?,
-            Entry::Submenu(title, entries) => {
-                submenu.append(&build(app, title, entries, commands)?)?
+struct Builder<'a> {
+    app: &'a App,
+    items: Items,
+}
+
+impl Builder<'_> {
+    fn submenu(&mut self, title: &str, entries: &[Entry]) -> tauri::Result<Submenu<Wry>> {
+        let submenu = Submenu::new(self.app, title, true)?;
+        for entry in entries {
+            match entry {
+                Command(command) => self.item(*command)?.append_to(&submenu)?,
+                Separator => submenu.append(&PredefinedMenuItem::separator(self.app)?)?,
+                Entry::Submenu(title, entries) => submenu.append(&self.submenu(title, entries)?)?,
+                Entry::OpenRecent => submenu.append(&self.items.open_recent)?,
             }
         }
+        Ok(submenu)
     }
-    Ok(submenu)
-}
 
-/// Builds the item disabled, keeping it for `refresh` to show what it offers.
-fn item(
-    app: &App,
-    command: MenuCommand,
-    commands: &mut Vec<(MenuCommand, Item)>,
-) -> tauri::Result<Item> {
-    let (id, accelerator) = (command.id(), command.accelerator());
-    let item = if command.is_checkable() {
-        Item::Check(CheckMenuItem::with_id(
-            app,
-            id,
-            id,
-            false,
-            false,
-            accelerator,
-        )?)
-    } else {
-        Item::Plain(MenuItem::with_id(app, id, id, false, accelerator)?)
-    };
-    commands.push((command, item.clone()));
-    Ok(item)
+    /// Builds the item disabled, keeping it for `refresh` to show what it offers.
+    fn item(&mut self, command: MenuCommand) -> tauri::Result<Item> {
+        let (app, id, accelerator) = (self.app, command.id(), command.accelerator());
+        let item = if command.is_checkable() {
+            Item::Check(CheckMenuItem::with_id(
+                app,
+                id,
+                id,
+                false,
+                false,
+                accelerator,
+            )?)
+        } else {
+            Item::Plain(MenuItem::with_id(app, id, id, false, accelerator)?)
+        };
+        self.items.commands.push((command, item.clone()));
+        Ok(item)
+    }
 }
 
 fn app_menu(app: &App, settings: &Item) -> tauri::Result<Submenu<Wry>> {
