@@ -11,7 +11,7 @@ import { find } from "./dom";
 import { AUTOMATIC, chosenSettings, displayChoices } from "./perform-menu-view";
 import { CUSTOM, choiceFor, chosenSize, customSize, isValidPixels, shownNote, sizeChoices } from "./presentation-size-view";
 import { act } from "./report-error";
-import type { Display, PresentationSize, SizePreset } from "./session";
+import type { Display, PresentationSize, ShownSize, SizePreset } from "./session";
 
 const menu = find<HTMLDetailsElement>("#perform-menu");
 const layout = find<HTMLSelectElement>("#perform-layout");
@@ -49,22 +49,23 @@ function showCustomFields() {
   customFields.hidden = presentationSize.value !== CUSTOM;
 }
 
-async function showShownSize() {
-  const note = shownNote(await shownSize());
+function showShownSize(shown: ShownSize | null) {
+  const note = shownNote(shown);
   shownSizeNote.hidden = note === null;
   shownSizeNote.textContent = note;
 }
 
 async function show() {
-  const [settings, connected, presets, session] = await Promise.all([
+  const [settings, connected, presets, session, shown] = await Promise.all([
     performanceSettings(),
     displays(),
     sizePresets(),
     sessionState(),
+    shownSize(),
   ]);
   layout.value = settings.layout;
   if (session) fillSizes(presets, session.presentationSize);
-  await showShownSize();
+  showShownSize(shown);
   fill(teleprompterDisplay, connected, settings.teleprompterDisplay);
   fill(presentationDisplay, connected, settings.presentationDisplay);
 }
@@ -93,7 +94,7 @@ async function saveSize() {
     if (!size) return;
     await setPresentationSize(size);
   }
-  await showShownSize();
+  showShownSize(await shownSize());
 }
 
 /** The Perform menu: this machine's Performance Layout and displays, and the Presentation's own size. */

@@ -128,9 +128,11 @@ pub struct ShownSize {
 /// The size shown on the open Presentation Window's display, else on the display it would open on.
 #[tauri::command]
 pub fn shown_size(app: AppHandle, state: State<'_, App>) -> CommandResult<Option<ShownSize>> {
-    let size = with_session(&state, |session| {
+    let Ok(size) = with_session(&state, |session| {
         Ok::<_, String>(session.presentation_size())
-    })?;
+    }) else {
+        return Ok(None);
+    };
     let monitor = match app.get_webview_window(PRESENTATION_WINDOW) {
         Some(presentation) => presentation.current_monitor().map_err(message)?,
         None => {
