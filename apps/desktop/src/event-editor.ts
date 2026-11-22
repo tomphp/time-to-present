@@ -67,12 +67,13 @@ export function mountEventEditor(form: HTMLFormElement, commands: EventEditorCom
   });
 
   form.addEventListener("keydown", (event) => {
+    const command = event.metaKey || event.ctrlKey;
     if (event.key === "Escape") close();
-    if (event.key === "Backspace" && (event.metaKey || event.ctrlKey) && openEventId()) {
+    if (event.key === "Backspace" && command && openEventId()) {
       event.preventDefault();
       void deleteOpen();
     }
-    if (event.key === "Enter" && event.target === data && (event.metaKey || event.ctrlKey)) form.requestSubmit();
+    if (event.key === "Enter" && event.target === data && command) form.requestSubmit();
   });
 
   form.querySelector("[data-cancel]")!.addEventListener("click", close);

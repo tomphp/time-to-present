@@ -1,7 +1,8 @@
 use serde_json::json;
+use ttp_core::capture::InputChoice;
 use ttp_core::clock::StreamEvent;
 use ttp_core::script::{Edit, EditError};
-use ttp_core::session::Session;
+use ttp_core::session::{InsertionPoint, Session};
 
 use crate::support::{Harness, Stream};
 
@@ -75,6 +76,21 @@ fn deleting_an_event_is_refused_while_the_clock_is_playing() {
     assert_eq!(
         session.edit(delete_event("e2")),
         Err(EditError::ClockPlaying)
+    );
+    assert_eq!(event_ids(&session), ["e1", "e2"]);
+}
+
+#[test]
+fn deleting_an_event_is_refused_while_recording() {
+    let (_harness, mut session) = opened();
+    session.open_recording_bar(InputChoice::default());
+    session
+        .start_recording(InsertionPoint { before: None })
+        .unwrap();
+
+    assert_eq!(
+        session.edit(delete_event("e2")),
+        Err(EditError::ReadOnlyWhileRecording)
     );
     assert_eq!(event_ids(&session), ["e1", "e2"]);
 }
