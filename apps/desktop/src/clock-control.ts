@@ -26,10 +26,18 @@ export function mountClockControl(
   const elapsed = find<HTMLSpanElement>("#clock-elapsed");
   let panel = DISCONNECTED;
   let action: ClockAction | null = null;
+  let shown: ClockAction | null = null;
+
+  /** Redraws the icon only when the action changes: WebKit drops a click whose pressed icon is replaced. */
+  function showAction(offered: ClockAction) {
+    if (offered === shown) return;
+    shown = offered;
+    showAs(button, ACTION_BUTTONS[offered]);
+  }
 
   function render() {
     action = clockAction(panel.state);
-    showAs(button, ACTION_BUTTONS[action ?? "play"]);
+    showAction(action ?? "play");
     button.disabled = action === null;
     state.textContent = panel.state ?? "";
     elapsed.textContent = formatElapsed(panel.scriptTime);

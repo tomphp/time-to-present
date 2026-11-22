@@ -100,6 +100,28 @@ describe("the Play/Pause button", () => {
     expect(tooltip()).toBe("Pause");
   });
 
+  it("keeps its icon in place while the clock plays on, so a click across a tick lands", () => {
+    mount();
+    clockIs("playing");
+    const icon = button().firstChild;
+
+    send({ type: "tick", scriptTime: 100 });
+    send({ type: "word", id: "w1", text: "Hello", start: 100, duration: 300 } as StreamEvent);
+
+    expect(button().firstChild).toBe(icon);
+  });
+
+  it("changes its icon when what it offers changes", () => {
+    mount();
+    clockIs("playing");
+    const pauseIcon = button().firstChild;
+
+    clockIs("paused");
+
+    expect(button().firstChild).not.toBe(pauseIcon);
+    expect(tooltip()).toBe("Play from where the clock stands");
+  });
+
   it("shows Restart when the Performance has ended", () => {
     mount();
     clockIs("ended");
