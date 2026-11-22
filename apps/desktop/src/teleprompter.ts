@@ -1,4 +1,4 @@
-import { approachCue, type ApproachCueSettings, type Cue } from "./approach-cue";
+import { approachCue, type ApproachCueSettings } from "./approach-cue";
 import {
   leaveFullscreen,
   onAppFocus,
@@ -25,7 +25,6 @@ import { fullscreenHint } from "./fullscreen-hint";
 import { fullscreenKey } from "./fullscreen-key";
 import {
   DEFAULT_OPTIONS,
-  markerPlacements,
   mirrorFor,
   mirrorTransform,
   displayAction,
@@ -51,37 +50,28 @@ import {
   speedLabel,
 } from "./performance-bar";
 import { serverStatusView } from "./server-status-view";
-import { sameLayout, scriptLayout } from "./script-view";
 import type { ScriptWord, TimedEvent } from "./session";
 import { mountDisplay } from "./teleprompter-display";
+import { mountPage } from "./teleprompter-page";
 import { navigation } from "./teleprompter-seek";
 import {
   currentWord,
   followClock,
-  heldFreeScroll,
   isOver,
   keyCommand,
   scriptTimeAt,
-  scrollFreely,
-  scrollTo,
   UNFOLLOWED,
-  wordLook,
-  type FreeScroll,
-  type Scroll,
 } from "./teleprompter-view";
-
-const SCROLL_EASE = "transform 200ms ease";
 
 const column = find<HTMLElement>("#column");
 const paused = find<HTMLParagraphElement>("#paused");
 const stage = find<HTMLDivElement>("#stage");
 const pane = find<HTMLElement>("#pane");
 const prompter = find<HTMLElement>("#prompter");
+const renderer = mountPage(column, stage);
 const screenKey = () => `${screen.width}x${screen.height}@${devicePixelRatio}`;
-const FLASH = "fired";
 
 let options: DisplayOptions = { ...DEFAULT_OPTIONS };
-let layoutKey = "";
 
 const bar = {
   warning: find<HTMLParagraphElement>("#bar-warning"),
@@ -99,10 +89,6 @@ const bar = {
   notice: find<HTMLParagraphElement>("#bar-notice"),
 };
 
-const end = document.createElement("p");
-end.id = "end";
-end.textContent = "END";
-
 let words: ScriptWord[] = [];
 let scriptEnd = 0;
 let connectedApps = 0;
@@ -112,81 +98,8 @@ let run = NOT_STARTED;
 let ticks: HTMLElement[] = [];
 let events: TimedEvent[] = [];
 let armedHome: number | null = null;
-let spans: HTMLSpanElement[] = [];
 let followed = UNFOLLOWED;
-let current: number | null = null;
-let scroll: Scroll | null = null;
-let free: FreeScroll | null = null;
 let cueSettings: ApproachCueSettings | null = null;
-let cue: Cue | null = null;
-
-function marker({ id, name }: { id: string; name: string }) {
-  const element = document.createElement("small");
-  element.className = "marker";
-  element.dataset.event = id;
-  element.textContent = name;
-  return element;
-}
-
-function renderScript(next: ScriptWord[], nextEvents: TimedEvent[]) {
-  const placements = markerPlacements(next, nextEvents);
-  const key = JSON.stringify(placements);
-  const unchanged = sameLayout(words, next) && key === layoutKey;
-  words = next;
-  layoutKey = key;
-  if (unchanged && spans.length > 0) return;
-  let index = 0;
-  const markersBefore = (at: number) => placements.filter(({ before }) => before === at).map(marker);
-  const paragraphs = scriptLayout(next).map((paragraph) => {
-    const element = document.createElement("p");
-    paragraph.forEach((line, row) => {
-      if (row > 0) element.append(document.createElement("br"));
-      line.forEach((word, position) => {
-        if (position > 0) element.append(" ");
-        element.append(...markersBefore(index));
-        const span = document.createElement("span");
-        span.textContent = word.text;
-        element.append(span);
-        index++;
-      });
-    });
-    return element;
-  });
-  paragraphs.at(-1)?.append(...markersBefore(index));
-  column.replaceChildren(...paragraphs, end);
-  spans = [...column.querySelectorAll("span")];
-  current = null;
-  cue = null;
-  scroll = null;
-  highlight(null);
-}
-
-function highlight(next: number | null) {
-  current = next;
-  spans.forEach((span, index) => (span.className = wordLook(index, next)));
-}
-
-function showCue(next: Cue | null) {
-  const previous = cue && spans[cue.word];
-  previous?.classList.remove("approaching", "long-gap");
-  cue = next;
-  const span = next && spans[next.word];
-  if (!next || !span) return;
-  span.classList.add("approaching");
-  span.classList.toggle("long-gap", next.countdown !== null);
-  span.style.setProperty("--fill", String(next.fill));
-  span.dataset.countdown = String(next.countdown ?? "");
-}
-
-/** Holds the current Word's line level with the Reading Line's chevron, less any free scrolling. */
-function follow(target: HTMLElement) {
-  const next = scrollTo(scroll, { top: target.offsetTop, free: free?.offset ?? 0, jumps: followed.jumps });
-  if (next === scroll) return;
-  scroll = next;
-  const offset = options.readingLine * stage.clientHeight - (target.offsetTop + target.offsetHeight / 2) - next.free;
-  column.style.transition = next.animate ? SCROLL_EASE : "none";
-  column.style.transform = `translateY(${offset}px)`;
-}
 
 function renderTicks() {
   ticks.forEach((tick) => tick.remove());
@@ -223,13 +136,13 @@ function frame() {
   const scriptTime = scriptTimeAt(followed, at);
   renderBar(scriptTime);
   const over = isOver(followed, at);
-  const next = over ? words.length : currentWord(words, followed.state, scriptTime);
-  if (next !== current) highlight(next);
-  showCue(cueSettings && approachCue(words, followed, scriptTime, cueSettings));
-  end.classList.toggle("over", over);
-  free = heldFreeScroll(free, followed);
-  const target = over ? end : spans[current ?? 0];
-  if (target) follow(target);
+  renderer.show({
+    current: over ? words.length : currentWord(words, followed.state, scriptTime),
+    over,
+    cue: cueSettings && approachCue(words, followed, scriptTime, cueSettings),
+    clock: followed,
+    readingLine: options.readingLine,
+  });
   requestAnimationFrame(frame);
 }
 
@@ -242,13 +155,6 @@ function navigate(event: KeyboardEvent) {
   else if (command && command !== "armHome" && "seek" in command) void seek(command.seek).catch(console.error);
   else if (command && command !== "armHome") void setSpeed(command.speed).catch(console.error);
   return command !== null;
-}
-
-/** Scrolling never moves the clock: it only looks ahead or back while the clock stands still. */
-function scrollFreelyBy(delta: number) {
-  const target = spans[current ?? 0];
-  if (!target) return;
-  free = scrollFreely(free, followed, delta, { min: -target.offsetTop, max: column.offsetHeight - target.offsetTop });
 }
 
 function onKey(event: KeyboardEvent) {
@@ -284,20 +190,11 @@ function applyOptions() {
   const [mirrored, upright] = isCombined() ? [prompter, pane] : [pane, prompter];
   mirrored.style.transform = mirrorTransform(mirror);
   upright.style.transform = "";
-  scroll = null;
+  renderer.replace();
 }
 
-function flash(id: string) {
-  const element = column.querySelector<HTMLElement>(`[data-event="${id}"]`);
-  if (!element) return;
-  element.classList.remove(FLASH);
-  element.getBoundingClientRect();
-  element.classList.add(FLASH);
-}
+document.addEventListener("wheel", (event) => renderer.scrollFreelyBy(event.deltaY, followed), { passive: true });
 
-document.addEventListener("wheel", (event) => scrollFreelyBy(event.deltaY), { passive: true });
-
-new ResizeObserver(() => (scroll = null)).observe(column);
 const display = mountDisplay({
   storage: localStorage,
   screenKey,
@@ -337,13 +234,14 @@ onSessionState((state) => {
   events = state.namedEvents;
   scriptEnd = state.scriptEnd;
   renderTicks();
-  renderScript(state.words, state.namedEvents);
+  words = state.words;
+  renderer.render(state.words, state.namedEvents);
 });
 void onStreamEvent((event) => {
   const at = performance.now();
   followed = followClock(followed, event, at);
   run = foldRun(run, event, at);
-  if (event.type === "namedEvent") flash(event.id);
+  if (event.type === "namedEvent") renderer.flash(event.id);
   if (followed.state !== "ready") noAppWarned = false;
   paused.hidden = followed.state !== "paused";
 });
