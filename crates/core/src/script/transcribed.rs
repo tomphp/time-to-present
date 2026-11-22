@@ -6,7 +6,8 @@ const LONGEST_LEAD_IN: Ms = 2_000;
 
 impl Script {
     /// The Words a Transcription becomes going in before the Word at `index`, or at the end.
-    /// Inner Gaps come from the audio, an overlapping Word ending where the next starts; the Seam Gap is the next Word's, 500 ms when appending,
+    /// Inner Gaps come from the audio, an overlapping Word ending where the next starts.
+    /// The Seam Gap is the next Word's, 500 ms when appending,
     /// or the measured Lead-in (capped at 2 s) into an empty Script.
     pub fn transcribed(
         &self,
