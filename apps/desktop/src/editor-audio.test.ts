@@ -261,6 +261,16 @@ describe("gain ramps", () => {
     expect(rampsOf(last)[1]).toEqual([[0, expect.closeTo(4.1)]]);
   });
 
+  it("ramps in a middle piece that arrives late and so starts part way in", async () => {
+    const { clock, previewing, played, advance, stream } = harness(longRun);
+    clock("playing", 0);
+    previewing(true);
+    advance(1_500);
+    await settle();
+
+    expect(rampsOf(played[1])[0][0]).toEqual([0, expect.closeTo(1.5)]);
+  });
+
   it("ramps in where a Run is joined part way after a seek", async () => {
     const { clock, previewing, played } = harness(longRun);
     clock("playing", 1_500);

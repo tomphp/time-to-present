@@ -122,7 +122,7 @@ export function audioSchedule(words: ScriptWord[], scriptEnd: number, clock: Clo
       const from = Math.max(edge, joinAt);
       const until = edges[index + 1];
       if (from >= until) return [];
-      const rampIn = from === run.from || from === joinAt;
+      const rampIn = from === run.from || joinAt > edge;
       const rampOut = until === run.until;
       return [{ key: `${run.start}:${edge}`, recording: run.recording, at: run.start + (from - run.from) * speed, from, until, rampIn, rampOut }];
     });

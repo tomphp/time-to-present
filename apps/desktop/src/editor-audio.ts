@@ -1,4 +1,4 @@
-import { audioSchedule, pieceTiming, RAMP_SECONDS, type Anchor, type Clip, type ClockPosition, type Piece } from "./audio-schedule";
+import { audioSchedule, pieceTiming, RAMP_SECONDS, type Anchor, type Clip, type ClockPosition, type Piece, type PieceTiming } from "./audio-schedule";
 import { clockPosition, DISCONNECTED, type ClockPanel } from "./clock-view";
 import type { ScriptWord, StreamEvent } from "./session";
 
@@ -18,6 +18,19 @@ const LOOKAHEAD_MS = 2_000;
 
 /** How close to where the sound stopped the clock must go on from for the sound to carry on, not start afresh. */
 const CARRIES_ON_WITHIN_MS = 50;
+
+/** Ramps the gain in and out at the piece's cuts; a piece that arrived late starts part way in, which is a cut too. */
+function rampEdges(gain: AudioParam, piece: Piece, { when, offset, duration }: PieceTiming) {
+  const end = when + duration;
+  if (piece.rampIn || offset > 0) {
+    gain.setValueAtTime(0, when);
+    gain.linearRampToValueAtTime(1, when + RAMP_SECONDS);
+  }
+  if (piece.rampOut) {
+    gain.setValueAtTime(1, end - RAMP_SECONDS);
+    gain.linearRampToValueAtTime(0, end);
+  }
+}
 
 /** One stretch of a Preview sounding, from a change of course on the clock to the next. */
 interface Course {
@@ -90,15 +103,7 @@ export function editorAudio(
     if (!timing) return;
     scheduling.sources.push(node);
     node.start(timing.when, timing.offset, timing.duration);
-    const end = timing.when + timing.duration;
-    if (piece.rampIn) {
-      gain.setValueAtTime(0, timing.when);
-      gain.linearRampToValueAtTime(1, timing.when + RAMP_SECONDS);
-    }
-    if (piece.rampOut) {
-      gain.setValueAtTime(1, end - RAMP_SECONDS);
-      gain.linearRampToValueAtTime(0, end);
-    }
+    rampEdges(gain, piece, timing);
   }
 
   return {
