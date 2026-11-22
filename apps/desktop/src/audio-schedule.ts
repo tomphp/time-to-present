@@ -30,7 +30,7 @@ const ALIGNED_WITHIN_MS = 1;
 const PIECE_MS = 2_000;
 
 type SpokenWord = ScriptWord & Clip;
-type RunOfWords = AudioRun & { wordStarts: number[] };
+type RunWithWordStarts = AudioRun & { wordStarts: number[] };
 
 function spokenWords(words: ScriptWord[]): (SpokenWord | null)[] {
   return words.map((word) => {
@@ -45,7 +45,7 @@ function followsOn(first: SpokenWord, word: SpokenWord, speed: number) {
   return word.recording === first.recording && speed === 1 && Math.abs(drift) <= ALIGNED_WITHIN_MS;
 }
 
-function groupIntoRuns(words: ScriptWord[], speed: number): SpokenWord[][] {
+function wordsByRun(words: ScriptWord[], speed: number): SpokenWord[][] {
   const runs: SpokenWord[][] = [];
   let current: SpokenWord[] | null = null;
   for (const word of spokenWords(words)) {
@@ -56,18 +56,21 @@ function groupIntoRuns(words: ScriptWord[], speed: number): SpokenWord[][] {
   return runs;
 }
 
-function runsOfWords(words: ScriptWord[], scriptEnd: number, speed: number): RunOfWords[] {
-  const runs = groupIntoRuns(words, speed);
+function runCut(run: SpokenWord[], next: SpokenWord | undefined, scriptEnd: number, speed: number) {
+  const first = run[0];
+  const reachedAt = (scriptTime: number) => first.from + (scriptTime - first.start) / speed;
+  const nextWouldSoundAgain = next && next.recording === first.recording && next.from > first.from;
+  return Math.floor(
+    Math.min(run[run.length - 1].until, nextWouldSoundAgain ? next.from : Infinity, reachedAt(next?.start ?? scriptEnd), reachedAt(scriptEnd)),
+  );
+}
+
+function cutRuns(words: ScriptWord[], scriptEnd: number, speed: number): RunWithWordStarts[] {
+  const runs = wordsByRun(words, speed);
   return runs.flatMap((run, index) => {
-    const first = run[0];
-    const next = runs[index + 1]?.[0];
-    const reachedAt = (scriptTime: number) => first.from + (scriptTime - first.start) / speed;
-    const nextSoundsThis = next && next.recording === first.recording && next.from > first.from;
-    const until = Math.floor(
-      Math.min(run[run.length - 1].until, nextSoundsThis ? next.from : Infinity, reachedAt(next?.start ?? scriptEnd), reachedAt(scriptEnd)),
-    );
-    if (until <= first.from) return [];
-    return [{ recording: first.recording, start: first.start, from: first.from, until, wordStarts: run.map((word) => word.from) }];
+    const [{ recording, start, from }] = run;
+    const until = runCut(run, runs[index + 1]?.[0], scriptEnd, speed);
+    return until > from ? [{ recording, start, from, until, wordStarts: run.map((word) => word.from) }] : [];
   });
 }
 
@@ -77,27 +80,27 @@ function runsOfWords(words: ScriptWord[], scriptEnd: number, speed: number): Run
  * when that would sound it again, the next Run's start and Script End, reached at the clock's speed.
  */
 export function audioRuns(words: ScriptWord[], scriptEnd: number, speed = 1): AudioRun[] {
-  return runsOfWords(words, scriptEnd, speed).map(({ wordStarts: _, ...run }) => run);
+  return cutRuns(words, scriptEnd, speed).map(({ wordStarts: _, ...run }) => run);
 }
 
 /** Where a Run is cut into pieces of about PIECE_MS, each at a Word's audio start, or a long Word on its own. */
-function pieceEdges({ from, until, wordStarts }: RunOfWords): number[] {
+function pieceEdges({ from, until, wordStarts }: RunWithWordStarts): number[] {
   const edges = [from];
-  let reachable = from;
+  const lastEdge = () => edges[edges.length - 1];
+  let previousCut = from;
   for (const cut of [...wordStarts.filter((start) => start > from && start < until), until]) {
-    if (cut - edges[edges.length - 1] > PIECE_MS && reachable > edges[edges.length - 1]) edges.push(reachable);
-    if (cut - edges[edges.length - 1] > PIECE_MS) edges.push(cut);
-    reachable = cut;
+    if (cut - lastEdge() > PIECE_MS && previousCut > lastEdge()) edges.push(previousCut);
+    if (cut - lastEdge() > PIECE_MS) edges.push(cut);
+    previousCut = cut;
   }
-  if (edges[edges.length - 1] !== until) edges.push(until);
+  if (lastEdge() !== until) edges.push(until);
   return edges;
 }
 
-/** Where in its Recording the sound has got by this clock position, if a Run is sounding there. */
-function soundReached(runs: RunOfWords[], { scriptTime, speed }: ClockPosition) {
-  const reachedIn = (run: RunOfWords) => run.from + (scriptTime - run.start) / speed;
-  const run = runs.find((each) => each.start <= scriptTime && reachedIn(each) < each.until);
-  return run && { recording: run.recording, reached: reachedIn(run) };
+/** Where in its Recording the sound has got by this clock position: in the Run sounding there, or the end of the last one. */
+function soundReached(runs: RunWithWordStarts[], { scriptTime, speed }: ClockPosition) {
+  const run = runs.filter((each) => each.start <= scriptTime).at(-1);
+  return run && { recording: run.recording, reached: Math.min(run.until, run.from + (scriptTime - run.start) / speed) };
 }
 
 /**
@@ -107,8 +110,8 @@ function soundReached(runs: RunOfWords[], { scriptTime, speed }: ClockPosition) 
  */
 export function audioSchedule(words: ScriptWord[], scriptEnd: number, clock: ClockPosition, heardSpeed = clock.speed): Piece[] {
   const { scriptTime, speed } = clock;
-  const heard = heardSpeed === speed ? undefined : soundReached(runsOfWords(words, scriptEnd, heardSpeed), { scriptTime, speed: heardSpeed });
-  return runsOfWords(words, scriptEnd, speed).flatMap((run) => {
+  const heard = heardSpeed === speed ? undefined : soundReached(cutRuns(words, scriptEnd, heardSpeed), { scriptTime, speed: heardSpeed });
+  return cutRuns(words, scriptEnd, speed).flatMap((run) => {
     const rejoinsHeard = heard?.recording === run.recording && run.start <= scriptTime;
     const joinAt = Math.ceil(Math.max(run.from + (scriptTime - run.start) / speed, rejoinsHeard ? heard.reached : -Infinity));
     const edges = pieceEdges(run);

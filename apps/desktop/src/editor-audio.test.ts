@@ -249,12 +249,12 @@ describe("a speed change", () => {
 
 describe("the repeat", () => {
   it("never sounds Test1's Retimed, overlapping final three Words twice", async () => {
-    const test1Ending = [
+    const test1FinalWords = [
       scriptWord("minutes", "minutes", { start: 57_000, duration: 1_028, recordingId: "r1", audioStart: 59_140, audioEnd: 60_200 }),
       scriptWord("to", "to", { start: 58_028, duration: 1_145, recordingId: "r1", audioStart: 59_400, audioEnd: 60_580 }),
       scriptWord("make", "make.", { start: 59_173, duration: 1_746, recordingId: "r1", audioStart: 59_680, audioEnd: 61_480 }),
     ];
-    const { clock, previewing, played, advance, stream } = harness({ words: test1Ending, scriptEnd: 60_919 });
+    const { clock, previewing, played, advance, stream } = harness({ words: test1FinalWords, scriptEnd: 60_919 });
     clock("playing", 57_000);
     previewing(true);
     await settle();

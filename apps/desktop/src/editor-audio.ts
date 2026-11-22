@@ -42,7 +42,7 @@ export function editorAudio(
   let panel = DISCONNECTED;
   let reportedAt = 0;
   let course: Course | null = null;
-  let stopped: ClockPosition | null = null;
+  let soundedTo: ClockPosition | null = null;
   let listening: AudioBufferSourceNode | null = null;
   let listens = 0;
 
@@ -61,12 +61,12 @@ export function editorAudio(
   }
 
   function restart() {
-    if (course) stopped = { scriptTime: soundedUntil(course), speed: course.anchor.speed };
+    if (course) soundedTo = { scriptTime: soundedUntil(course), speed: course.anchor.speed };
     course?.sources.forEach((node) => node.stop());
     course = null;
     if (!script.previewing || panel.state !== "playing") return;
     const scriptTime = clockPosition(panel, now() - reportedAt, script.scriptEnd);
-    const heardSpeed = stopped && Math.abs(stopped.scriptTime - scriptTime) <= CARRIES_ON_WITHIN_MS ? stopped.speed : panel.speed;
+    const heardSpeed = soundedTo && Math.abs(soundedTo.scriptTime - scriptTime) <= CARRIES_ON_WITHIN_MS ? soundedTo.speed : panel.speed;
     course = { anchor: { audioTime: audio().currentTime, scriptTime, speed: panel.speed }, heardSpeed, scheduled: new Set(), sources: [] };
     topUp();
   }

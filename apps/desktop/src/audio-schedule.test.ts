@@ -16,7 +16,7 @@ const PASSAGE_END = 1_800;
 
 const overlapping = [spoken("w1", 0, 500, 1_000, 1_500), spoken("w2", 500, 500, 1_300, 1_800)];
 
-const test1Ending = [
+const test1FinalWords = [
   spoken("minutes", 57_000, 1_028, 59_140, 60_200),
   spoken("to", 58_028, 1_145, 59_400, 60_580),
   spoken("make.", 59_173, 1_746, 59_680, 61_480),
@@ -92,7 +92,7 @@ describe("audioRuns", () => {
   });
 
   it("sounds each of Test1's Retimed, overlapping final three Words once, stopping at Script End", () => {
-    expect(audioRuns(test1Ending, TEST1_END)).toEqual([run(57_000, 59_140, 59_400), run(58_028, 59_400, 59_680), run(59_173, 59_680, 61_426)]);
+    expect(audioRuns(test1FinalWords, TEST1_END)).toEqual([run(57_000, 59_140, 59_400), run(58_028, 59_400, 59_680), run(59_173, 59_680, 61_426)]);
   });
 
   it("cuts a Run to fit where the next Run starts", () => {
@@ -159,13 +159,19 @@ describe("audioSchedule", () => {
     expect(audioSchedule(passage, PASSAGE_END, at(900, 1), 2)[0]).toEqual(piece("400:1200", 900, 1_700, 2_600));
   });
 
+  it("never sounds again a Run heard to its end before a speed change in the silence after it", () => {
+    const moved = edit(passage, { w2: { start: 950 }, w3: { start: 1_600 } });
+
+    expect(audioSchedule(moved, 1_900, at(800, 2), 1)[0]).toEqual(piece("950:1650", 950, 1_650, 1_975));
+  });
+
   it("starts with the next Run once the clock is past where one ran out", () => {
     expect(audioSchedule(passage, PASSAGE_END, at(860, 2)).map(({ key }) => key)).toEqual(["850:1650", "1500:2300"]);
     expect(audioSchedule(passage, PASSAGE_END, at(1_800))).toEqual([]);
   });
 
   it("never sounds Test1's Retimed, overlapping final three Words twice", () => {
-    expect(soundedTwice(audioSchedule(test1Ending, TEST1_END, at(57_000)))).toBe(false);
+    expect(soundedTwice(audioSchedule(test1FinalWords, TEST1_END, at(57_000)))).toBe(false);
   });
 
   it("never sounds an unedited overlap twice", () => {
