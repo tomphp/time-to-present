@@ -3,6 +3,7 @@ import {
   leaveFullscreen,
   onAppFocus,
   onApproachCue,
+  onFullscreenChanged,
   onPerformanceKey,
   onServerStatus,
   onSessionState,
@@ -18,6 +19,7 @@ import {
 import { isCombined, mountCombinedPane } from "./combined-pane";
 import { find } from "./dom";
 import { asKeydown } from "./forwarded-key";
+import { fullscreenHint } from "./fullscreen-hint";
 import { fullscreenKey } from "./fullscreen-key";
 import {
   applyAction,
@@ -337,4 +339,11 @@ void onStreamEvent((event) => {
 });
 applyOptions();
 onApproachCue((settings) => (cueSettings = settings));
+const hint = find<HTMLParagraphElement>("#fullscreen-hint");
+onFullscreenChanged(
+  fullscreenHint((state) => {
+    hint.hidden = state === "hidden";
+    hint.classList.toggle("fading", state === "fading");
+  }),
+);
 requestAnimationFrame(frame);
