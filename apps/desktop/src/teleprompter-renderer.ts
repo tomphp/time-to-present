@@ -14,6 +14,7 @@ export interface ViewFrame {
 export interface TeleprompterRenderer {
   render(words: ScriptWord[], events: TimedEvent[]): void;
   show(frame: ViewFrame): void;
+  /** Scrolling never moves the clock: it only looks ahead or back while the clock stands still. */
   scrollFreelyBy(delta: number, clock: Followed): void;
   replace(): void;
   flash(id: string): void;
