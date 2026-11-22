@@ -1,4 +1,4 @@
-import type { PresentationSize, Shape, SizePreset } from "./session";
+import type { PresentationSize, Shape, ShownSize, SizePreset } from "./session";
 import type { Choice } from "./perform-menu-view";
 
 const FILL_DISPLAY = "fillDisplay";
@@ -61,4 +61,9 @@ export const isValidPixels = (text: string): boolean => parsePixels(text) !== nu
 export function customSize(width: string, height: string): PresentationSize | null {
   const [w, h] = [parsePixels(width), parsePixels(height)];
   return w === null || h === null ? null : { width: w, height: h };
+}
+
+/** The note under the size select: the pixels shown, only when the window had to shrink. */
+export function shownNote(shown: ShownSize | null): string | null {
+  return shown?.shrank ? `shown at ${shown.width}×${shown.height}` : null;
 }

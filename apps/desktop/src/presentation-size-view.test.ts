@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { choiceFor, chosenSize, customSize, isValidPixels, sizeChoices, sizeValue } from "./presentation-size-view";
+import { choiceFor, chosenSize, customSize, isValidPixels, shownNote, sizeChoices, sizeValue } from "./presentation-size-view";
 import type { SizePreset } from "./session";
 
 const presets: SizePreset[] = [
@@ -75,5 +75,19 @@ describe("custom size", () => {
     expect(choiceFor({ width: 1080, height: 1920 }, presets)).toBe("1080x1920");
     expect(choiceFor("fillDisplay", presets)).toBe("fillDisplay");
     expect(choiceFor({ width: 1000, height: 2000 }, presets)).toBe("custom");
+  });
+});
+
+describe("shown note", () => {
+  test("says the size shown when the window shrank", () => {
+    expect(shownNote({ width: 1620, height: 2880, shrank: true })).toBe("shown at 1620×2880");
+  });
+
+  test("is absent when the window opens at the chosen size", () => {
+    expect(shownNote({ width: 1080, height: 1920, shrank: false })).toBeNull();
+  });
+
+  test("is absent when no display is connected", () => {
+    expect(shownNote(null)).toBeNull();
   });
 });

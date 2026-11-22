@@ -4,11 +4,12 @@ import {
   sessionState,
   setPerformanceSettings,
   setPresentationSize,
+  shownSize,
   sizePresets,
 } from "./commands";
 import { find } from "./dom";
 import { AUTOMATIC, chosenSettings, displayChoices } from "./perform-menu-view";
-import { CUSTOM, choiceFor, chosenSize, customSize, isValidPixels, sizeChoices } from "./presentation-size-view";
+import { CUSTOM, choiceFor, chosenSize, customSize, isValidPixels, shownNote, sizeChoices } from "./presentation-size-view";
 import { act } from "./report-error";
 import type { Display, PresentationSize, SizePreset } from "./session";
 
@@ -17,6 +18,7 @@ const layout = find<HTMLSelectElement>("#perform-layout");
 const teleprompterDisplay = find<HTMLSelectElement>("#teleprompter-display");
 const presentationDisplay = find<HTMLSelectElement>("#presentation-display");
 const presentationSize = find<HTMLSelectElement>("#presentation-size");
+const shownSizeNote = find<HTMLElement>("#shown-size");
 const customFields = find<HTMLElement>("#custom-size");
 const customWidth = find<HTMLInputElement>("#custom-width");
 const customHeight = find<HTMLInputElement>("#custom-height");
@@ -47,6 +49,12 @@ function showCustomFields() {
   customFields.hidden = presentationSize.value !== CUSTOM;
 }
 
+async function showShownSize() {
+  const note = shownNote(await shownSize());
+  shownSizeNote.hidden = note === null;
+  shownSizeNote.textContent = note;
+}
+
 async function show() {
   const [settings, connected, presets, session] = await Promise.all([
     performanceSettings(),
@@ -56,6 +64,7 @@ async function show() {
   ]);
   layout.value = settings.layout;
   if (session) fillSizes(presets, session.presentationSize);
+  await showShownSize();
   fill(teleprompterDisplay, connected, settings.teleprompterDisplay);
   fill(presentationDisplay, connected, settings.presentationDisplay);
 }
@@ -77,10 +86,14 @@ function markValidity() {
 
 async function saveSize() {
   showCustomFields();
-  if (presentationSize.value !== CUSTOM) return setPresentationSize(chosenSize(presentationSize.value));
-  markValidity();
-  const size = customSize(customWidth.value, customHeight.value);
-  if (size) await setPresentationSize(size);
+  if (presentationSize.value !== CUSTOM) await setPresentationSize(chosenSize(presentationSize.value));
+  else {
+    markValidity();
+    const size = customSize(customWidth.value, customHeight.value);
+    if (!size) return;
+    await setPresentationSize(size);
+  }
+  await showShownSize();
 }
 
 /** The Perform menu: this machine's Performance Layout and displays, and the Presentation's own size. */

@@ -52,6 +52,7 @@ commands.allow = [
   "performance_settings",
   "set_performance_settings",
   "set_presentation_size",
+  "shown_size",
   "size_presets",
   "leave_fullscreen",
   "toggle_fullscreen",

@@ -1,5 +1,6 @@
 use std::ops::Deref;
 
+use serde::Serialize;
 use tauri::{
     AppHandle, Emitter, Manager, Monitor, State, Url, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder, Window, WindowEvent,
@@ -114,6 +115,38 @@ pub fn set_presentation_size(
         place(&presentation, &monitor, fit(size, area(&monitor)).points)?;
     }
     Ok(())
+}
+
+/// The pixels the Presentation Window shows for the Presentation Size, and whether it shrank to fit.
+#[derive(Serialize)]
+pub struct ShownSize {
+    width: u32,
+    height: u32,
+    shrank: bool,
+}
+
+/// The size shown on the open Presentation Window's display, else on the display it would open on.
+#[tauri::command]
+pub fn shown_size(app: AppHandle, state: State<'_, App>) -> CommandResult<Option<ShownSize>> {
+    let size = with_session(&state, |session| {
+        Ok::<_, String>(session.presentation_size())
+    })?;
+    let monitor = match app.get_webview_window(PRESENTATION_WINDOW) {
+        Some(presentation) => presentation.current_monitor().map_err(message)?,
+        None => {
+            let performance = state.settings.lock().unwrap().performance().clone();
+            let remembered = performance.presentation_display.as_deref();
+            monitor_for(&app, PerformanceWindow::Presentation, remembered)?
+        }
+    };
+    Ok(monitor.map(|monitor| {
+        let window = fit(size, area(&monitor));
+        ShownSize {
+            width: window.pixels.0,
+            height: window.pixels.1,
+            shrank: window.shrank,
+        }
+    }))
 }
 
 #[tauri::command]

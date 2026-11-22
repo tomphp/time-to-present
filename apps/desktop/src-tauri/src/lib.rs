@@ -496,6 +496,7 @@ pub fn run() {
             perform::performance_settings,
             perform::set_performance_settings,
             perform::set_presentation_size,
+            perform::shown_size,
             perform::size_presets,
             perform::leave_fullscreen,
             perform::toggle_fullscreen,

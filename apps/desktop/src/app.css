@@ -607,6 +607,12 @@ body.teleprompter #end.over {
   color: var(--accent);
 }
 
+.shown-size {
+  margin: 0;
+  font-size: 0.85em;
+  opacity: 0.75;
+}
+
 .custom-size input {
   width: 5em;
 }

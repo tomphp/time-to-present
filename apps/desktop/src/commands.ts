@@ -14,6 +14,7 @@ import type {
   PresentationSize,
   ServerStatus,
   SessionState,
+  ShownSize,
   SizePreset,
   Snapshot,
   StreamEvent,
@@ -120,6 +121,7 @@ export const reset = () => invoke<void>("reset");
 export const startPerformance = () => invoke<void>("perform");
 export const displays = () => invoke<Display[]>("displays");
 export const sizePresets = () => invoke<SizePreset[]>("size_presets");
+export const shownSize = () => invoke<ShownSize | null>("shown_size");
 export const performanceSettings = () => invoke<PerformanceSettings>("performance_settings");
 export const setPerformanceSettings = (performance: PerformanceSettings) =>
   invoke<void>("set_performance_settings", { performance });

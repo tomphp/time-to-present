@@ -190,6 +190,10 @@ export interface SizePreset extends PixelSize {
   shape: Shape;
 }
 
+export interface ShownSize extends PixelSize {
+  shrank: boolean;
+}
+
 export interface PerformanceSettings {
   layout: PerformanceLayout;
   teleprompterDisplay: string | null;
