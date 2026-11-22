@@ -124,6 +124,13 @@ describe("waveformBars", () => {
     expect(waveformBars(waveform, spoken, 3)).toEqual([0.9, 0.9, 0.4]);
   });
 
+  it("draws a widened Word's own audio across its whole Block, then silence", () => {
+    const brief = scriptWord("w1", "Hi", { recordingId: "r1", audioStart: 20, audioEnd: 30, duration: 10 });
+    const [{ width }] = timelineBlocks([brief]);
+
+    expect(waveformBars(waveform, brief, width)).toEqual([0.9, 0.9, 0, 0, 0, 0]);
+  });
+
   it("draws silence past the Word's audio and past the end of its Recording", () => {
     const longer = scriptWord("w1", "Hi", { recordingId: "r1", audioStart: 20, audioEnd: 30 });
     const pastTheEnd = scriptWord("w1", "Hi", { recordingId: "r1", audioStart: 70, audioEnd: 110 });
