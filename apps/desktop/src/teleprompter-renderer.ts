@@ -16,7 +16,7 @@ export interface TeleprompterRenderer {
   show(frame: ViewFrame): void;
   /** Scrolling never moves the clock: it only looks ahead or back while the clock stands still. */
   scrollFreelyBy(delta: number, clock: Followed): void;
-  replace(): void;
+  invalidateScroll(): void;
   flash(id: string): void;
   destroy(): void;
 }

@@ -190,7 +190,7 @@ function applyOptions() {
   const [mirrored, upright] = isCombined() ? [prompter, pane] : [pane, prompter];
   mirrored.style.transform = mirrorTransform(mirror);
   upright.style.transform = "";
-  renderer.replace();
+  renderer.invalidateScroll();
 }
 
 document.addEventListener("wheel", (event) => renderer.scrollFreelyBy(event.deltaY, followed), { passive: true });

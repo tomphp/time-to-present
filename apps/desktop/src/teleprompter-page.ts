@@ -114,7 +114,7 @@ export function mountPage(column: HTMLElement, stage: HTMLElement): Teleprompter
       free = scrollFreely(free, clock, delta, { min: -target.offsetTop, max: column.offsetHeight - target.offsetTop });
     },
 
-    replace() {
+    invalidateScroll() {
       scroll = null;
     },
 
