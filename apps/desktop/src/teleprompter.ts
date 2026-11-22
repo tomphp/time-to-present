@@ -4,6 +4,7 @@ import {
   onAppFocus,
   onApproachCue,
   onFullscreenChanged,
+  onMenuCommand,
   onPerformanceKey,
   onServerStatus,
   onSessionState,
@@ -11,6 +12,7 @@ import {
   openInBrowser,
   pause,
   play,
+  reportMenuState,
   reset,
   seek,
   setSpeed,
@@ -22,15 +24,14 @@ import { asKeydown } from "./forwarded-key";
 import { fullscreenHint } from "./fullscreen-hint";
 import { fullscreenKey } from "./fullscreen-key";
 import {
-  applyAction,
-  loadOptions,
+  DEFAULT_OPTIONS,
   markerPlacements,
   mirrorFor,
   mirrorTransform,
-  saveOptions,
   displayAction,
+  isDisplayAction,
   isRepeatable,
-  type DisplayAction,
+  type DisplayOptions,
 } from "./display-options";
 import { formatElapsed } from "./recording-bar-view";
 import {
@@ -52,6 +53,7 @@ import {
 import { serverStatusView } from "./server-status-view";
 import { sameLayout, scriptLayout } from "./script-view";
 import type { ScriptWord, TimedEvent } from "./session";
+import { mountDisplay } from "./teleprompter-display";
 import { navigation } from "./teleprompter-seek";
 import {
   currentWord,
@@ -78,7 +80,7 @@ const prompter = find<HTMLElement>("#prompter");
 const screenKey = () => `${screen.width}x${screen.height}@${devicePixelRatio}`;
 const FLASH = "fired";
 
-let options = loadOptions(localStorage);
+let options: DisplayOptions = DEFAULT_OPTIONS;
 let layoutKey = "";
 
 const bar = {
@@ -293,17 +295,24 @@ function flash(id: string) {
   element.classList.add(FLASH);
 }
 
-function perform(action: DisplayAction) {
-  if (action === "blank") return void stage.classList.toggle("blanked");
-  options = applyAction(options, action, screenKey());
-  saveOptions(localStorage, options);
-  applyOptions();
-}
-
 document.addEventListener("wheel", (event) => scrollFreelyBy(event.deltaY), { passive: true });
 
 new ResizeObserver(() => (scroll = null)).observe(column);
+const display = mountDisplay({
+  storage: localStorage,
+  screenKey,
+  render(next, blanked) {
+    options = next;
+    stage.classList.toggle("blanked", blanked);
+    applyOptions();
+  },
+  report: (report) => void reportMenuState(report).catch(console.error),
+});
+const perform = display.perform;
 mountCombinedPane(applyOptions);
+onMenuCommand((command) => {
+  if (isDisplayAction(command)) perform(command);
+});
 
 window.addEventListener("resize", applyOptions);
 document.addEventListener("keydown", onKey);
@@ -337,7 +346,6 @@ void onStreamEvent((event) => {
   if (followed.state !== "ready") noAppWarned = false;
   paused.hidden = followed.state !== "paused";
 });
-applyOptions();
 onApproachCue((settings) => (cueSettings = settings));
 const hint = find<HTMLParagraphElement>("#fullscreen-hint");
 onFullscreenChanged(

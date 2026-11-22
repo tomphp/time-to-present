@@ -30,6 +30,19 @@ export type DisplayAction =
   | "readingLineUp"
   | "readingLineDown";
 
+const ACTIONS: readonly string[] = [
+  "blank",
+  "markers",
+  "mirror",
+  "flip",
+  "fontLarger",
+  "fontSmaller",
+  "readingLineUp",
+  "readingLineDown",
+] satisfies DisplayAction[];
+
+export const isDisplayAction = (command: string): command is DisplayAction => ACTIONS.includes(command);
+
 interface Keys {
   key: string;
   metaKey: boolean;
