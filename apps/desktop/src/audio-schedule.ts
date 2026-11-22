@@ -7,8 +7,11 @@ export interface Clip {
   until: number;
 }
 
-/** One Word's clip, sounding from Script Time `at`. */
-export type ScheduledClip = Clip & { word: string; at: number };
+/** An Audio Run: from Script Time `start`, its Recording sounds unbroken from `from` until `until`. */
+export type AudioRun = Clip & { start: number };
+
+/** A piece of an Audio Run, sounding from Script Time `at`; `key` names it whatever the clock's position. */
+export type Piece = Clip & { key: string; at: number };
 
 export interface ClockPosition {
   scriptTime: number;
@@ -23,22 +26,98 @@ function spokenAudio({ recordingId, audioStart, audioEnd }: ScriptWord): Clip | 
   return { recording: recordingId, from: audioStart, until: audioEnd };
 }
 
-/**
- * What a Preview sounds from the clock onwards. Each spoken Word's clip plays unstretched from
- * its Script Time, cut at the next Word's start (or Script End for the last), so it runs at the
- * speed of the audio while the clock runs at its own. A clock already inside a Word joins its
- * clip where it would be by now.
- */
-export function audioSchedule(words: ScriptWord[], scriptEnd: number, { scriptTime, speed }: ClockPosition): ScheduledClip[] {
-  return words.flatMap((word, index) => {
+const ALIGNED_WITHIN_MS = 1;
+const PIECE_MS = 2_000;
+
+type SpokenWord = ScriptWord & Clip;
+type RunOfWords = AudioRun & { wordStarts: number[] };
+
+function spokenWords(words: ScriptWord[]): (SpokenWord | null)[] {
+  return words.map((word) => {
     const audio = spokenAudio(word);
-    if (!audio) return [];
-    const cut = words[index + 1]?.start ?? scriptEnd;
-    const until = audio.from + Math.min(audio.until - audio.from, (cut - word.start) / speed);
-    const at = Math.max(word.start, scriptTime);
-    const from = audio.from + (at - word.start) / speed;
-    if (Math.round(from) >= Math.round(until)) return [];
-    return [{ word: word.id, recording: audio.recording, at, from: Math.round(from), until: Math.round(until) }];
+    return audio && { ...word, ...audio };
+  });
+}
+
+/** Whether a Word's audio follows on unbroken from the Run that starts with `first`. */
+function followsOn(first: SpokenWord, word: SpokenWord, speed: number) {
+  const drift = word.start - first.start - (word.from - first.from);
+  return word.recording === first.recording && speed === 1 && Math.abs(drift) <= ALIGNED_WITHIN_MS;
+}
+
+function groupIntoRuns(words: ScriptWord[], speed: number): SpokenWord[][] {
+  const runs: SpokenWord[][] = [];
+  let current: SpokenWord[] | null = null;
+  for (const word of spokenWords(words)) {
+    if (word && current && followsOn(current[0], word, speed)) current.push(word);
+    else if (word) runs.push((current = [word]));
+    else current = null;
+  }
+  return runs;
+}
+
+function runsOfWords(words: ScriptWord[], scriptEnd: number, speed: number): RunOfWords[] {
+  const runs = groupIntoRuns(words, speed);
+  return runs.flatMap((run, index) => {
+    const first = run[0];
+    const next = runs[index + 1]?.[0];
+    const reachedAt = (scriptTime: number) => first.from + (scriptTime - first.start) / speed;
+    const nextSoundsThis = next && next.recording === first.recording && next.from > first.from;
+    const until = Math.floor(
+      Math.min(run[run.length - 1].until, nextSoundsThis ? next.from : Infinity, reachedAt(next?.start ?? scriptEnd), reachedAt(scriptEnd)),
+    );
+    if (until <= first.from) return [];
+    return [{ recording: first.recording, start: first.start, from: first.from, until, wordStarts: run.map((word) => word.from) }];
+  });
+}
+
+/**
+ * The Audio Runs a Preview sounds at this speed. Below or above 1× each spoken Word is its own
+ * Run. A Run is cut at the earliest of its last Word's audio end, the next spoken Word's audio
+ * when that would sound it again, the next Run's start and Script End, reached at the clock's speed.
+ */
+export function audioRuns(words: ScriptWord[], scriptEnd: number, speed = 1): AudioRun[] {
+  return runsOfWords(words, scriptEnd, speed).map(({ wordStarts: _, ...run }) => run);
+}
+
+/** Where a Run is cut into pieces of about PIECE_MS, each at a Word's audio start, or a long Word on its own. */
+function pieceEdges({ from, until, wordStarts }: RunOfWords): number[] {
+  const edges = [from];
+  let reachable = from;
+  for (const cut of [...wordStarts.filter((start) => start > from && start < until), until]) {
+    if (cut - edges[edges.length - 1] > PIECE_MS && reachable > edges[edges.length - 1]) edges.push(reachable);
+    if (cut - edges[edges.length - 1] > PIECE_MS) edges.push(cut);
+    reachable = cut;
+  }
+  if (edges[edges.length - 1] !== until) edges.push(until);
+  return edges;
+}
+
+/** Where in its Recording the sound has got by this clock position, if a Run is sounding there. */
+function soundReached(runs: RunOfWords[], { scriptTime, speed }: ClockPosition) {
+  const reachedIn = (run: RunOfWords) => run.from + (scriptTime - run.start) / speed;
+  const run = runs.find((each) => each.start <= scriptTime && reachedIn(each) < each.until);
+  return run && { recording: run.recording, reached: reachedIn(run) };
+}
+
+/**
+ * What a Preview sounds from the clock onwards: its Audio Runs, in pieces to fetch and sound back
+ * to back. A clock already inside a Run joins it where it would be by now, rounded up to a whole ms,
+ * and never before where the sound had got at `heardSpeed`, the speed before a speed change.
+ */
+export function audioSchedule(words: ScriptWord[], scriptEnd: number, clock: ClockPosition, heardSpeed = clock.speed): Piece[] {
+  const { scriptTime, speed } = clock;
+  const heard = heardSpeed === speed ? undefined : soundReached(runsOfWords(words, scriptEnd, heardSpeed), { scriptTime, speed: heardSpeed });
+  return runsOfWords(words, scriptEnd, speed).flatMap((run) => {
+    const rejoinsHeard = heard?.recording === run.recording && run.start <= scriptTime;
+    const joinAt = Math.ceil(Math.max(run.from + (scriptTime - run.start) / speed, rejoinsHeard ? heard.reached : -Infinity));
+    const edges = pieceEdges(run);
+    return edges.slice(0, -1).flatMap((edge, index) => {
+      const from = Math.max(edge, joinAt);
+      const until = edges[index + 1];
+      if (from >= until) return [];
+      return [{ key: `${run.start}:${edge}`, recording: run.recording, at: run.start + (from - run.from) * speed, from, until }];
+    });
   });
 }
 
@@ -61,19 +140,19 @@ export interface Anchor {
   speed: number;
 }
 
-export interface ClipTiming {
+export interface PieceTiming {
   when: number;
   offset: number;
   duration: number;
 }
 
 /**
- * When, on the audio clock, a fetched clip starts and how much of it plays: from the moment the
+ * When, on the audio clock, a fetched piece starts and how much of it plays: from the moment the
  * clock reaches it, or now and part way in if it arrived late, or not at all if it is over.
  */
-export function clipTiming(clip: ScheduledClip, anchor: Anchor, now: number): ClipTiming | null {
-  const due = anchor.audioTime + (clip.at - anchor.scriptTime) / anchor.speed / 1000;
+export function pieceTiming(piece: Piece, anchor: Anchor, now: number): PieceTiming | null {
+  const due = anchor.audioTime + (piece.at - anchor.scriptTime) / anchor.speed / 1000;
   const late = Math.max(0, now - due);
-  const duration = (clip.until - clip.from) / 1000 - late;
+  const duration = (piece.until - piece.from) / 1000 - late;
   return duration > 0 ? { when: due + late, offset: late, duration } : null;
 }

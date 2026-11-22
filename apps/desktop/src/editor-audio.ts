@@ -1,4 +1,4 @@
-import { audioSchedule, clipTiming, type Anchor, type Clip, type ScheduledClip } from "./audio-schedule";
+import { audioSchedule, pieceTiming, type Anchor, type Clip, type ClockPosition, type Piece } from "./audio-schedule";
 import { clockPosition, DISCONNECTED, type ClockPanel } from "./clock-view";
 import type { ScriptWord, StreamEvent } from "./session";
 
@@ -13,19 +13,24 @@ export interface AudioScript {
   previewing: boolean;
 }
 
-/** How far ahead of the clock, in Script Time, clips are fetched and scheduled. */
+/** How far ahead of the clock, in Script Time, pieces are fetched and scheduled. */
 const LOOKAHEAD_MS = 2_000;
 
-interface Run {
+/** How close to where the sound stopped the clock must go on from for the sound to carry on, not start afresh. */
+const CARRIES_ON_WITHIN_MS = 50;
+
+/** One stretch of a Preview sounding, from a change of course on the clock to the next. */
+interface Course {
   anchor: Anchor;
+  heardSpeed: number;
   scheduled: Set<string>;
   sources: AudioBufferSourceNode[];
 }
 
 /**
- * The editor's own sound: Listen, and the clips of a Preview, which play only while the clock
+ * The editor's own sound: Listen, and the Audio Runs of a Preview, which play only while the clock
  * is playing a Preview the editor started. Every change of course on the clock (a seek, a speed
- * change, a pause) drops what is scheduled and starts again from where the clock now is.
+ * change, a pause) drops what is scheduled and joins the Runs again where the clock now is.
  */
 export function editorAudio(
   fetchClip: FetchClip,
@@ -36,7 +41,8 @@ export function editorAudio(
   let script: AudioScript = { words: [], scriptEnd: 0, previewing: false };
   let panel = DISCONNECTED;
   let reportedAt = 0;
-  let run: Run | null = null;
+  let course: Course | null = null;
+  let stopped: ClockPosition | null = null;
   let listening: AudioBufferSourceNode | null = null;
   let listens = 0;
 
@@ -50,29 +56,35 @@ export function editorAudio(
     return node;
   }
 
+  function soundedUntil({ anchor }: Course) {
+    return Math.min(script.scriptEnd, anchor.scriptTime + (audio().currentTime - anchor.audioTime) * 1000 * anchor.speed);
+  }
+
   function restart() {
-    run?.sources.forEach((node) => node.stop());
-    run = null;
+    if (course) stopped = { scriptTime: soundedUntil(course), speed: course.anchor.speed };
+    course?.sources.forEach((node) => node.stop());
+    course = null;
     if (!script.previewing || panel.state !== "playing") return;
     const scriptTime = clockPosition(panel, now() - reportedAt, script.scriptEnd);
-    run = { anchor: { audioTime: audio().currentTime, scriptTime, speed: panel.speed }, scheduled: new Set(), sources: [] };
+    const heardSpeed = stopped && Math.abs(stopped.scriptTime - scriptTime) <= CARRIES_ON_WITHIN_MS ? stopped.speed : panel.speed;
+    course = { anchor: { audioTime: audio().currentTime, scriptTime, speed: panel.speed }, heardSpeed, scheduled: new Set(), sources: [] };
     topUp();
   }
 
   function topUp() {
-    if (!run) return;
+    if (!course) return;
     const horizon = panel.scriptTime + LOOKAHEAD_MS;
-    for (const clip of audioSchedule(script.words, script.scriptEnd, run.anchor)) {
-      if (clip.at >= horizon) break;
-      if (run.scheduled.has(clip.word)) continue;
-      run.scheduled.add(clip.word);
-      schedule(run, clip).catch(console.error);
+    for (const piece of audioSchedule(script.words, script.scriptEnd, course.anchor, course.heardSpeed)) {
+      if (piece.at >= horizon) break;
+      if (course.scheduled.has(piece.key)) continue;
+      course.scheduled.add(piece.key);
+      schedule(course, piece).catch(console.error);
     }
   }
 
-  async function schedule(scheduling: Run, clip: ScheduledClip) {
-    const node = await source(clip);
-    const timing = run === scheduling && clipTiming(clip, scheduling.anchor, audio().currentTime);
+  async function schedule(scheduling: Course, piece: Piece) {
+    const node = await source(piece);
+    const timing = course === scheduling && pieceTiming(piece, scheduling.anchor, audio().currentTime);
     if (!timing) return;
     scheduling.sources.push(node);
     node.start(timing.when, timing.offset, timing.duration);
