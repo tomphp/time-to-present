@@ -64,6 +64,22 @@ test("stamp rejects a missing or malformed version without touching the files", 
   assert.equal(readFileSync(join(root, clientManifest), "utf8"), before);
 });
 
+test("stamp takes --root before the command", () => {
+  const root = copyOfVersionedFiles();
+
+  const result = spawnSync("node", [stampScript, "--root", root, "client", "2.0.0"], { encoding: "utf8" });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(readJson(root, clientManifest).version, "2.0.0");
+});
+
+test("stamp rejects a --root with no directory", () => {
+  const result = spawnSync("node", [stampScript, "client", "2.0.0", "--root"], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /usage/i);
+});
+
 test("stamp rejects an unknown command", () => {
   const result = stamp(copyOfVersionedFiles(), "nonsense", "1.0.0");
 

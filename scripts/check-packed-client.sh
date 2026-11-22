@@ -3,7 +3,9 @@ set -euo pipefail
 
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
+manifest="$repo/packages/client/package.json"
+cp "$manifest" "$work/package.json.orig"
+trap 'cp "$work/package.json.orig" "$manifest"; rm -rf "$work"' EXIT
 package=@time-to-present/client
 
 node "$repo/scripts/stamp.mjs" client 0.0.0-packcheck

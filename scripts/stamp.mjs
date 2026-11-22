@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+const defaultRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const usage = "usage: stamp client <version> [--root <dir>]";
 const semver = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 
@@ -21,10 +22,11 @@ const commands = {
 };
 
 function main(argv) {
-  const rootFlag = argv.indexOf("--root");
-  const root = rootFlag === -1 ? join(dirname(fileURLToPath(import.meta.url)), "..") : argv[rootFlag + 1];
-  const [command, version] = rootFlag === -1 ? argv : argv.slice(0, rootFlag);
-  if (!Object.hasOwn(commands, command) || !semver.test(version ?? "")) {
+  const args = [...argv];
+  const rootFlag = args.indexOf("--root");
+  const root = rootFlag === -1 ? defaultRoot : args.splice(rootFlag, 2)[1];
+  const [command, version] = args;
+  if (!root || !Object.hasOwn(commands, command) || !semver.test(version ?? "")) {
     console.error(usage);
     process.exit(1);
   }
