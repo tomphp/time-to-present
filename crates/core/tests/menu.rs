@@ -40,6 +40,7 @@ fn nothing_window_level_is_enabled_for_a_window_that_has_reported_nothing() {
 const EDITOR: EditorReport = EditorReport {
     recording: false,
     selection: false,
+    retimable: false,
     listenable: false,
     locked: false,
     clock: Some(ClockState::Ready),
@@ -267,14 +268,19 @@ fn recording_works_while_the_clock_plays() {
 }
 
 #[test]
-fn retime_needs_selected_words_and_add_named_event_does_not() {
-    let selected = EditorReport {
+fn retime_needs_words_to_retime_and_add_named_event_does_not() {
+    let caret_in_a_word = EditorReport {
+        retimable: true,
+        ..EDITOR
+    };
+    let recording_target_only = EditorReport {
         selection: true,
         ..EDITOR
     };
 
     assert!(!in_editor(MenuCommand::Retime, EDITOR).enabled);
-    assert!(in_editor(MenuCommand::Retime, selected).enabled);
+    assert!(!in_editor(MenuCommand::Retime, recording_target_only).enabled);
+    assert!(in_editor(MenuCommand::Retime, caret_in_a_word).enabled);
     assert!(in_editor(MenuCommand::AddNamedEvent, EDITOR).enabled);
 }
 
@@ -282,6 +288,7 @@ fn retime_needs_selected_words_and_add_named_event_does_not() {
 fn the_edit_lock_disables_script_commands() {
     let playing = EditorReport {
         selection: true,
+        retimable: true,
         clock: Some(ClockState::Playing),
         locked: true,
         ..EDITOR

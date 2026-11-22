@@ -119,29 +119,26 @@ document.querySelector("#perform")!.addEventListener("click", act(startPerforman
 
 const clock = mountClockControl((panel, event) => {
   previewControls.clock(panel, event);
+  if (panel.state === clockState) return;
   clockState = panel.state;
   menu.changed();
 });
 
 const menu = editorMenu(
   {
+    recordingBar,
+    pane,
+    inspector,
+    preview: previewControls,
+    clock,
+    performMenu,
     removeUnusedRecordings: removeUnused,
-    record: recordingBar.toggle,
-    reRecordSelection: recordingBar.reRecord,
-    addNamedEvent: pane.addEventAtCaret,
-    retime: inspector.retime,
-    listen: previewControls.listen,
-    layoutTwoWindows: () => performMenu.chooseLayout("twoWindows"),
-    layoutCombined: () => performMenu.chooseLayout("combined"),
-    layoutTeleprompterOnly: () => performMenu.chooseLayout("teleprompterOnly"),
-    playPause: clock.playPause,
-    playFromCursor: previewControls.playFromCursor,
-    restart: clock.restart,
   },
   () => ({
     session: current,
     clock: clockState,
     target: pane.recordingTarget(),
+    selected: selection.ids(),
     listenable: previewControls.listenable(),
   }),
   reportMenuState,

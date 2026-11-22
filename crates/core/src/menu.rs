@@ -14,6 +14,8 @@ pub struct EditorReport {
     pub recording: bool,
     /// Words are selected, so a Recording would Re-record them.
     pub selection: bool,
+    /// Words are selected for the Inspector's timing fields, Retime among them.
+    pub retimable: bool,
     pub listenable: bool,
     pub locked: bool,
     pub clock: Option<ClockState>,
@@ -122,7 +124,7 @@ fn editor_enables(command: MenuCommand, editor: EditorReport) -> bool {
     match command {
         Record => true,
         ReRecordSelection => editor.selection && !editor.recording,
-        Retime => editor.selection && editable,
+        Retime => editor.retimable && editable,
         AddNamedEvent | PlayFromCursor => editable,
         Listen => editor.listenable,
         PlayPause => matches!(

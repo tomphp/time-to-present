@@ -242,6 +242,7 @@ export type WindowReport =
       window: "editor";
       recording: boolean;
       selection: boolean;
+      retimable: boolean;
       listenable: boolean;
       locked: boolean;
       clock: ClockState | null;

@@ -15,10 +15,8 @@ export function meterFill(peak: number) {
   return Math.min(1, Math.max(0, 1 - db / METER_FLOOR_DB));
 }
 
-/** The bar's own keys. ⌘R is the menu bar's accelerator alone, so it runs once. */
-export function shortcut({ key }: { key: string }) {
-  return key === "Escape" ? "escape" : null;
-}
+/** Esc is the bar's own key; ⌘R is the menu bar's accelerator alone, so it runs once. */
+export const isCancelKey = ({ key }: { key: string }) => key === "Escape";
 
 export interface RecordingCommands {
   openRecordingBar(): Promise<void>;
@@ -34,14 +32,18 @@ export function recordingCommands(
 ) {
   const start = () => commands.startRecordingAt(target());
 
-  async function begin() {
+  async function startUnlessRecording() {
     const shown = bar();
     if (shown?.recording) return;
     if (shown === null) await commands.openRecordingBar();
     return start();
   }
 
-  return { start, begin, toggle: () => (bar()?.recording ? commands.stopRecording() : begin()) };
+  return {
+    start,
+    startUnlessRecording,
+    toggle: () => (bar()?.recording ? commands.stopRecording() : startUnlessRecording()),
+  };
 }
 
 export function escapeAction(recording: boolean, recordedMs: number, confirming: boolean) {

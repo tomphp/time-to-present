@@ -17,7 +17,7 @@ import {
   inputOptions,
   meterFill,
   recordingCommands,
-  shortcut,
+  isCancelKey,
 } from "./recording-bar-view";
 import { find } from "./dom";
 import type { RecordingTarget } from "./recording-target";
@@ -106,11 +106,11 @@ export function mountRecordingBar(target: () => RecordingTarget) {
 
   start.addEventListener("click", act(recording.start));
   document.addEventListener("keydown", (event) => {
-    if (shortcut(event) !== "escape") return;
+    if (!isCancelKey(event)) return;
     event.preventDefault();
     requestCancel();
   });
-  return { render: renderRecordingBar, toggle: act(recording.toggle), reRecord: act(recording.begin) };
+  return { render: renderRecordingBar, toggle: act(recording.toggle), reRecord: act(recording.startUnlessRecording) };
 }
 
 onMeter(({ peak, clipped, recorded: ms }) => {

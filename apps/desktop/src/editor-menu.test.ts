@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { editorMenu, type EditorMenuState } from "./editor-menu";
-import type { SessionState, WindowReport } from "./session";
+import { editorMenu, type EditorMenuState, type EditorParts } from "./editor-menu";
+import type { MenuCommand, SessionState, WindowReport } from "./session";
 import { scriptWord } from "./test-words";
 
 const session = (changes: Partial<SessionState> = {}): SessionState => ({
@@ -24,6 +24,7 @@ const idle: EditorMenuState = {
   session: session(),
   clock: "ready",
   target: { insertAt: { before: null } },
+  selected: [],
   listenable: false,
 };
 
@@ -36,10 +37,26 @@ const recordingBar = (recording: boolean): SessionState["recordingBar"] => ({
   liveModel: { kind: "ready" },
 });
 
-function reporting(state: EditorMenuState) {
+function editorParts(ran: string[]): EditorParts {
+  const runs = (name: string) => () => void ran.push(name);
+  return {
+    recordingBar: { toggle: runs("recording toggle"), reRecord: runs("recording start unless recording") },
+    pane: { addEventAtCaret: runs("event at caret") },
+    inspector: { retime: runs("Retime field") },
+    preview: { listen: runs("listen"), playFromCursor: runs("play from cursor") },
+    clock: { playPause: runs("play/pause button"), restart: runs("restart button") },
+    performMenu: { chooseLayout: (layout) => void ran.push(`layout ${layout}`) },
+    removeUnusedRecordings: runs("remove unused recordings"),
+  };
+}
+
+function reporting(state: EditorMenuState, send = async (_: WindowReport) => {}) {
   const reports: WindowReport[] = [];
   let current = state;
-  const menu = editorMenu({}, () => current, async (report) => void reports.push(report));
+  const menu = editorMenu(editorParts([]), () => current, (report) => {
+    reports.push(report);
+    return send(report);
+  });
   return {
     reports,
     change(next: Partial<EditorMenuState>) {
@@ -59,6 +76,7 @@ describe("the Editor's report to the menu bar", () => {
         window: "editor",
         recording: false,
         selection: false,
+        retimable: false,
         listenable: false,
         locked: false,
         clock: "ready",
@@ -77,9 +95,16 @@ describe("the Editor's report to the menu bar", () => {
 
   it("reports a selection when a Recording would Re-record it", () => {
     const { reports, change } = reporting(idle);
-    change({ target: { reRecord: ["w1"] }, listenable: true });
+    change({ target: { reRecord: ["w1"] }, selected: ["w1"], listenable: true });
 
-    expect(reports.at(-1)).toMatchObject({ selection: true, listenable: true });
+    expect(reports.at(-1)).toMatchObject({ selection: true, retimable: true, listenable: true });
+  });
+
+  it("reports Words to retime when the caret is in one, though a Recording would insert there", () => {
+    const { reports, change } = reporting(idle);
+    change({ selected: ["w1"] });
+
+    expect(reports.at(-1)).toMatchObject({ selection: false, retimable: true });
   });
 
   it("reports the clock as it plays and ends", () => {
@@ -99,6 +124,16 @@ describe("the Editor's report to the menu bar", () => {
     expect(reports).toHaveLength(1);
   });
 
+  it("reports again after a report the shell did not take", async () => {
+    const { reports, change } = reporting(idle, async () => Promise.reject("no shell"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    change({});
+    await new Promise((resolve) => setTimeout(resolve));
+    change({});
+
+    expect(reports).toHaveLength(2);
+  });
+
   it("reports no clock while the Editor has none", () => {
     const { reports, change } = reporting(idle);
     change({ clock: null, session: null });
@@ -108,20 +143,31 @@ describe("the Editor's report to the menu bar", () => {
 });
 
 describe("a menu command reaching the Editor", () => {
-  it("runs the Editor's own command for it", () => {
-    const record = vi.fn();
-    const restart = vi.fn();
-    const menu = editorMenu({ record, restart }, () => idle, async () => {});
+  const run = (command: MenuCommand) => {
+    const ran: string[] = [];
+    editorMenu(editorParts(ran), () => idle, async () => {}).run(command);
+    return ran;
+  };
 
-    menu.run("record");
+  it("runs what the Editor's own button or key runs", () => {
+    expect(run("record")).toEqual(["recording toggle"]);
+    expect(run("reRecordSelection")).toEqual(["recording start unless recording"]);
+    expect(run("addNamedEvent")).toEqual(["event at caret"]);
+    expect(run("retime")).toEqual(["Retime field"]);
+    expect(run("listen")).toEqual(["listen"]);
+    expect(run("playPause")).toEqual(["play/pause button"]);
+    expect(run("playFromCursor")).toEqual(["play from cursor"]);
+    expect(run("restart")).toEqual(["restart button"]);
+    expect(run("removeUnusedRecordings")).toEqual(["remove unused recordings"]);
+  });
 
-    expect(record).toHaveBeenCalledOnce();
-    expect(restart).not.toHaveBeenCalled();
+  it("chooses the Performance Layout it names", () => {
+    expect(run("layoutTwoWindows")).toEqual(["layout twoWindows"]);
+    expect(run("layoutCombined")).toEqual(["layout combined"]);
+    expect(run("layoutTeleprompterOnly")).toEqual(["layout teleprompterOnly"]);
   });
 
   it("ignores a command the Editor does not run", () => {
-    const menu = editorMenu({}, () => idle, async () => {});
-
-    expect(() => menu.run("mirror")).not.toThrow();
+    expect(run("mirror")).toEqual([]);
   });
 });

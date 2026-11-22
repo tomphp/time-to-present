@@ -8,8 +8,8 @@ import {
   inputOptions,
   liveModelNotice,
   meterFill,
+  isCancelKey,
   recordingCommands,
-  shortcut,
 } from "./recording-bar-view";
 import type { RecordingTarget } from "./recording-target";
 import type { RecordingBarState } from "./session";
@@ -74,21 +74,21 @@ describe("meterFill", () => {
   });
 });
 
-describe("shortcut", () => {
-  const press = (key: string, metaKey: boolean) => shortcut({ key, metaKey } as KeyboardEvent);
+describe("the Recording Bar's keys", () => {
+  const press = (key: string, metaKey: boolean) => isCancelKey({ key, metaKey } as KeyboardEvent);
 
   it("cancels on Esc", () => {
-    expect(press("Escape", false)).toBe("escape");
+    expect(press("Escape", false)).toBe(true);
   });
 
   it("leaves ⌘R to the menu bar's accelerator, so a Recording toggles once", () => {
-    expect(press("r", true)).toBeNull();
-    expect(press("R", true)).toBeNull();
+    expect(press("r", true)).toBe(false);
+    expect(press("R", true)).toBe(false);
   });
 
   it("ignores other keys", () => {
-    expect(press("r", false)).toBeNull();
-    expect(press("s", true)).toBeNull();
+    expect(press("r", false)).toBe(false);
+    expect(press("s", true)).toBe(false);
   });
 });
 
@@ -124,9 +124,9 @@ describe("Record / Stop and Re-record Selection", () => {
 
   it("Re-records the selection, but never stops a Recording under way", async () => {
     const closed = recorder(null);
-    await closed.begin();
+    await closed.startUnlessRecording();
     const running = recorder(bar(null, true));
-    await running.begin();
+    await running.startUnlessRecording();
 
     expect(closed.calls).toEqual([["open"], ["start", selection]]);
     expect(running.calls).toEqual([]);
