@@ -1,7 +1,7 @@
 use crate::engine::Word;
 
 /// whisper's resolution, for a Word whose timing source gives it no length.
-const SHORTEST_WORD: i64 = 1;
+const SHORTEST_WORD_CENTISECONDS: i64 = 1;
 
 /// A decoded segment of a Transcription. Times are whisper's centiseconds.
 pub struct Segment {
@@ -28,11 +28,11 @@ pub fn join(segments: &[Segment]) -> Vec<Word> {
     let timing = Timing::of(segments);
     let mut words: Vec<WordInProgress> = Vec::new();
     for segment in segments {
-        for (i, token) in segment.tokens.iter().enumerate() {
+        for (index, token) in segment.tokens.iter().enumerate() {
             if token.special {
                 continue;
             }
-            let end = timing.end(segment, i);
+            let end = timing.end(segment, index);
             match words.last_mut() {
                 Some(word) if !token.text.starts_with(b" ") => word.extend(token, end),
                 _ => words.push(WordInProgress::new(token, timing.start(token), end)),
@@ -67,20 +67,20 @@ impl Timing {
 
     fn start(self, token: &Token) -> i64 {
         match self {
-            Self::Dtw => token.dtw.unwrap_or(token.t0),
+            Self::Dtw => token.dtw.expect("every text token has a DTW time"),
             Self::Plain => token.t0,
         }
     }
 
     /// A DTW token ends where the next one in its segment starts, counting
     /// tokens dropped as text.
-    fn end(self, segment: &Segment, i: usize) -> i64 {
+    fn end(self, segment: &Segment, index: usize) -> i64 {
         match self {
-            Self::Dtw => segment.tokens[i + 1..]
+            Self::Dtw => segment.tokens[index + 1..]
                 .iter()
                 .find_map(|token| token.dtw)
                 .unwrap_or(segment.end),
-            Self::Plain => segment.tokens[i].t1,
+            Self::Plain => segment.tokens[index].t1,
         }
     }
 }
@@ -114,7 +114,7 @@ impl WordInProgress {
             return None;
         }
         let start = self.start.max(0);
-        let end = self.end.max(start + SHORTEST_WORD);
+        let end = self.end.max(start + SHORTEST_WORD_CENTISECONDS);
         let milliseconds = |centiseconds: i64| centiseconds as u64 * 10;
         Some(Word {
             text,

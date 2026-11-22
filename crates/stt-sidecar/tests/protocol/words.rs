@@ -19,9 +19,8 @@ fn timed(text: &str, dtw: i64) -> Token {
     }
 }
 
-fn special(dtw: Option<i64>) -> Token {
+fn special() -> Token {
     Token {
-        dtw,
         special: true,
         ..plain("[_TT_]", 0, 1000)
     }
@@ -80,8 +79,7 @@ fn a_dropped_token_still_marks_where_the_word_before_it_ends() {
         90,
         vec![
             timed(" Hello", 10),
-            special(Some(25)),
-            timed(" [BLANK_AUDIO]", 40),
+            timed(" [BLANK_AUDIO]", 25),
             timed(" there", 70),
         ],
     )]);
@@ -93,7 +91,7 @@ fn a_dropped_token_still_marks_where_the_word_before_it_ends() {
 fn a_word_ends_at_the_next_token_that_has_a_dtw_time() {
     let words = join(&[segment(
         90,
-        vec![timed(" Hello", 10), special(None), timed(" there", 40)],
+        vec![timed(" Hello", 10), special(), timed(" there", 40)],
     )]);
 
     assert_eq!(words, [word("Hello", 100, 400), word("there", 400, 900)]);
