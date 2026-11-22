@@ -40,14 +40,10 @@ pub enum PageKeyAction {
 /// ⌃⌘F toggles Fullscreen wherever focus is, once per press. Otherwise the page keeps
 /// ⌘-combinations and anything typed into a focused text input, and Esc leaves Fullscreen.
 pub fn classify(key: &PageKey) -> PageKeyAction {
-    if key.composing {
+    if key.composing || key.toggles_fullscreen() && key.repeat {
         PageKeyAction::StayWithPage
     } else if key.toggles_fullscreen() {
-        if key.repeat {
-            PageKeyAction::StayWithPage
-        } else {
-            PageKeyAction::ToggleFullscreen
-        }
+        PageKeyAction::ToggleFullscreen
     } else if key.meta || key.target.takes_text() {
         PageKeyAction::StayWithPage
     } else if key.key == "Escape" {

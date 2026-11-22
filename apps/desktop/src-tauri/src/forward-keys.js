@@ -9,7 +9,7 @@
       ? window.parent.postMessage({ forwardedKey: key }, "*")
       : window.__TAURI_INTERNALS__.invoke("forward_key", { key }).catch(console.error);
   const togglesFullscreen = (event) =>
-    event.key.toLowerCase() === "f" &&
+    event.key?.toLowerCase() === "f" &&
     event.ctrlKey &&
     event.metaKey &&
     !event.altKey &&

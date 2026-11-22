@@ -111,8 +111,8 @@ pub fn leave_fullscreen(app: AppHandle, window: WebviewWindow) -> CommandResult<
 /// ⌃⌘F: the calling window switches between Fullscreen and Windowed.
 #[tauri::command]
 pub fn toggle_fullscreen(app: AppHandle, window: WebviewWindow) -> CommandResult<()> {
-    let fullscreen = app.state::<Fullscreen>().contains(window.label());
-    set_fullscreen(&app, &window, !fullscreen)
+    let is_fullscreen = app.state::<Fullscreen>().contains(window.label());
+    set_fullscreen(&app, &window, !is_fullscreen)
 }
 
 /// A key pressed in the Presentation Window's page, or in the app pane of the Combined layout.
@@ -132,12 +132,9 @@ pub fn forward_key(app: AppHandle, window: WebviewWindow, key: PageKey) -> Comma
 
 /// Switches a Performance window between Fullscreen, on the display it is on now, and Windowed, back
 /// at the frame it had. Perform's own placement is left to `perform`.
-pub fn set_fullscreen(
-    app: &AppHandle,
-    window: &WebviewWindow,
-    fullscreen: bool,
-) -> CommandResult<()> {
-    if !PERFORMANCE_WINDOWS.contains(&window.label()) {
+fn set_fullscreen(app: &AppHandle, window: &WebviewWindow, fullscreen: bool) -> CommandResult<()> {
+    let unchanged = app.state::<Fullscreen>().contains(window.label()) == fullscreen;
+    if unchanged || !PERFORMANCE_WINDOWS.contains(&window.label()) {
         return Ok(());
     }
     if fullscreen {

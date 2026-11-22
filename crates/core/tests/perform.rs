@@ -46,15 +46,24 @@ fn performance_keys_pressed_on_the_page_are_forwarded() {
 
 #[test]
 fn escape_leaves_fullscreen() {
+    let held = PageKey {
+        repeat: true,
+        ..press("Escape")
+    };
+
     assert_eq!(classify(&press("Escape")), PageKeyAction::LeaveFullscreen);
+    assert_eq!(classify(&held), PageKeyAction::LeaveFullscreen);
 }
 
 #[test]
 fn control_command_f_toggles_fullscreen() {
-    assert_eq!(
-        classify(&control_command("f")),
-        PageKeyAction::ToggleFullscreen
-    );
+    for key in ["f", "F"] {
+        assert_eq!(
+            classify(&control_command(key)),
+            PageKeyAction::ToggleFullscreen,
+            "{key:?}"
+        );
+    }
 }
 
 #[test]

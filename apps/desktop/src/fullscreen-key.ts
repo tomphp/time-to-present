@@ -1,7 +1,8 @@
-type Keys = Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey">;
+type Keys = Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey" | "isComposing">;
 
 /** The keys that switch the Teleprompter Window between Fullscreen and Windowed, ahead of the rest of the keymap. */
-export function fullscreenKey({ key, metaKey, ctrlKey, altKey, shiftKey }: Keys): "leave" | "toggle" | null {
+export function fullscreenKey({ key, metaKey, ctrlKey, altKey, shiftKey, isComposing }: Keys): "leave" | "toggle" | null {
+  if (isComposing) return null;
   if (key === "Escape") return "leave";
   if (key.toLowerCase() === "f" && ctrlKey && metaKey && !altKey && !shiftKey) return "toggle";
   return null;
