@@ -6,6 +6,7 @@ mod clock;
 mod correct;
 mod create;
 mod delete;
+mod delete_event;
 mod drag;
 mod events;
 mod feed;

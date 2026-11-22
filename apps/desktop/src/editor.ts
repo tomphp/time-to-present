@@ -161,6 +161,7 @@ const menu = editorMenu(
     target: pane.recordingTarget(),
     selected: selection.ids(),
     listenable: previewControls.listenable(),
+    eventSelected: inspector.eventSelected(),
     inspectorShown: inspector.shown(),
     timelineShown: timelineDock.shown(),
   }),
@@ -203,9 +204,11 @@ function select(id: string | null) {
   pane.selectEvent(id);
   showInspector();
   const event = current?.namedEvents.find((named) => named.id === id);
-  if (!event) return;
-  inspector.openEvent({ kind: "existing", event });
-  void selectEvent(event.id).catch(console.error);
+  if (event) {
+    inspector.openEvent({ kind: "existing", event });
+    void selectEvent(event.id).catch(console.error);
+  }
+  menu.changed();
 }
 
 function render(state: SessionState) {

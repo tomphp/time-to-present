@@ -12,6 +12,7 @@ pub enum MenuCommand {
     Record,
     ReRecordSelection,
     AddNamedEvent,
+    DeleteNamedEvent,
     Retime,
     Listen,
     Perform,
@@ -42,7 +43,7 @@ pub enum Route {
 }
 
 impl MenuCommand {
-    pub const ALL: [MenuCommand; 27] = [
+    pub const ALL: [MenuCommand; 28] = [
         Self::Settings,
         Self::NewPresentation,
         Self::OpenFolder,
@@ -50,6 +51,7 @@ impl MenuCommand {
         Self::Record,
         Self::ReRecordSelection,
         Self::AddNamedEvent,
+        Self::DeleteNamedEvent,
         Self::Retime,
         Self::Listen,
         Self::Perform,
@@ -93,6 +95,7 @@ impl MenuCommand {
             Self::Record => "record",
             Self::ReRecordSelection => "reRecordSelection",
             Self::AddNamedEvent => "addNamedEvent",
+            Self::DeleteNamedEvent => "deleteNamedEvent",
             Self::Retime => "retime",
             Self::Listen => "listen",
             Self::Perform => "perform",
@@ -121,7 +124,7 @@ impl MenuCommand {
     }
 
     /// The modifier shortcuts that work from anywhere today. The Teleprompter's display keys stay
-    /// with its window, so the Editor keeps its caret keys, and ⌘E stays with the Script.
+    /// with its window, so the Editor keeps its caret keys, and ⌘E and ⌘⌫ stay with the Editor.
     pub fn accelerator(self) -> Option<&'static str> {
         match self {
             Self::Settings => Some("Cmd+,"),

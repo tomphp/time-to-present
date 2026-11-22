@@ -43,6 +43,7 @@ const EDITOR: EditorReport = EditorReport {
     retimable: false,
     listenable: false,
     locked: false,
+    event_selected: false,
     clock: Some(ClockState::Ready),
     inspector_shown: true,
     timeline_shown: true,
@@ -472,10 +473,43 @@ fn add_named_event_shows_the_scripts_own_key_and_leaves_it_to_the_script() {
 }
 
 #[test]
+fn delete_named_event_needs_a_selected_event_and_no_edit_lock() {
+    let selected = EditorReport {
+        event_selected: true,
+        ..EDITOR
+    };
+    let locked = EditorReport {
+        locked: true,
+        ..selected
+    };
+
+    assert!(!in_editor(MenuCommand::DeleteNamedEvent, EDITOR).enabled);
+    assert!(in_editor(MenuCommand::DeleteNamedEvent, selected).enabled);
+    assert!(!in_editor(MenuCommand::DeleteNamedEvent, locked).enabled);
+}
+
+#[test]
+fn delete_named_event_shows_the_editors_own_key_and_leaves_it_to_the_editor() {
+    assert_eq!(
+        in_editor(MenuCommand::DeleteNamedEvent, EDITOR).label,
+        "Delete Named Event (⌘⌫)"
+    );
+    assert_eq!(MenuCommand::DeleteNamedEvent.accelerator(), None);
+    assert_eq!(MenuCommand::DeleteNamedEvent.route(), Route::Window);
+    assert_eq!(
+        MenuCommand::from_id("deleteNamedEvent"),
+        Some(MenuCommand::DeleteNamedEvent)
+    );
+}
+
+#[test]
 fn the_editors_window_keys_are_never_menu_accelerators_so_each_runs_once() {
     for command in MenuCommand::ALL {
         assert!(
-            !matches!(command.accelerator(), Some("Cmd+E" | "Cmd+'")),
+            !matches!(
+                command.accelerator(),
+                Some("Cmd+E" | "Cmd+'" | "Cmd+Backspace")
+            ),
             "{command:?}"
         );
     }

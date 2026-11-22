@@ -26,6 +26,7 @@ const SCRIPT: &[Entry] = &[
     Command(ReRecordSelection),
     Separator,
     Command(AddNamedEvent),
+    Command(DeleteNamedEvent),
     Command(Retime),
     Separator,
     Command(Listen),
