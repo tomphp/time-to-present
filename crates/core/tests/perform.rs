@@ -1,5 +1,6 @@
 use ttp_core::perform::{
-    Display, KeyTarget, PageKey, PerformanceWindow, PresentationSize, display_for, forwards,
+    Display, KeyTarget, PageKey, PageKeyAction, PerformanceWindow, PresentationSize, classify,
+    display_for,
 };
 
 fn press(key: &str) -> PageKey {
@@ -24,11 +25,56 @@ fn input(kind: &str) -> KeyTarget {
     }
 }
 
+fn control_command(key: &str) -> PageKey {
+    PageKey {
+        meta: true,
+        ctrl: true,
+        ..press(key)
+    }
+}
+
+fn forwards(key: &PageKey) -> bool {
+    classify(key) == PageKeyAction::Forward
+}
+
 #[test]
 fn performance_keys_pressed_on_the_page_are_forwarded() {
-    for key in [" ", "PageDown", "ArrowLeft", "Home", "b", "Escape"] {
+    for key in [" ", "PageDown", "ArrowLeft", "Home", "b"] {
         assert!(forwards(&press(key)), "{key:?} should be forwarded");
     }
+}
+
+#[test]
+fn escape_leaves_fullscreen() {
+    assert_eq!(classify(&press("Escape")), PageKeyAction::LeaveFullscreen);
+}
+
+#[test]
+fn control_command_f_toggles_fullscreen() {
+    assert_eq!(
+        classify(&control_command("f")),
+        PageKeyAction::ToggleFullscreen
+    );
+}
+
+#[test]
+fn control_command_f_toggles_fullscreen_even_in_a_text_input() {
+    let in_a_field = PageKey {
+        target: input("text"),
+        ..control_command("f")
+    };
+
+    assert_eq!(classify(&in_a_field), PageKeyAction::ToggleFullscreen);
+}
+
+#[test]
+fn holding_control_command_f_toggles_only_once() {
+    let held = PageKey {
+        repeat: true,
+        ..control_command("f")
+    };
+
+    assert_eq!(classify(&held), PageKeyAction::StayWithPage);
 }
 
 #[test]
@@ -37,8 +83,22 @@ fn command_combinations_stay_with_the_page() {
         meta: true,
         ..press("c")
     };
+    let find = PageKey {
+        meta: true,
+        ..press("f")
+    };
+    let shifted = PageKey {
+        shift: true,
+        ..control_command("F")
+    };
+    let optioned = PageKey {
+        alt: true,
+        ..control_command("f")
+    };
 
-    assert!(!forwards(&copy));
+    for key in [copy, find, shifted, optioned] {
+        assert_eq!(classify(&key), PageKeyAction::StayWithPage, "{key:?}");
+    }
 }
 
 #[test]
@@ -93,12 +153,23 @@ fn an_input_without_a_type_takes_text() {
 
 #[test]
 fn keys_composing_text_stay_with_the_page() {
-    let composing = PageKey {
-        composing: true,
-        ..press("ArrowRight")
+    for key in [press("ArrowRight"), press("Escape"), control_command("f")] {
+        let composing = PageKey {
+            composing: true,
+            ..key
+        };
+        assert_eq!(classify(&composing), PageKeyAction::StayWithPage);
+    }
+}
+
+#[test]
+fn escape_typed_into_a_focused_text_input_stays_with_the_page() {
+    let in_a_field = PageKey {
+        target: input("text"),
+        ..press("Escape")
     };
 
-    assert!(!forwards(&composing));
+    assert_eq!(classify(&in_a_field), PageKeyAction::StayWithPage);
 }
 
 fn displays() -> Vec<Display> {

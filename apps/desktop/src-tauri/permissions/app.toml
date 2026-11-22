@@ -51,6 +51,7 @@ commands.allow = [
   "performance_settings",
   "set_performance_settings",
   "leave_fullscreen",
+  "toggle_fullscreen",
 ]
 
 [[permission]]

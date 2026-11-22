@@ -27,10 +27,40 @@ const INPUTS_WITHOUT_TEXT: [&str; 10] = [
     "button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit",
 ];
 
-/// Whether a key pressed in the Presentation Window goes on to the core as a Performance key.
-/// The page keeps ⌘-combinations and anything typed into a focused text input.
-pub fn forwards(key: &PageKey) -> bool {
-    !key.meta && !key.composing && !key.target.takes_text()
+/// What a key pressed in a Performance window's page does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PageKeyAction {
+    /// A Performance key, for the Teleprompter's keymap.
+    Forward,
+    LeaveFullscreen,
+    ToggleFullscreen,
+    StayWithPage,
+}
+
+/// ⌃⌘F toggles Fullscreen wherever focus is, once per press. Otherwise the page keeps
+/// ⌘-combinations and anything typed into a focused text input, and Esc leaves Fullscreen.
+pub fn classify(key: &PageKey) -> PageKeyAction {
+    if key.composing {
+        PageKeyAction::StayWithPage
+    } else if key.toggles_fullscreen() {
+        if key.repeat {
+            PageKeyAction::StayWithPage
+        } else {
+            PageKeyAction::ToggleFullscreen
+        }
+    } else if key.meta || key.target.takes_text() {
+        PageKeyAction::StayWithPage
+    } else if key.key == "Escape" {
+        PageKeyAction::LeaveFullscreen
+    } else {
+        PageKeyAction::Forward
+    }
+}
+
+impl PageKey {
+    fn toggles_fullscreen(&self) -> bool {
+        self.key.eq_ignore_ascii_case("f") && self.ctrl && self.meta && !self.alt && !self.shift
+    }
 }
 
 impl KeyTarget {

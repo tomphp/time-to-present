@@ -120,6 +120,7 @@ export const setPerformanceSettings = (performance: PerformanceSettings) =>
   invoke<void>("set_performance_settings", { performance });
 export const forwardKey = (key: ForwardedKey) => invoke<void>("forward_key", { key });
 export const leaveFullscreen = () => invoke<void>("leave_fullscreen");
+export const toggleFullscreen = () => invoke<void>("toggle_fullscreen");
 
 export function onPerformanceSettings(handle: (settings: PerformanceSettings) => void) {
   void listen<PerformanceSettings>("performance-settings", (event) => handle(event.payload));
