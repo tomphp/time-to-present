@@ -69,7 +69,7 @@ const SCRIPT_AND_EDITOR_VIEW: [MenuCommand; 9] = [
     MenuCommand::ToggleTimeline,
 ];
 
-const TELEPROMPTER_OPTIONS: [MenuCommand; 9] = [
+const TELEPROMPTER_OPTIONS: [MenuCommand; 11] = [
     MenuCommand::Blank,
     MenuCommand::Markers,
     MenuCommand::Mirror,
@@ -78,6 +78,8 @@ const TELEPROMPTER_OPTIONS: [MenuCommand; 9] = [
     MenuCommand::FontSmaller,
     MenuCommand::ReadingLineUp,
     MenuCommand::ReadingLineDown,
+    MenuCommand::ReadMarkLeft,
+    MenuCommand::ReadMarkRight,
     MenuCommand::Ticker,
 ];
 
@@ -461,6 +463,8 @@ fn the_teleprompter_display_keys_are_in_their_titles_and_not_accelerators() {
             "Smaller Text (⌘−)",
             "Raise Reading Line (⌘↑)",
             "Lower Reading Line (⌘↓)",
+            "Move Read Mark Left (⌘←)",
+            "Move Read Mark Right (⌘→)",
             "Ticker View (T)",
         ]
     );

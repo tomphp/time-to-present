@@ -29,6 +29,14 @@ describe("display keys", () => {
     expect(press("ArrowDown", command)).toBe("readingLineDown");
   });
 
+  it("maps ⌘←/⌘→ to the Read Mark, and not without ⌘", () => {
+    expect(press("ArrowLeft", { metaKey: true })).toBe("readMarkLeft");
+    expect(press("ArrowRight", { metaKey: true })).toBe("readMarkRight");
+    expect(press("ArrowLeft")).toBeNull();
+    expect(press("ArrowRight", { altKey: true })).toBeNull();
+    expect(press("ArrowLeft", { metaKey: true, ctrlKey: true })).toBeNull();
+  });
+
   it("maps T to the Ticker, and not with a modifier", () => {
     expect(press("t")).toBe("ticker");
     expect(press("T")).toBe("ticker");
@@ -47,6 +55,8 @@ describe("applying display actions", () => {
   it("repeats only font size and Reading Line steps while a key is held", () => {
     expect(isRepeatable("fontLarger")).toBe(true);
     expect(isRepeatable("readingLineDown")).toBe(true);
+    expect(isRepeatable("readMarkLeft")).toBe(true);
+    expect(isRepeatable("readMarkRight")).toBe(true);
     expect(isRepeatable("markers")).toBe(false);
     expect(isRepeatable("blank")).toBe(false);
     expect(isRepeatable("ticker")).toBe(false);
@@ -85,6 +95,17 @@ describe("applying display actions", () => {
     for (let i = 0; i < 100; i++) options = applyAction(applyAction(options, "fontLarger", "a"), "readingLineDown", "a");
     expect(options.fontSize).toBeLessThan(200);
     expect(options.readingLine).toBeLessThan(1);
+  });
+
+  it("steps the Read Mark by 0.05 and keeps it within 0.1 and 0.9", () => {
+    const left = applyAction(DEFAULT_OPTIONS, "readMarkLeft", "a");
+    expect(left.readMark).toBe(0.28);
+    expect(applyAction(left, "readMarkRight", "a").readMark).toBe(0.33);
+    let options = DEFAULT_OPTIONS;
+    for (let i = 0; i < 100; i++) options = applyAction(options, "readMarkLeft", "a");
+    expect(options.readMark).toBe(0.1);
+    for (let i = 0; i < 100; i++) options = applyAction(options, "readMarkRight", "a");
+    expect(options.readMark).toBe(0.9);
   });
 
   it("leaves the options alone on blank, which is not remembered", () => {

@@ -216,6 +216,8 @@ fn label(command: MenuCommand, context: &MenuContext) -> &'static str {
         FontSmaller => "Smaller Text (⌘−)",
         ReadingLineUp => "Raise Reading Line (⌘↑)",
         ReadingLineDown => "Lower Reading Line (⌘↓)",
+        ReadMarkLeft => "Move Read Mark Left (⌘←)",
+        ReadMarkRight => "Move Read Mark Right (⌘→)",
         Ticker => "Ticker View (T)",
     }
 }

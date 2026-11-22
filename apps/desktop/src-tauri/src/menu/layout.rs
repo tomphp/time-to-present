@@ -67,6 +67,8 @@ const VIEW: &[Entry] = &[
             Command(FontSmaller),
             Command(ReadingLineUp),
             Command(ReadingLineDown),
+            Command(ReadMarkLeft),
+            Command(ReadMarkRight),
         ],
     ),
 ];

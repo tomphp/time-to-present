@@ -33,6 +33,8 @@ pub enum MenuCommand {
     FontSmaller,
     ReadingLineUp,
     ReadingLineDown,
+    ReadMarkLeft,
+    ReadMarkRight,
     Ticker,
 }
 
@@ -44,7 +46,7 @@ pub enum Route {
 }
 
 impl MenuCommand {
-    pub const ALL: [MenuCommand; 29] = [
+    pub const ALL: [MenuCommand; 31] = [
         Self::Settings,
         Self::NewPresentation,
         Self::OpenFolder,
@@ -73,6 +75,8 @@ impl MenuCommand {
         Self::FontSmaller,
         Self::ReadingLineUp,
         Self::ReadingLineDown,
+        Self::ReadMarkLeft,
+        Self::ReadMarkRight,
         Self::Ticker,
     ];
 
@@ -118,6 +122,8 @@ impl MenuCommand {
             Self::FontSmaller => "fontSmaller",
             Self::ReadingLineUp => "readingLineUp",
             Self::ReadingLineDown => "readingLineDown",
+            Self::ReadMarkLeft => "readMarkLeft",
+            Self::ReadMarkRight => "readMarkRight",
             Self::Ticker => "ticker",
         }
     }
@@ -167,6 +173,8 @@ impl MenuCommand {
                 | Self::FontSmaller
                 | Self::ReadingLineUp
                 | Self::ReadingLineDown
+                | Self::ReadMarkLeft
+                | Self::ReadMarkRight
                 | Self::Ticker
         )
     }
