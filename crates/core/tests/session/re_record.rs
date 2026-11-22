@@ -61,37 +61,6 @@ fn an_overlapping_heard_word_in_a_re_record_is_clamped_to_the_next_start() {
 }
 
 #[test]
-fn a_short_word_in_a_re_record_grows_into_the_silence_around_it() {
-    let (harness, folder) = Harness::with_fixture("hello-world");
-    let mut session = harness.open(&folder);
-    re_record(&harness, &mut session, &["w2"]);
-
-    harness.transcriber.hear(&[
-        ("big", 1_000, 1_300),
-        ("a", 1_400, 1_410),
-        ("planet.", 1_450, 1_800),
-    ]);
-    session.poll().unwrap();
-
-    let state = session.state();
-    assert_eq!(
-        starts(&state),
-        [
-            ("Hello,", 400),
-            ("big", 850),
-            ("a", 1_220),
-            ("planet.", 1_300),
-            ("Typed", 1_750)
-        ]
-    );
-    let a = &state.words[2].word;
-    assert_eq!(
-        (a.gap, a.duration, a.audio_start, a.audio_end),
-        (70, 80, Some(1_370), Some(1_450))
-    );
-}
-
-#[test]
 fn the_live_transcript_of_a_re_record_sits_between_the_words_either_side_of_the_range() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);

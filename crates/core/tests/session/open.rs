@@ -68,6 +68,7 @@ fn a_stored_word_shorter_than_the_spoken_minimum_opens_unchanged() {
         r#""duration":300,"recordingId":"r1","audioStart":1200,"audioEnd":1500"#,
         r#""duration":0,"recordingId":"r1","audioStart":1200,"audioEnd":1200"#,
     );
+    assert!(stored.contains(r#""duration":0,"#));
     std::fs::write(&file, &stored).unwrap();
 
     let state = harness.open(&folder).state();

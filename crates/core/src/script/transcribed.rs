@@ -54,13 +54,17 @@ fn fitted(heard: &[HeardWord]) -> Vec<Span> {
 
 fn fit(word: &HeardWord, next: Option<&HeardWord>, previous_end: Ms) -> Span {
     let next_start = next.map_or(Ms::MAX, |next| next.start);
-    let clamped = word.end.min(next_start).max(word.start);
-    let end = clamped.max((word.start + SHORTEST_SPOKEN_WORD).min(next_start));
-    let start = (end - SHORTEST_SPOKEN_WORD)
+    let clamped_end = word.end.min(next_start).max(word.start);
+    let grown_into_silence_after =
+        clamped_end.max((word.start + SHORTEST_SPOKEN_WORD).min(next_start));
+    let start = (grown_into_silence_after - SHORTEST_SPOKEN_WORD)
         .max(previous_end)
         .min(word.start);
-    let end = end.max(start + SHORTEST_SPOKEN_WORD);
-    Span { start, end }
+    let pushed_past_next_start = grown_into_silence_after.max(start + SHORTEST_SPOKEN_WORD);
+    Span {
+        start,
+        end: pushed_past_next_start,
+    }
 }
 
 fn spoken(id: String, recording_id: &str, heard: &HeardWord, span: Span, gap: Ms) -> Word {
