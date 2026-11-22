@@ -29,16 +29,15 @@ export function mountClockControl(
   let shown: ClockAction | null = null;
 
   /** Redraws the icon only when the action changes: WebKit drops a click whose pressed icon is replaced. */
-  function showAction() {
-    const next = action ?? "play";
-    if (next === shown) return;
-    shown = next;
-    showAs(button, ACTION_BUTTONS[next]);
+  function showAction(offered: ClockAction) {
+    if (offered === shown) return;
+    shown = offered;
+    showAs(button, ACTION_BUTTONS[offered]);
   }
 
   function render() {
     action = clockAction(panel.state);
-    showAction();
+    showAction(action ?? "play");
     button.disabled = action === null;
     state.textContent = panel.state ?? "";
     elapsed.textContent = formatElapsed(panel.scriptTime);
