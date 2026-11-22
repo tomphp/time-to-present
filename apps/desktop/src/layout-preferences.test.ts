@@ -23,7 +23,7 @@ describe("layout preferences", () => {
   });
 
   it("reject a timeline height out of range", () => {
-    for (const height of [0, 95, 481, -1, "tall", null]) {
+    for (const height of [0, 119, 481, -1, "tall", null]) {
       const stored = storage({ "editor-layout": JSON.stringify({ timelineHeight: height }) });
       expect(loadLayout(stored).timelineHeight).toBe(DEFAULT_LAYOUT.timelineHeight);
     }

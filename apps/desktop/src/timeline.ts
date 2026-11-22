@@ -148,7 +148,7 @@ export function mountTimeline(
   function playhead(time: number | null) {
     head.hidden = time === null;
     const x = time === null ? null : xOf(time);
-    if (x !== null && headX !== null && inView(headX) && !inView(x)) root.scrollLeft = x - root.clientWidth / 3;
+    if (x !== null && root.clientWidth > 0 && headX !== null && inView(headX) && !inView(x)) root.scrollLeft = x - root.clientWidth / 3;
     if (x !== null) head.style.left = `${x}px`;
     headX = x;
   }

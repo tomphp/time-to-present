@@ -7,7 +7,7 @@ export interface LayoutPreferences {
 
 const STORAGE_KEY = "editor-layout";
 
-export const TIMELINE_HEIGHTS = { min: 96, max: 480 };
+export const TIMELINE_HEIGHTS = { min: 120, max: 480 };
 
 export const DEFAULT_LAYOUT: LayoutPreferences = { inspectorShown: true, timelineShown: true, timelineHeight: 140 };
 
