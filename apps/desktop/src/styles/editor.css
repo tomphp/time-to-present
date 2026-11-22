@@ -11,9 +11,32 @@ body.editor {
   padding: var(--gutter);
 }
 
-#server-notice,
+.banner {
+  margin: var(--gutter) 0 0;
+  padding: var(--space-3) var(--pad);
+  border-radius: var(--radius-sm);
+  overflow-wrap: anywhere;
+}
+
+#server-notice {
+  background: var(--warn-soft);
+}
+
 #error {
-  margin: var(--gutter) var(--pad);
+  background: var(--danger-soft);
+}
+
+.banner[hidden] {
+  display: none;
+}
+
+.hint {
+  margin: var(--gutter) var(--pad) 0;
+  color: var(--muted);
+}
+
+.hint[hidden] {
+  display: none;
 }
 
 #script {

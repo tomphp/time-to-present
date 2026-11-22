@@ -44,8 +44,6 @@
       </div>
       <span id="server-summary" class="server" aria-label="Presentation App server"></span>
     </header>
-    <p id="server-notice" role="status" hidden></p>
-    <p id="error" role="alert" hidden></p>
     <section id="recording-bar" class="card" aria-label="Recording bar" hidden>
       <p id="recording-denied" hidden>
         Time to Present can't use the microphone. Open System Settings › Privacy &amp; Security ›
@@ -91,6 +89,9 @@
       </span>
       <p role="alert" hidden></p>
     </form>
+    <p id="server-notice" class="banner" role="status" hidden></p>
+    <p id="error" class="banner" role="alert" hidden></p>
+    <p id="script-hint" class="hint" hidden></p>
     <article id="script" class="card" aria-label="Script"></article>
     <section id="timeline" class="card" aria-label="Script Time timeline"></section>
     <script type="module" src="/src/editor.ts"></script>

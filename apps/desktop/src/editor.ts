@@ -28,6 +28,7 @@ import { mountPerformMenu } from "./perform-menu";
 import { mountPreview } from "./preview-controls";
 import { mountRecordingBar } from "./recording-bar";
 import { act, showError } from "./report-error";
+import { renderScriptHint } from "./script-hint";
 import { sharedSelection } from "./selection";
 import { mountServerStatus } from "./server-status";
 import type { ClockState, SessionState } from "./session";
@@ -192,6 +193,7 @@ function render(state: SessionState) {
   if (state.locked || (selected && !state.namedEvents.some((event) => event.id === selected))) eventEditor.close();
   selection.update(state.words);
   pane.render(state);
+  renderScriptHint(document.querySelector<HTMLElement>("#script-hint")!, state.words.length);
   showInspector();
   timeline.render(state.words, state.namedEvents, state.movedEvents, state.scriptEnd, selection.ids(), state.locked);
   recordingBar.render(state.recordingBar);
