@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { chosenSize, sizeChoices, sizeValue } from "./presentation-size-view";
+import { choiceFor, chosenSize, customSize, isValidPixels, sizeChoices, sizeValue } from "./presentation-size-view";
 import type { SizePreset } from "./session";
 
 const presets: SizePreset[] = [
@@ -11,7 +11,7 @@ const presets: SizePreset[] = [
 ];
 
 describe("size choices", () => {
-  test("group the core's presets by shape, each labelled with its aspect ratio, then Fill display", () => {
+  test("group the core's presets by shape, each labelled with its aspect ratio, then Custom and Fill display", () => {
     expect(sizeChoices(presets)).toEqual([
       {
         group: "Landscape 16:9",
@@ -23,6 +23,7 @@ describe("size choices", () => {
       { group: "Vertical 9:16", choices: [{ value: "1080x1920", label: "1080×1920 (9:16 vertical)" }] },
       { group: "Square 1:1", choices: [{ value: "1080x1080", label: "1080×1080 (1:1 square)" }] },
       { group: "Portrait 4:5", choices: [{ value: "1080x1350", label: "1080×1350 (4:5 portrait)" }] },
+      { value: "custom", label: "Custom…" },
       { value: "fillDisplay", label: "Fill display" },
     ]);
   });
@@ -45,5 +46,41 @@ describe("chosen size", () => {
   test("shows a saved size as its choice", () => {
     expect(sizeValue({ width: 1080, height: 1920 })).toBe("1080x1920");
     expect(sizeValue("fillDisplay")).toBe("fillDisplay");
+  });
+});
+
+describe("custom size", () => {
+  test("offers Custom after the presets and before Fill display", () => {
+    expect(sizeChoices(presets).slice(-2)).toEqual([
+      { value: "custom", label: "Custom…" },
+      { value: "fillDisplay", label: "Fill display" },
+    ]);
+  });
+
+  test("reads whole-number fields within 320 to 7680", () => {
+    expect(customSize("1000", "2000")).toEqual({ width: 1000, height: 2000 });
+    expect(customSize("320", "7680")).toEqual({ width: 320, height: 7680 });
+  });
+
+  test.each([
+    ["319", "720"],
+    ["1280", "7681"],
+    ["10.5", "720"],
+    ["", "720"],
+    ["abc", "720"],
+    ["-400", "720"],
+  ])("refuses %s by %s", (width, height) => {
+    expect(customSize(width, height)).toBeNull();
+  });
+
+  test("judges each field on its own", () => {
+    expect(isValidPixels("500")).toBe(true);
+    expect(isValidPixels("100")).toBe(false);
+  });
+
+  test("shows a saved size as its preset, Fill display, or Custom", () => {
+    expect(choiceFor({ width: 1080, height: 1920 }, presets)).toBe("1080x1920");
+    expect(choiceFor("fillDisplay", presets)).toBe("fillDisplay");
+    expect(choiceFor({ width: 1000, height: 2000 }, presets)).toBe("custom");
   });
 });

@@ -606,3 +606,11 @@ body.teleprompter #end.over {
   opacity: 1;
   color: var(--accent);
 }
+
+.custom-size input {
+  width: 5em;
+}
+
+.custom-size input[aria-invalid="true"] {
+  outline: 2px solid #d33;
+}

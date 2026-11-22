@@ -8,7 +8,7 @@ import {
 } from "./commands";
 import { find } from "./dom";
 import { AUTOMATIC, chosenSettings, displayChoices } from "./perform-menu-view";
-import { chosenSize, sizeChoices, sizeValue } from "./presentation-size-view";
+import { CUSTOM, choiceFor, chosenSize, customSize, isValidPixels, sizeChoices } from "./presentation-size-view";
 import { act } from "./report-error";
 import type { Display, PresentationSize, SizePreset } from "./session";
 
@@ -17,6 +17,9 @@ const layout = find<HTMLSelectElement>("#perform-layout");
 const teleprompterDisplay = find<HTMLSelectElement>("#teleprompter-display");
 const presentationDisplay = find<HTMLSelectElement>("#presentation-display");
 const presentationSize = find<HTMLSelectElement>("#presentation-size");
+const customFields = find<HTMLElement>("#custom-size");
+const customWidth = find<HTMLInputElement>("#custom-width");
+const customHeight = find<HTMLInputElement>("#custom-height");
 
 function fill(select: HTMLSelectElement, connected: Display[], remembered: string | null) {
   select.replaceChildren(...displayChoices(connected, remembered).map(({ value, label }) => new Option(label, value)));
@@ -32,7 +35,13 @@ function fillSizes(presets: SizePreset[], saved: PresentationSize) {
     return group;
   });
   presentationSize.replaceChildren(...options);
-  presentationSize.value = sizeValue(saved);
+  presentationSize.value = choiceFor(saved, presets);
+  if (saved !== "fillDisplay") [customWidth.value, customHeight.value] = [String(saved.width), String(saved.height)];
+  showCustomFields();
+}
+
+function showCustomFields() {
+  customFields.hidden = presentationSize.value !== CUSTOM;
 }
 
 async function show() {
@@ -58,7 +67,14 @@ function remember(): Promise<void> {
   );
 }
 
-const saveSize = () => setPresentationSize(chosenSize(presentationSize.value));
+async function saveSize() {
+  showCustomFields();
+  if (presentationSize.value !== CUSTOM) return setPresentationSize(chosenSize(presentationSize.value));
+  customWidth.setAttribute("aria-invalid", String(!isValidPixels(customWidth.value)));
+  customHeight.setAttribute("aria-invalid", String(!isValidPixels(customHeight.value)));
+  const size = customSize(customWidth.value, customHeight.value);
+  if (size) await setPresentationSize(size);
+}
 
 /** The Perform menu: this machine's Performance Layout and displays, and the Presentation's own size. */
 export function mountPerformMenu() {
@@ -68,5 +84,5 @@ export function mountPerformMenu() {
   for (const select of [layout, teleprompterDisplay, presentationDisplay]) {
     select.addEventListener("change", act(remember));
   }
-  presentationSize.addEventListener("change", act(saveSize));
+  for (const field of [presentationSize, customWidth, customHeight]) field.addEventListener("change", act(saveSize));
 }

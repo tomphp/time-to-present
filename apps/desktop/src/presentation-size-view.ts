@@ -2,6 +2,9 @@ import type { PresentationSize, Shape, SizePreset } from "./session";
 import type { Choice } from "./perform-menu-view";
 
 const FILL_DISPLAY = "fillDisplay";
+export const CUSTOM = "custom";
+const MIN_PIXELS = 320;
+const MAX_PIXELS = 7680;
 
 const SHAPES: Record<Shape, { group: string; label: string }> = {
   landscape: { group: "Landscape 16:9", label: "16:9 landscape" },
@@ -24,6 +27,7 @@ export function sizeChoices(presets: SizePreset[]): (ChoiceGroup | Choice)[] {
   }
   return [
     ...[...groups].map(([shape, choices]) => ({ group: SHAPES[shape].group, choices })),
+    { value: CUSTOM, label: "Custom…" },
     { value: FILL_DISPLAY, label: "Fill display" },
   ];
 }
@@ -37,4 +41,22 @@ export function chosenSize(value: string): PresentationSize {
   const pixels = /^(\d+)x(\d+)$/.exec(value);
   if (!pixels) throw new Error(`Unknown Presentation Size: ${value}`);
   return { width: Number(pixels[1]), height: Number(pixels[2]) };
+}
+
+/** The select's choice for a saved size: its preset or Fill display, else Custom. */
+export function choiceFor(size: PresentationSize, presets: SizePreset[]): string {
+  const value = sizeValue(size);
+  const known = size === FILL_DISPLAY || presets.some((preset) => sizeValue(preset) === value);
+  return known ? value : CUSTOM;
+}
+
+/** The size typed into the Custom fields, or null while either is not a whole number of pixels in bounds. */
+export function customSize(width: string, height: string): { width: number; height: number } | null {
+  const pixels = [width, height].map((text) => (/^\d+$/.test(text.trim()) ? Number(text) : NaN));
+  const valid = pixels.map((value) => value >= MIN_PIXELS && value <= MAX_PIXELS);
+  return valid[0] && valid[1] ? { width: pixels[0], height: pixels[1] } : null;
+}
+
+export function isValidPixels(text: string): boolean {
+  return customSize(text, String(MIN_PIXELS)) !== null;
 }
