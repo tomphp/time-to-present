@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { rehearsal } from "./recorded-rehearsal";
 import { scriptWord } from "./test-words";
-import { freeScrollBounds, stripX, tickerGeometry } from "./ticker-geometry";
+import { breakMarkX, freeScrollBounds, freeScrollRange, stripX, tickerGeometry } from "./ticker-geometry";
 import type { ScriptWord } from "./session";
 
 const CHAR = 10;
@@ -86,6 +86,24 @@ describe("the rehearsal on the Ticker", () => {
 
   it("free-scrolls from the first Word's left edge to END's", () => {
     expect(freeScrollBounds(ticker)).toEqual({ from: 0, to: 872.5 });
+  });
+
+  it("lets free scrolling move the strip from where it stands back to the first Word and on to END", () => {
+    expect(freeScrollRange(ticker, 2_500)).toEqual({ min: -315, max: 557.5 });
+    expect(freeScrollRange(ticker, scriptEnd)).toEqual({ min: -872.5, max: 0 });
+  });
+
+  it("only lets free scrolling look ahead during the lead-in", () => {
+    expect(freeScrollRange(ticker, 0)).toEqual({ min: 0, max: 947.5 });
+  });
+
+  it("centres a break's ¶ in the space after its Word", () => {
+    const marks = words.flatMap(({ breakAfter }, index) => (breakAfter ? [breakMarkX(ticker.words[index])] : []));
+    expect(marks).toEqual([277.5, 572.5]);
+  });
+
+  it("centres a ¶ after a floor-width Word in its normal space", () => {
+    expect(breakMarkX(ticker.words[0])).toBe(50);
   });
 
   it("doubles the scale with the text widths, so every Word still reaches the Read Mark at its start", () => {

@@ -208,7 +208,7 @@ function applyOptions() {
   renderer.invalidateScroll();
 }
 
-document.addEventListener("wheel", (event) => renderer.scrollFreelyBy(event.deltaY, followed), { passive: true });
+document.addEventListener("wheel", (event) => renderer.scrollFreelyBy(event, followed), { passive: true });
 
 const display = mountDisplay({
   storage: localStorage,

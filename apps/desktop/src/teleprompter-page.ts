@@ -2,7 +2,14 @@ import type { Cue } from "./approach-cue";
 import { markerPlacements } from "./display-options";
 import { sameLayout, scriptLayout } from "./script-view";
 import type { ScriptWord, TimedEvent } from "./session";
-import { endMark, lookWords, type TeleprompterRenderer, type ViewFrame } from "./teleprompter-renderer";
+import {
+  endMark,
+  flashMarker,
+  lookWords,
+  marker,
+  type TeleprompterRenderer,
+  type ViewFrame,
+} from "./teleprompter-renderer";
 import {
   heldFreeScroll,
   scrollFreely,
@@ -12,16 +19,6 @@ import {
 } from "./teleprompter-view";
 
 const SCROLL_EASE = "transform 200ms ease";
-const FLASH = "fired";
-
-function marker({ id, name }: { id: string; name: string }) {
-  const element = document.createElement("small");
-  element.className = "marker";
-  element.dataset.event = id;
-  element.textContent = name;
-  return element;
-}
-
 export function mountPage(column: HTMLElement, stage: HTMLElement): TeleprompterRenderer {
   const end = endMark();
 
@@ -105,10 +102,10 @@ export function mountPage(column: HTMLElement, stage: HTMLElement): Teleprompter
       if (target) follow(target, frame);
     },
 
-    scrollFreelyBy(delta, clock) {
+    scrollFreelyBy({ deltaY }, clock) {
       const target = spans[current ?? 0];
       if (!target) return;
-      free = scrollFreely(free, clock, delta, { min: -target.offsetTop, max: column.offsetHeight - target.offsetTop });
+      free = scrollFreely(free, clock, deltaY, { min: -target.offsetTop, max: column.offsetHeight - target.offsetTop });
     },
 
     invalidateScroll() {
@@ -116,11 +113,7 @@ export function mountPage(column: HTMLElement, stage: HTMLElement): Teleprompter
     },
 
     flash(id) {
-      const element = column.querySelector<HTMLElement>(`[data-event="${id}"]`);
-      if (!element) return;
-      element.classList.remove(FLASH);
-      element.getBoundingClientRect();
-      element.classList.add(FLASH);
+      flashMarker(column, id);
     },
 
     destroy() {

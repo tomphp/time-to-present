@@ -6,6 +6,7 @@ export interface MeasuredWord {
 export interface PlacedWord {
   start: number;
   slot: number;
+  textWidth: number;
   left: number;
   width: number;
 }
@@ -23,8 +24,8 @@ export function tickerGeometry(measured: MeasuredWord[], scriptEnd: number, spac
   const minWidths = measured.map(({ textWidth }) => textWidth + spaceWidth);
   const scale = scaleOf(slots, minWidths);
   let left = 0;
-  const words = measured.map(({ start }, index) => {
-    const placed = { start, slot: slots[index], left, width: Math.max(slots[index] * scale, minWidths[index]) };
+  const words = measured.map(({ start, textWidth }, index) => {
+    const placed = { start, slot: slots[index], textWidth, left, width: Math.max(slots[index] * scale, minWidths[index]) };
     left += placed.width;
     return placed;
   });
@@ -54,3 +55,13 @@ export function stripX({ words, end, scriptEnd, scale }: Ticker, scriptTime: num
 
 /** Free scrolling runs from the first Word's left edge to END's. */
 export const freeScrollBounds = ({ words, end }: Ticker) => ({ from: words[0]?.left ?? 0, to: end });
+
+/** How far a free scroll may move the strip from `scriptTime`, never back past where the lead-in stands. */
+export function freeScrollRange(ticker: Ticker, scriptTime: number) {
+  const { from, to } = freeScrollBounds(ticker);
+  const x = stripX(ticker, scriptTime);
+  return { min: Math.min(0, from - x), max: Math.max(0, to - x) };
+}
+
+/** A break's ¶ sits centred in the space after its Word, adding no width. */
+export const breakMarkX = ({ left, textWidth, width }: PlacedWord) => left + (textWidth + width) / 2;

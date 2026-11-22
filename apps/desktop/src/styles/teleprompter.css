@@ -166,6 +166,20 @@ body.teleprompter.ticker #column .space {
   visibility: hidden;
 }
 
+body.teleprompter.ticker #column .break-mark {
+  transform: translateX(-50%);
+  opacity: 0.25;
+}
+
+body.teleprompter.ticker #column .marker {
+  top: auto;
+  bottom: 100%;
+  margin: 0;
+  padding-left: 0.4em;
+  border-left: 1px solid currentColor;
+  line-height: 1.4;
+}
+
 body.teleprompter #paused {
   position: fixed;
   inset: 0;
