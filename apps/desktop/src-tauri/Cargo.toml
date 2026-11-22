@@ -4,9 +4,17 @@ edition.workspace = true
 version.workspace = true
 license.workspace = true
 
+# No tests of its own: on Windows, test binaries lack the manifest Tauri embeds in the app.
 [lib]
 name = "time_to_present_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+test = false
+doctest = false
+
+[[bin]]
+name = "time-to-present"
+path = "src/main.rs"
+test = false
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

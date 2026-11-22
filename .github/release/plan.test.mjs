@@ -61,7 +61,7 @@ describe("release plan", { concurrency: true }, () => {
     "apps/desktop/src/main.ts",
     "crates/core/src/lib.rs",
     "templates/presentation/src/App.tsx",
-    "scripts/build-sidecar.sh",
+    "scripts/build-sidecar.mjs",
     "Cargo.toml",
     "Cargo.lock",
   ];
