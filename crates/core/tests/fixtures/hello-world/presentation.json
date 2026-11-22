@@ -1,6 +1,7 @@
 {
   "formatVersion": 1,
   "title": "Hello world",
+  "presentationSize": {"width":1920,"height":1080},
   "recordings": [
     {"id":"r1","file":"recordings/r1.wav"}
   ],

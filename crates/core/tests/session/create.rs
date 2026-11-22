@@ -27,7 +27,14 @@ fn a_new_presentation_folder_holds_presentation_json_empty_recordings_and_the_te
             .unwrap();
     assert_eq!(
         json,
-        json!({"formatVersion": 1, "title": "My Talk", "recordings": [], "words": [], "namedEvents": []})
+        json!({
+            "formatVersion": 1,
+            "title": "My Talk",
+            "presentationSize": {"width": 1920, "height": 1080},
+            "recordings": [],
+            "words": [],
+            "namedEvents": []
+        })
     );
     assert_eq!(fs::read_dir(folder.join("recordings")).unwrap().count(), 0);
     assert!(folder.join("app-src/README.md").is_file());

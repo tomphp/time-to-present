@@ -6,6 +6,7 @@ use serde::Serialize;
 
 use crate::capture::{RecordingBar, RecordingBarState, Taps};
 use crate::clock::{Clock, Snapshot, StreamEvent, Timeline};
+use crate::perform::PresentationSize;
 use crate::platform::Platform;
 use crate::script::{Edit, EditError, Ids, Script, TimedEvent, TimedWord};
 use crate::store::{self, Presentation, StoreError};
@@ -61,6 +62,7 @@ pub struct Session {
 pub struct SessionState {
     pub folder: PathBuf,
     pub title: String,
+    pub presentation_size: PresentationSize,
     pub words: Vec<TimedWord>,
     pub named_events: Vec<TimedEvent>,
     pub moved_events: Vec<String>,
@@ -123,6 +125,17 @@ impl Session {
         let mut renamed = self.presentation.clone();
         renamed.title = title.to_string();
         self.save(renamed)
+    }
+
+    /// Saves at once, and is not an edit to the Script, so it can change while the clock plays.
+    pub fn set_presentation_size(&mut self, size: PresentationSize) -> Result<(), StoreError> {
+        let mut resized = self.presentation.clone();
+        resized.presentation_size = size;
+        self.save(resized)
+    }
+
+    pub fn presentation_size(&self) -> PresentationSize {
+        self.presentation.presentation_size
     }
 
     /// Applies one edit (a Batch counts as one) as a single undo step, or leaves the Script
@@ -309,6 +322,7 @@ impl Session {
         SessionState {
             folder: self.folder.clone(),
             title: self.presentation.title.clone(),
+            presentation_size: self.presentation.presentation_size,
             words: self.presentation.script.timed_words(),
             named_events: self.presentation.script.timed_events(),
             moved_events: self.moved_events(),

@@ -7,7 +7,7 @@ A desktop app for the whole presenting workflow: record a talk, edit its timing,
 ### Presentation and Script
 
 **Presentation**:
-One talk and everything that belongs to it: its Script, its Recordings, and the Presentation App built for it. One Presentation is open at a time.
+One talk and everything that belongs to it: its Script, its Recordings, its Presentation Size, and the Presentation App built for it. One Presentation is open at a time.
 _Avoid_: Project, deck, document
 
 **Script**:
@@ -152,6 +152,16 @@ A Performance window that is an ordinary window, with a title bar, that can be m
 
 **Fullscreen Hint**:
 The short message the Teleprompter Window shows each time it goes Fullscreen. It says how to switch, then fades away. It never appears on the Presentation Window.
+
+**Presentation Size**:
+The size, in pixels, at which the Presentation Window shows the Presentation App. It is either a Size Preset, a custom width × height, or Fill display.
+_Avoid_: resolution, window size
+
+**Size Preset**:
+One of the named, suggested Presentation Sizes, each with an aspect ratio (16:9, 9:16, 1:1, 4:5).
+
+**Fill display**:
+The Presentation Size that makes the Presentation Window fullscreen on a display of its own.
 
 **Performance Layout**:
 How the Performance is arranged on screen. There are three: **Two windows** (a Teleprompter Window and a Presentation Window on separate displays), **Combined** (Presentation App and Teleprompter side by side in one window), and **Teleprompter only**.

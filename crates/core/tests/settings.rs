@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use tempfile::TempDir;
 use ttp_core::capture::InputChoice;
-use ttp_core::perform::{PerformanceLayout, PerformanceSettings, PresentationSize};
+use ttp_core::perform::{PerformanceLayout, PerformanceSettings};
 use ttp_core::settings::{ApproachCue, Settings};
 
 fn settings_in(dir: &TempDir) -> Settings {
@@ -188,17 +188,15 @@ fn performing_defaults_to_two_windows_on_displays_chosen_for_them() {
     assert_eq!(performance.layout, PerformanceLayout::TwoWindows);
     assert_eq!(performance.teleprompter_display, None);
     assert_eq!(performance.presentation_display, None);
-    assert_eq!(performance.presentation_size, PresentationSize::Hd1080);
 }
 
 #[test]
-fn the_performance_layout_displays_and_size_are_remembered_on_this_machine() {
+fn the_performance_layout_and_displays_are_remembered_on_this_machine() {
     let dir = TempDir::new().unwrap();
     let chosen = PerformanceSettings {
         layout: PerformanceLayout::TeleprompterOnly,
         teleprompter_display: Some("Built-in Retina Display".into()),
         presentation_display: Some("Projector".into()),
-        presentation_size: PresentationSize::Fit,
     };
 
     settings_in(&dir).set_performance(chosen.clone()).unwrap();
@@ -219,4 +217,34 @@ fn the_combined_layout_is_remembered_on_this_machine() {
     assert_eq!(*settings_in(&dir).performance(), chosen);
     let stored = std::fs::read_to_string(dir.path().join("settings.json")).unwrap();
     assert!(stored.contains("\"combined\""), "{stored}");
+}
+
+#[test]
+fn a_presentation_size_left_in_the_settings_by_an_older_version_is_ignored() {
+    let older_sizes = [
+        serde_json::json!("fit"),
+        serde_json::json!("1280x720"),
+        serde_json::json!("fillDisplay"),
+        serde_json::json!({"width": 1080, "height": 1920}),
+    ];
+    for old in older_sizes {
+        let dir = TempDir::new().unwrap();
+        let a = folder(&dir, "a");
+        let saved = serde_json::json!({
+            "recent": [a],
+            "performance": {"layout": "combined", "presentationSize": old},
+        });
+        fs::write(dir.path().join("settings.json"), saved.to_string()).unwrap();
+
+        let settings = settings_in(&dir);
+
+        assert_eq!(settings.recent(), [a]);
+        assert_eq!(
+            *settings.performance(),
+            PerformanceSettings {
+                layout: PerformanceLayout::Combined,
+                ..PerformanceSettings::default()
+            }
+        );
+    }
 }

@@ -1,16 +1,18 @@
 use std::ops::Deref;
 
+use serde::Serialize;
 use tauri::{
     AppHandle, Emitter, Manager, Monitor, State, Url, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder, Window, WindowEvent,
 };
 use ttp_core::perform::{
-    PageKey, PageKeyAction, PerformanceLayout, PerformanceSettings, PerformanceWindow, classify,
+    PageKey, PageKeyAction, PerformanceLayout, PerformanceSettings, PerformanceWindow,
+    PresentationSize, SIZE_PRESETS, SizePreset, classify, fit,
 };
 use ttp_core::settings::ApproachCue;
 
 use crate::displays::monitor_for;
-use crate::fullscreen::{self, Fullscreen, logical_size, place};
+use crate::fullscreen::{self, Fullscreen, area, place};
 use crate::menu;
 use crate::window_set::WindowSet;
 use crate::{
@@ -44,10 +46,13 @@ impl Deref for FocusedPerformanceWindows {
     }
 }
 
-/// Opens the remembered Performance Layout, each window simple-fullscreen on its display. With only
-/// one display, the Presentation Window stays a window at its size, as for sharing it on a call.
+/// Opens the remembered Performance Layout, the Teleprompter simple-fullscreen on its display and the
+/// Presentation Window at the open Presentation's Presentation Size.
 #[tauri::command]
 pub fn perform(app: AppHandle, state: State<'_, App>) -> CommandResult<()> {
+    let size = with_session(&state, |session| {
+        Ok::<_, String>(session.presentation_size())
+    })?;
     let performance = state.settings.lock().unwrap().performance().clone();
     let teleprompter =
         bring_up_window(&app, TELEPROMPTER_WINDOW, "Teleprompter", TELEPROMPTER_SIZE)?;
@@ -59,7 +64,7 @@ pub fn perform(app: AppHandle, state: State<'_, App>) -> CommandResult<()> {
     }
     match performance.layout {
         PerformanceLayout::TwoWindows => {
-            show_presentation(&app, &state, &performance, teleprompter_monitor)?
+            show_presentation(&app, &state, &performance, size, teleprompter_monitor)?
         }
         PerformanceLayout::Combined | PerformanceLayout::TeleprompterOnly => {
             if let Some(presentation) = app.get_webview_window(PRESENTATION_WINDOW) {
@@ -75,22 +80,31 @@ pub fn performance_settings(state: State<'_, App>) -> PerformanceSettings {
     state.settings.lock().unwrap().performance().clone()
 }
 
-/// Remembers how to Perform, resizing a Presentation Window that is not fullscreen to the new size.
+/// Remembers how to Perform on this machine.
 #[tauri::command]
 pub fn set_performance_settings(
     app: AppHandle,
     state: State<'_, App>,
     performance: PerformanceSettings,
 ) -> CommandResult<()> {
-    let size = performance.presentation_size;
     state
         .settings
         .lock()
         .unwrap()
         .set_performance(performance.clone())
         .map_err(message)?;
-    app.emit(PERFORMANCE_SETTINGS, performance)
-        .map_err(message)?;
+    app.emit(PERFORMANCE_SETTINGS, performance).map_err(message)
+}
+
+/// Saves the Presentation Size in the open Presentation, resizing a Presentation Window that is not
+/// fullscreen to it.
+#[tauri::command]
+pub fn set_presentation_size(
+    app: AppHandle,
+    state: State<'_, App>,
+    size: PresentationSize,
+) -> CommandResult<()> {
+    with_session(&state, |session| session.set_presentation_size(size))?;
     let Some(presentation) = app.get_webview_window(PRESENTATION_WINDOW) else {
         return Ok(());
     };
@@ -98,9 +112,48 @@ pub fn set_performance_settings(
         return Ok(());
     }
     if let Some(monitor) = presentation.current_monitor().map_err(message)? {
-        place(&presentation, &monitor, size.within(logical_size(&monitor)))?;
+        place(&presentation, &monitor, fit(size, area(&monitor)).points)?;
     }
     Ok(())
+}
+
+/// The pixels the Presentation Window shows for the Presentation Size, and whether it shrank to fit.
+#[derive(Serialize)]
+pub struct ShownSize {
+    width: u32,
+    height: u32,
+    shrank: bool,
+}
+
+/// The size shown on the open Presentation Window's display, else on the display it would open on.
+#[tauri::command]
+pub fn shown_size(app: AppHandle, state: State<'_, App>) -> CommandResult<Option<ShownSize>> {
+    let Ok(size) = with_session(&state, |session| {
+        Ok::<_, String>(session.presentation_size())
+    }) else {
+        return Ok(None);
+    };
+    let monitor = match app.get_webview_window(PRESENTATION_WINDOW) {
+        Some(presentation) => presentation.current_monitor().map_err(message)?,
+        None => {
+            let performance = state.settings.lock().unwrap().performance().clone();
+            let remembered = performance.presentation_display.as_deref();
+            monitor_for(&app, PerformanceWindow::Presentation, remembered)?
+        }
+    };
+    Ok(monitor.map(|monitor| {
+        let window = fit(size, area(&monitor));
+        ShownSize {
+            width: window.pixels.0,
+            height: window.pixels.1,
+            shrank: window.shrank,
+        }
+    }))
+}
+
+#[tauri::command]
+pub fn size_presets() -> &'static [SizePreset] {
+    SIZE_PRESETS
 }
 
 /// Esc: the calling window leaves Fullscreen and stays open.
@@ -237,30 +290,32 @@ fn pause_unseen_performance(window: &Window) {
     });
 }
 
-/// Fullscreen on its own display, or a window at its size when it would cover the Teleprompter.
+/// A centred window at its Presentation Size, or for Fill display fullscreen on a display of its
+/// own and the largest 16:9 window on one it shares with the Teleprompter.
 fn show_presentation(
     app: &AppHandle,
     state: &App,
     performance: &PerformanceSettings,
+    size: PresentationSize,
     teleprompter_monitor: Option<Monitor>,
 ) -> CommandResult<()> {
     let remembered = performance.presentation_display.as_deref();
     let Some(monitor) = monitor_for(app, PerformanceWindow::Presentation, remembered)? else {
         return Ok(());
     };
-    let size = performance.presentation_size.within(logical_size(&monitor));
-    let presentation = presentation_window(app, state, size)?;
-    let shares_teleprompter_display =
-        teleprompter_monitor.is_some_and(|shared| shared.position() == monitor.position());
-    if shares_teleprompter_display {
+    let window = fit(size, area(&monitor));
+    let presentation = presentation_window(app, state, window.points)?;
+    let shared = teleprompter_monitor.is_some_and(|shared| shared.position() == monitor.position());
+    let fullscreen = window.fullscreen_on_own_display && !shared;
+    if fullscreen {
+        set_title_bar(&presentation, false)?;
+        fullscreen::enter(app, &presentation, &monitor, window.points)?;
+    } else {
         fullscreen::leave(app, &presentation)?;
         set_title_bar(&presentation, true)?;
-        place(&presentation, &monitor, size)?;
-    } else {
-        set_title_bar(&presentation, false)?;
-        fullscreen::enter(app, &presentation, &monitor, size)?;
+        place(&presentation, &monitor, window.points)?;
     }
-    fullscreen_changed(&presentation, !shares_teleprompter_display)
+    fullscreen_changed(&presentation, fullscreen)
 }
 
 /// The window showing the Presentation App, never mirrored, its keys forwarded.

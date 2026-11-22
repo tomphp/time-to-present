@@ -1,10 +1,9 @@
-import type { Display, PerformanceLayout, PerformanceSettings, PresentationSize } from "./session";
+import type { Display, PerformanceLayout, PerformanceSettings } from "./session";
 
 /** Lets the core choose: the main display for the Teleprompter, another one for the Presentation. */
 export const AUTOMATIC = "";
 
 const LAYOUTS: readonly PerformanceLayout[] = ["twoWindows", "combined", "teleprompterOnly"];
-const SIZES: readonly PresentationSize[] = ["1280x720", "1920x1080", "fit"];
 
 export interface Choice {
   value: string;
@@ -28,7 +27,6 @@ export function chosenSettings(menu: MenuValues): PerformanceSettings {
     layout: oneOf(LAYOUTS, menu.layout),
     teleprompterDisplay: chosenDisplay(menu.teleprompterDisplay),
     presentationDisplay: chosenDisplay(menu.presentationDisplay),
-    presentationSize: oneOf(SIZES, menu.presentationSize),
   };
 }
 

@@ -28,6 +28,7 @@ export interface TimedEvent {
 export interface SessionState {
   folder: string;
   title: string;
+  presentationSize: PresentationSize;
   words: ScriptWord[];
   namedEvents: TimedEvent[];
   movedEvents: string[];
@@ -176,13 +177,27 @@ export type StreamEvent =
 
 export type PerformanceLayout = "twoWindows" | "combined" | "teleprompterOnly";
 
-export type PresentationSize = "1280x720" | "1920x1080" | "fit";
+export interface PixelSize {
+  width: number;
+  height: number;
+}
+
+export type PresentationSize = "fillDisplay" | PixelSize;
+
+export type Shape = "landscape" | "vertical" | "square" | "portrait";
+
+export interface SizePreset extends PixelSize {
+  shape: Shape;
+}
+
+export interface ShownSize extends PixelSize {
+  shrank: boolean;
+}
 
 export interface PerformanceSettings {
   layout: PerformanceLayout;
   teleprompterDisplay: string | null;
   presentationDisplay: string | null;
-  presentationSize: PresentationSize;
 }
 
 export interface Display {

@@ -26,12 +26,14 @@
           <label>Presentation display <select id="presentation-display"></select></label>
           <label
             >Presentation size
-            <select id="presentation-size">
-              <option value="1280x720">1280×720</option>
-              <option value="1920x1080">1920×1080</option>
-              <option value="fit">Fit</option>
-            </select>
+            <select id="presentation-size"></select>
           </label>
+          <p id="shown-size" class="shown-size" hidden></p>
+          <div id="custom-size" class="custom-size" hidden>
+            <input id="custom-width" type="number" min="320" max="7680" step="1" aria-label="Width in pixels" />
+            ×
+            <input id="custom-height" type="number" min="320" max="7680" step="1" aria-label="Height in pixels" />
+          </div>
         </div>
       </details>
       <div id="clock" class="clock" aria-label="Performance clock">
