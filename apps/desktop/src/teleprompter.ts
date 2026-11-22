@@ -71,11 +71,11 @@ const paused = find<HTMLParagraphElement>("#paused");
 const stage = find<HTMLDivElement>("#stage");
 const pane = find<HTMLElement>("#pane");
 const prompter = find<HTMLElement>("#prompter");
-const VIEWS: Record<TeleprompterView, typeof mountPage> = { page: mountPage, ticker: mountTicker };
+const RENDERERS: Record<TeleprompterView, typeof mountPage> = { page: mountPage, ticker: mountTicker };
 const screenKey = () => `${screen.width}x${screen.height}@${devicePixelRatio}`;
 
 let options: DisplayOptions = { ...DEFAULT_OPTIONS };
-let renderer: TeleprompterRenderer = VIEWS[options.view](column, stage);
+let renderer: TeleprompterRenderer = RENDERERS[options.view](column, stage);
 
 const bar = {
   warning: find<HTMLParagraphElement>("#bar-warning"),
@@ -191,7 +191,7 @@ function onKey(event: KeyboardEvent) {
 /** Shows the Script in the other view from where the clock stands now, without touching the clock. */
 function switchView(view: TeleprompterView) {
   renderer.destroy();
-  renderer = VIEWS[view](column, stage);
+  renderer = RENDERERS[view](column, stage);
   renderer.render(words, events, scriptEnd);
   document.body.classList.toggle("ticker", view === "ticker");
 }

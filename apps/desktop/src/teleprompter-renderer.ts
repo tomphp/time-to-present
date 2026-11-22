@@ -1,6 +1,6 @@
 import type { Cue } from "./approach-cue";
 import type { ScriptWord, TimedEvent } from "./session";
-import type { Followed } from "./teleprompter-view";
+import { wordLook, type Followed } from "./teleprompter-view";
 
 export interface ViewFrame {
   current: number | null;
@@ -22,3 +22,13 @@ export interface TeleprompterRenderer {
   flash(id: string): void;
   destroy(): void;
 }
+
+export function endMark() {
+  const end = document.createElement("p");
+  end.id = "end";
+  end.textContent = "END";
+  return end;
+}
+
+export const lookWords = (spans: HTMLSpanElement[], current: number | null) =>
+  spans.forEach((span, index) => (span.className = wordLook(index, current)));

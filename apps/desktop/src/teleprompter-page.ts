@@ -2,12 +2,11 @@ import type { Cue } from "./approach-cue";
 import { markerPlacements } from "./display-options";
 import { sameLayout, scriptLayout } from "./script-view";
 import type { ScriptWord, TimedEvent } from "./session";
-import type { TeleprompterRenderer, ViewFrame } from "./teleprompter-renderer";
+import { endMark, lookWords, type TeleprompterRenderer, type ViewFrame } from "./teleprompter-renderer";
 import {
   heldFreeScroll,
   scrollFreely,
   scrollTo,
-  wordLook,
   type FreeScroll,
   type Scroll,
 } from "./teleprompter-view";
@@ -24,9 +23,7 @@ function marker({ id, name }: { id: string; name: string }) {
 }
 
 export function mountPage(column: HTMLElement, stage: HTMLElement): TeleprompterRenderer {
-  const end = document.createElement("p");
-  end.id = "end";
-  end.textContent = "END";
+  const end = endMark();
 
   let words: ScriptWord[] = [];
   let layoutKey = "";
@@ -38,7 +35,7 @@ export function mountPage(column: HTMLElement, stage: HTMLElement): Teleprompter
 
   function highlight(next: number | null) {
     current = next;
-    spans.forEach((span, index) => (span.className = wordLook(index, next)));
+    lookWords(spans, next);
   }
 
   function showCue(next: Cue | null) {

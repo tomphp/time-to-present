@@ -1,20 +1,17 @@
 import type { ScriptWord } from "./session";
-import type { TeleprompterRenderer } from "./teleprompter-renderer";
-import { wordLook } from "./teleprompter-view";
+import { endMark, lookWords, type TeleprompterRenderer } from "./teleprompter-renderer";
 import { stripX, tickerGeometry, type Ticker } from "./ticker-geometry";
 
 const NORMAL_SPACE = " ";
 
 /** The Words on one line, each reaching the Read Mark at its start. */
 export function mountTicker(column: HTMLElement, stage: HTMLElement): TeleprompterRenderer {
-  const end = document.createElement("p");
-  end.id = "end";
-  end.textContent = "END";
+  const end = endMark();
   const space = document.createElement("span");
   space.className = "space";
   space.textContent = NORMAL_SPACE;
 
-  let script = "";
+  let scriptKey = "";
   let words: ScriptWord[] = [];
   let scriptEnd = 0;
   let spans: HTMLSpanElement[] = [];
@@ -23,10 +20,10 @@ export function mountTicker(column: HTMLElement, stage: HTMLElement): Teleprompt
 
   function highlight(next: number | null) {
     current = next;
-    spans.forEach((span, index) => (span.className = wordLook(index, next)));
+    lookWords(spans, next);
   }
 
-  function place(): Ticker {
+  function layOut(): Ticker {
     const measured = words.map(({ start }, index) => ({ start, textWidth: spans[index].offsetWidth }));
     const placed = tickerGeometry(measured, scriptEnd, space.offsetWidth);
     placed.words.forEach(({ left }, index) => (spans[index].style.left = `${left}px`));
@@ -37,8 +34,8 @@ export function mountTicker(column: HTMLElement, stage: HTMLElement): Teleprompt
   return {
     render(next, _events, nextEnd) {
       const key = JSON.stringify([next.map(({ text, start }) => [text, start]), nextEnd]);
-      if (key === script) return;
-      script = key;
+      if (key === scriptKey) return;
+      scriptKey = key;
       words = next;
       scriptEnd = nextEnd;
       spans = next.map(({ text }) => {
@@ -54,7 +51,7 @@ export function mountTicker(column: HTMLElement, stage: HTMLElement): Teleprompt
     show(frame) {
       if (frame.current !== current) highlight(frame.current);
       end.classList.toggle("over", frame.over);
-      geometry ??= place();
+      geometry ??= layOut();
       const x = frame.readMark * stage.clientWidth - stripX(geometry, frame.scriptTime);
       column.style.transform = `translateX(${x}px)`;
     },

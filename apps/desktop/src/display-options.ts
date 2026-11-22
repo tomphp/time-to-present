@@ -31,7 +31,7 @@ export const NOT_MIRRORED: Mirror = { horizontal: false, vertical: false };
 const FONT_SIZES = { min: 16, max: 160, step: 4 };
 const READING_LINE = { min: 0.1, max: 0.9, step: 0.05 };
 const READ_MARK = { min: 0.1, max: 0.9 };
-const VIEWS: TeleprompterView[] = ["page", "ticker"];
+const VIEWS: Record<TeleprompterView, true> = { page: true, ticker: true };
 const STORAGE_KEY = "teleprompter-display-options";
 
 export type DisplayAction =
@@ -134,7 +134,7 @@ export function loadOptions(storage: Pick<Storage, "getItem">): DisplayOptions {
       markers: typeof stored.markers === "boolean" ? stored.markers : DEFAULT_OPTIONS.markers,
       fontSize: within(stored.fontSize, FONT_SIZES, DEFAULT_OPTIONS.fontSize),
       readingLine: within(stored.readingLine, READING_LINE, DEFAULT_OPTIONS.readingLine),
-      view: VIEWS.includes(stored.view) ? stored.view : DEFAULT_OPTIONS.view,
+      view: typeof stored.view === "string" && Object.hasOwn(VIEWS, stored.view) ? stored.view : DEFAULT_OPTIONS.view,
       readMark: within(stored.readMark, READ_MARK, DEFAULT_OPTIONS.readMark),
       mirrors: typeof stored.mirrors === "object" && stored.mirrors !== null ? stored.mirrors : {},
     };
