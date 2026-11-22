@@ -23,6 +23,7 @@ mod clock;
 mod displays;
 mod fullscreen;
 mod macos;
+mod menu;
 mod perform;
 mod recording;
 mod window_set;
@@ -438,12 +439,14 @@ pub fn run() {
             });
             app.manage(fullscreen::Fullscreen::default());
             app.manage(perform::FocusedPerformanceWindows::default());
+            menu::install(app)?;
             let handle = app.handle().clone();
             std::thread::spawn(move || poll_session(handle));
             tauri::async_runtime::spawn(watch_server(app.handle().clone()));
             Ok(())
         })
         .on_window_event(perform::on_window_event)
+        .on_menu_event(menu::on_menu_event)
         .invoke_handler(tauri::generate_handler![
             new_presentation,
             open_folder,
@@ -485,6 +488,7 @@ pub fn run() {
             clock::seek,
             clock::set_speed,
             clock::reset,
+            perform::is_fullscreen,
             perform::approach_cue,
             perform::set_approach_cue,
             perform::perform,
@@ -492,6 +496,7 @@ pub fn run() {
             perform::performance_settings,
             perform::set_performance_settings,
             perform::leave_fullscreen,
+            perform::toggle_fullscreen,
             perform::forward_key
         ])
         .build(tauri::generate_context!())

@@ -51,6 +51,11 @@ pub fn enter(
 ) -> CommandResult<()> {
     leave(app, window)?;
     place(window, monitor, size)?;
+    enter_in_place(app, window)
+}
+
+/// Fills the display the window is on now, remembering its frame for when it leaves.
+pub fn enter_in_place(app: &AppHandle, window: &WebviewWindow) -> CommandResult<()> {
     window.set_simple_fullscreen(true).map_err(message)?;
     app.state::<Fullscreen>().insert(window.label());
     Ok(())
@@ -58,6 +63,7 @@ pub fn enter(
 
 /// Leaves simple fullscreen, keeping the window open at the size it was placed at.
 pub fn leave(app: &AppHandle, window: &WebviewWindow) -> CommandResult<()> {
+    window.set_simple_fullscreen(false).map_err(message)?;
     app.state::<Fullscreen>().remove(window.label());
-    window.set_simple_fullscreen(false).map_err(message)
+    Ok(())
 }

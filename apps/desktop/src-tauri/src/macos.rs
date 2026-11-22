@@ -4,7 +4,7 @@ use block2::RcBlock;
 use objc2::rc::Retained;
 use objc2::runtime::{Bool, NSObjectProtocol, ProtocolObject};
 use objc2_av_foundation::{AVAuthorizationStatus, AVCaptureDevice, AVMediaTypeAudio};
-use objc2_foundation::{NSActivityOptions, NSProcessInfo, NSString};
+use objc2_foundation::{NSActivityOptions, NSProcessInfo, NSString, NSUserDefaults, ns_string};
 use ttp_core::capture::Access;
 use ttp_core::platform::AppNap;
 
@@ -30,6 +30,12 @@ pub fn request_microphone_access() -> Access {
         }
         _ => Access::Denied,
     }
+}
+
+/// Stops AppKit adding its own Full Screen item, which would take native fullscreen and ⌃⌘F.
+pub fn leave_full_screen_out_of_the_menu() {
+    NSUserDefaults::standardUserDefaults()
+        .setBool_forKey(false, ns_string!("NSFullScreenMenuItemEverywhere"));
 }
 
 pub struct ProcessActivity;

@@ -134,10 +134,20 @@ A language-neutral example of a Script, a series of clock actions, and the exact
 The view of the Script for the presenter to read from during a Performance, highlighting each Word at its recorded pace and scrolling with it.
 
 **Teleprompter Window**:
-The window that shows the Teleprompter, typically fullscreen on the presenter's own display.
+The window that shows the Teleprompter, Fullscreen on the presenter's display when Perform opens it, and Windowed when they choose.
 
 **Presentation Window**:
-The window that shows the Presentation App to the audience, without browser chrome.
+The window that shows the Presentation App to the audience; chrome-less while Fullscreen, with a title bar while Windowed.
+
+**Fullscreen**:
+A Performance window filling the whole of the display it is on, with no window chrome. The presenter switches each Performance window between Fullscreen and Windowed on its own.
+_Avoid_: presentation mode, kiosk
+
+**Windowed**:
+A Performance window that is an ordinary window, with a title bar, that can be moved and resized.
+
+**Fullscreen Hint**:
+The short message the Teleprompter Window shows each time it goes Fullscreen. It says how to switch, then fades away. It never appears on the Presentation Window.
 
 **Performance Layout**:
 How the Performance is arranged on screen. There are three: **Two windows** (a Teleprompter Window and a Presentation Window on separate displays), **Combined** (Presentation App and Teleprompter side by side in one window), and **Teleprompter only**.

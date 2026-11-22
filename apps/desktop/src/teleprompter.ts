@@ -3,6 +3,7 @@ import {
   leaveFullscreen,
   onAppFocus,
   onApproachCue,
+  onFullscreenChanged,
   onPerformanceKey,
   onServerStatus,
   onSessionState,
@@ -13,10 +14,13 @@ import {
   reset,
   seek,
   setSpeed,
+  toggleFullscreen,
 } from "./commands";
 import { isCombined, mountCombinedPane } from "./combined-pane";
 import { find } from "./dom";
 import { asKeydown } from "./forwarded-key";
+import { fullscreenHint } from "./fullscreen-hint";
+import { fullscreenKey } from "./fullscreen-key";
 import {
   applyAction,
   loadOptions,
@@ -246,7 +250,12 @@ function scrollFreelyBy(delta: number) {
 }
 
 function onKey(event: KeyboardEvent) {
-  if (event.key === "Escape") return void leaveFullscreen().catch(console.error);
+  const fullscreen = fullscreenKey(event);
+  if (fullscreen) {
+    event.preventDefault();
+    if (!event.repeat) void (fullscreen === "toggle" ? toggleFullscreen() : leaveFullscreen()).catch(console.error);
+    return;
+  }
   const action = displayAction(event);
   if (action) {
     event.preventDefault();
@@ -330,4 +339,11 @@ void onStreamEvent((event) => {
 });
 applyOptions();
 onApproachCue((settings) => (cueSettings = settings));
+const hint = find<HTMLParagraphElement>("#fullscreen-hint");
+onFullscreenChanged(
+  fullscreenHint((state) => {
+    hint.hidden = state === "hidden";
+    hint.classList.toggle("fading", state === "fading");
+  }),
+);
 requestAnimationFrame(frame);

@@ -120,6 +120,7 @@ export const setPerformanceSettings = (performance: PerformanceSettings) =>
   invoke<void>("set_performance_settings", { performance });
 export const forwardKey = (key: ForwardedKey) => invoke<void>("forward_key", { key });
 export const leaveFullscreen = () => invoke<void>("leave_fullscreen");
+export const toggleFullscreen = () => invoke<void>("toggle_fullscreen");
 
 export function onPerformanceSettings(handle: (settings: PerformanceSettings) => void) {
   void listen<PerformanceSettings>("performance-settings", (event) => handle(event.payload));
@@ -132,6 +133,11 @@ export function onPerformanceKey(handle: (key: ForwardedKey) => void) {
 
 export function onAppFocus(handle: (focused: boolean) => void) {
   void listen<boolean>("app-focus", (event) => handle(event.payload));
+}
+
+export function onFullscreenChanged(handle: (fullscreen: boolean) => void) {
+  void listen<boolean>("fullscreen-changed", (event) => handle(event.payload));
+  void invoke<boolean>("is_fullscreen").then((fullscreen) => fullscreen && handle(true));
 }
 
 export const setApproachCue = (cue: ApproachCueSettings) => invoke<void>("set_approach_cue", { cue });

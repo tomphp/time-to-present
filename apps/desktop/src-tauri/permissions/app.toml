@@ -44,6 +44,7 @@ commands.allow = [
   "seek",
   "set_speed",
   "reset",
+  "is_fullscreen",
   "approach_cue",
   "set_approach_cue",
   "perform",
@@ -51,6 +52,7 @@ commands.allow = [
   "performance_settings",
   "set_performance_settings",
   "leave_fullscreen",
+  "toggle_fullscreen",
 ]
 
 [[permission]]

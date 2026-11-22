@@ -1,5 +1,6 @@
 use ttp_core::perform::{
-    Display, KeyTarget, PageKey, PerformanceWindow, PresentationSize, display_for, forwards,
+    Display, FocusedWindow, FullscreenMenuItem, KeyTarget, KeyWindow, PageKey, PageKeyAction,
+    PerformanceWindow, PresentationSize, classify, display_for, fullscreen_menu_item,
 };
 
 fn press(key: &str) -> PageKey {
@@ -24,11 +25,65 @@ fn input(kind: &str) -> KeyTarget {
     }
 }
 
+fn control_command(key: &str) -> PageKey {
+    PageKey {
+        meta: true,
+        ctrl: true,
+        ..press(key)
+    }
+}
+
+fn forwards(key: &PageKey) -> bool {
+    classify(key) == PageKeyAction::Forward
+}
+
 #[test]
 fn performance_keys_pressed_on_the_page_are_forwarded() {
-    for key in [" ", "PageDown", "ArrowLeft", "Home", "b", "Escape"] {
+    for key in [" ", "PageDown", "ArrowLeft", "Home", "b"] {
         assert!(forwards(&press(key)), "{key:?} should be forwarded");
     }
+}
+
+#[test]
+fn escape_leaves_fullscreen() {
+    let held = PageKey {
+        repeat: true,
+        ..press("Escape")
+    };
+
+    assert_eq!(classify(&press("Escape")), PageKeyAction::LeaveFullscreen);
+    assert_eq!(classify(&held), PageKeyAction::LeaveFullscreen);
+}
+
+#[test]
+fn control_command_f_toggles_fullscreen() {
+    for key in ["f", "F"] {
+        assert_eq!(
+            classify(&control_command(key)),
+            PageKeyAction::ToggleFullscreen,
+            "{key:?}"
+        );
+    }
+}
+
+#[test]
+fn control_command_f_toggles_fullscreen_even_in_a_text_input() {
+    let in_a_field = PageKey {
+        target: input("text"),
+        ..control_command("f")
+    };
+
+    assert_eq!(classify(&in_a_field), PageKeyAction::ToggleFullscreen);
+}
+
+#[test]
+fn holding_control_command_f_toggles_only_once() {
+    let held = PageKey {
+        repeat: true,
+        ..control_command("f")
+    };
+
+    assert_eq!(classify(&held), PageKeyAction::StayWithPage);
 }
 
 #[test]
@@ -37,8 +92,22 @@ fn command_combinations_stay_with_the_page() {
         meta: true,
         ..press("c")
     };
+    let find = PageKey {
+        meta: true,
+        ..press("f")
+    };
+    let shifted = PageKey {
+        shift: true,
+        ..control_command("F")
+    };
+    let optioned = PageKey {
+        alt: true,
+        ..control_command("f")
+    };
 
-    assert!(!forwards(&copy));
+    for key in [copy, find, shifted, optioned] {
+        assert_eq!(classify(&key), PageKeyAction::StayWithPage, "{key:?}");
+    }
 }
 
 #[test]
@@ -93,12 +162,81 @@ fn an_input_without_a_type_takes_text() {
 
 #[test]
 fn keys_composing_text_stay_with_the_page() {
-    let composing = PageKey {
-        composing: true,
-        ..press("ArrowRight")
+    for key in [press("ArrowRight"), press("Escape"), control_command("f")] {
+        let composing = PageKey {
+            composing: true,
+            ..key
+        };
+        assert_eq!(classify(&composing), PageKeyAction::StayWithPage);
+    }
+}
+
+#[test]
+fn escape_typed_into_a_focused_text_input_stays_with_the_page() {
+    let in_a_field = PageKey {
+        target: input("text"),
+        ..press("Escape")
     };
 
-    assert!(!forwards(&composing));
+    assert_eq!(classify(&in_a_field), PageKeyAction::StayWithPage);
+}
+
+#[test]
+fn the_full_screen_item_is_disabled_without_a_focused_performance_window() {
+    for focused in [FocusedWindow::None, FocusedWindow::Other] {
+        assert!(!fullscreen_menu_item(focused).enabled, "{focused:?}");
+    }
+}
+
+#[test]
+fn a_fullscreen_performance_window_offers_to_exit_full_screen() {
+    assert_eq!(
+        fullscreen_menu_item(FocusedWindow::Performance { fullscreen: true }),
+        FullscreenMenuItem {
+            enabled: true,
+            label: "Exit Full Screen"
+        }
+    );
+}
+
+#[test]
+fn a_windowed_performance_window_offers_to_enter_full_screen() {
+    assert_eq!(
+        fullscreen_menu_item(FocusedWindow::Performance { fullscreen: false }),
+        FullscreenMenuItem {
+            enabled: true,
+            label: "Enter Full Screen"
+        }
+    );
+}
+
+#[test]
+fn the_key_window_is_the_one_that_last_gained_focus() {
+    let mut key_window = KeyWindow::default();
+    key_window.focus_changed("editor", true);
+    key_window.focus_changed("editor", false);
+    key_window.focus_changed("teleprompter", true);
+
+    assert_eq!(key_window.label(), Some("teleprompter"));
+}
+
+#[test]
+fn focus_lost_after_another_window_gained_it_leaves_that_window_key() {
+    let mut key_window = KeyWindow::default();
+    key_window.focus_changed("editor", true);
+    key_window.focus_changed("teleprompter", true);
+    key_window.focus_changed("editor", false);
+
+    assert_eq!(key_window.label(), Some("teleprompter"));
+}
+
+#[test]
+fn no_window_is_key_once_the_key_window_loses_focus() {
+    let mut key_window = KeyWindow::default();
+    key_window.focus_changed("editor", true);
+    key_window.focus_changed("editor", false);
+
+    assert_eq!(key_window.label(), None);
 }
 
 fn displays() -> Vec<Display> {
