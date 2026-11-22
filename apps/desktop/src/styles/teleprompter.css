@@ -1,4 +1,5 @@
 @import "./tokens.css";
+@import "./components.css";
 @import "./performance-bar.css";
 
 body.teleprompter {
@@ -51,7 +52,7 @@ body.teleprompter #divider {
   flex: none;
   width: 10px;
   cursor: col-resize;
-  background: #222;
+  background: var(--surface-2);
   touch-action: none;
 }
 
@@ -145,15 +146,16 @@ body.teleprompter #paused[hidden] {
 
 body.teleprompter #fullscreen-hint {
   position: fixed;
-  top: 0.5em;
+  top: var(--gutter);
   left: 50%;
   transform: translateX(-50%);
   margin: 0;
-  padding: 0.3em 0.8em;
-  border-radius: 0.3em;
-  font-size: 0.5em;
-  color: #eee;
-  background: rgb(0 0 0 / 0.75);
+  padding: var(--space-4) var(--btn-pad-x);
+  border-radius: var(--radius-pill);
+  font: var(--weight-strong) var(--text-ui) / var(--ui-leading) var(--font-ui);
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
   opacity: 1;
   transition: opacity 1s ease;
   pointer-events: none;

@@ -1,59 +1,72 @@
 body.teleprompter #bar {
   position: fixed;
   inset: auto 0 0;
-  font-size: 14px;
-  line-height: 1.4;
-  color: #777;
-  background: #000;
-  font-variant-numeric: tabular-nums;
+  box-sizing: border-box;
+  padding: var(--gutter);
+  font: var(--text-ui) / var(--ui-leading) var(--font-ui);
+  color: var(--text);
+}
+
+body.teleprompter #bar-card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--gap) var(--pad);
+  border-radius: var(--radius);
 }
 
 body.teleprompter #bar p {
   margin: 0;
-  padding: 2px 12px;
 }
 
 body.teleprompter #bar-warning {
-  color: var(--reading-accent);
+  color: var(--warn);
+  font-weight: var(--weight-strong);
+}
+
+body.teleprompter #bar-notice,
+body.teleprompter #bar-apps,
+body.teleprompter #bar-url,
+body.teleprompter #bar-remaining {
+  color: var(--muted);
 }
 
 body.teleprompter #bar-main {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 4px 12px;
+  gap: var(--gap);
+}
+
+body.teleprompter #bar-state {
+  font-weight: var(--weight-strong);
+  color: var(--accent);
 }
 
 body.teleprompter #bar-progress {
   position: relative;
   flex: 1;
-  height: 4px;
-  background: #222;
+  height: var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
 }
 
 body.teleprompter #bar-fill {
   height: 100%;
-  background: #555;
+  border-radius: var(--radius-pill);
+  background: var(--primary-bg);
 }
 
 body.teleprompter #bar-progress i {
   position: absolute;
-  top: -2px;
-  width: 1px;
-  height: 8px;
-  background: #999;
+  top: calc(-1 * var(--space-1));
+  width: var(--marker-w);
+  height: calc(var(--space-3) + 2 * var(--space-1));
+  border-radius: var(--radius-pill);
+  background: var(--event);
 }
 
 body.teleprompter #bar .changed {
-  color: var(--reading-accent);
-}
-
-body.teleprompter #bar button {
-  font: inherit;
-  color: inherit;
-  background: none;
-  border: 1px solid #333;
-  border-radius: 3px;
+  color: var(--warn);
+  font-weight: var(--weight-strong);
 }
 
 body.teleprompter #bar [hidden] {
