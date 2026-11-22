@@ -2,7 +2,13 @@
 @import "./components.css";
 
 body.settings {
+  display: grid;
+  gap: var(--gap);
   padding: var(--pad);
+}
+
+body.settings h1 {
+  margin: 0 0 var(--gap);
 }
 
 body.settings h1 {
@@ -13,6 +19,7 @@ body.settings h1 {
 #models {
   display: grid;
   gap: var(--space-4);
+  margin: 0;
   padding: 0;
   list-style: none;
 }
