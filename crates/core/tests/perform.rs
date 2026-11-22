@@ -1,6 +1,6 @@
 use ttp_core::perform::{
-    Display, KeyTarget, PageKey, PageKeyAction, PerformanceWindow, PresentationSize, classify,
-    display_for,
+    Display, FocusedWindow, FullscreenMenuItem, KeyTarget, PageKey, PageKeyAction,
+    PerformanceWindow, PresentationSize, classify, display_for, fullscreen_menu_item,
 };
 
 fn press(key: &str) -> PageKey {
@@ -179,6 +179,35 @@ fn escape_typed_into_a_focused_text_input_stays_with_the_page() {
     };
 
     assert_eq!(classify(&in_a_field), PageKeyAction::StayWithPage);
+}
+
+#[test]
+fn the_full_screen_item_is_disabled_without_a_focused_performance_window() {
+    for focused in [FocusedWindow::None, FocusedWindow::Other] {
+        assert!(!fullscreen_menu_item(focused).enabled, "{focused:?}");
+    }
+}
+
+#[test]
+fn a_fullscreen_performance_window_offers_to_exit_full_screen() {
+    assert_eq!(
+        fullscreen_menu_item(FocusedWindow::Performance { fullscreen: true }),
+        FullscreenMenuItem {
+            enabled: true,
+            label: "Exit Full Screen"
+        }
+    );
+}
+
+#[test]
+fn a_windowed_performance_window_offers_to_enter_full_screen() {
+    assert_eq!(
+        fullscreen_menu_item(FocusedWindow::Performance { fullscreen: false }),
+        FullscreenMenuItem {
+            enabled: true,
+            label: "Enter Full Screen"
+        }
+    );
 }
 
 fn displays() -> Vec<Display> {

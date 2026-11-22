@@ -11,6 +11,7 @@ use ttp_core::settings::ApproachCue;
 
 use crate::displays::monitor_for;
 use crate::fullscreen::{self, Fullscreen, logical_size, place};
+use crate::menu;
 use crate::window_set::WindowSet;
 use crate::{
     App, CommandResult, TELEPROMPTER_WINDOW, bring_up_window, message, reveal, with_session,
@@ -29,7 +30,7 @@ pub const FORWARD_APP_PANE_KEYS: &str = concat!(
     "window.forwardFromFramesOnly = true;\n",
     include_str!("forward-keys.js")
 );
-const PERFORMANCE_WINDOWS: [&str; 2] = [TELEPROMPTER_WINDOW, PRESENTATION_WINDOW];
+pub const PERFORMANCE_WINDOWS: [&str; 2] = [TELEPROMPTER_WINDOW, PRESENTATION_WINDOW];
 
 /// The Performance windows that have focus, so keys reach the Performance while any one does.
 #[derive(Default)]
@@ -165,6 +166,7 @@ fn set_title_bar(window: &WebviewWindow, shown: bool) -> CommandResult<()> {
 }
 
 fn fullscreen_changed(window: &WebviewWindow, fullscreen: bool) -> CommandResult<()> {
+    menu::refresh(window.app_handle());
     window
         .emit_to(window.label(), FULLSCREEN_CHANGED, fullscreen)
         .map_err(message)
@@ -172,10 +174,14 @@ fn fullscreen_changed(window: &WebviewWindow, fullscreen: bool) -> CommandResult
 
 pub fn on_window_event(window: &Window, event: &WindowEvent) {
     match event {
-        WindowEvent::Focused(focused) => tell_teleprompter_of_focus(window, *focused),
+        WindowEvent::Focused(focused) => {
+            tell_teleprompter_of_focus(window, *focused);
+            menu::focus_changed(window.app_handle(), window.label(), *focused);
+        }
         WindowEvent::Destroyed => {
             window.state::<Fullscreen>().remove(window.label());
             tell_teleprompter_of_focus(window, false);
+            menu::focus_changed(window.app_handle(), window.label(), false);
             if window.label() == TELEPROMPTER_WINDOW {
                 pause_unseen_performance(window);
             }

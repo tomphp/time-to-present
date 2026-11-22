@@ -79,6 +79,34 @@ pub enum PerformanceWindow {
     Presentation,
 }
 
+/// The window that has focus, as the View menu's Full Screen item sees it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FocusedWindow {
+    None,
+    Other,
+    Performance { fullscreen: bool },
+}
+
+/// What the View menu's Full Screen item offers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FullscreenMenuItem {
+    pub enabled: bool,
+    pub label: &'static str,
+}
+
+/// The item switches the focused Performance window, and only that.
+pub fn fullscreen_menu_item(focused: FocusedWindow) -> FullscreenMenuItem {
+    let fullscreen = matches!(focused, FocusedWindow::Performance { fullscreen: true });
+    FullscreenMenuItem {
+        enabled: matches!(focused, FocusedWindow::Performance { .. }),
+        label: if fullscreen {
+            "Exit Full Screen"
+        } else {
+            "Enter Full Screen"
+        },
+    }
+}
+
 /// A connected display, known by the name macOS gives it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Display {
