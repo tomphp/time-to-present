@@ -19,6 +19,7 @@ const shapes = {
   swap: '<path d="M2.5 5.5h10l-2.5-2.5M13.5 10.5h-10l2.5 2.5"/>',
   close: '<path d="M4 4l8 8M12 4l-8 8"/>',
   sidebar: '<rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><path d="M10 2.5v11"/>',
+  "panel-bottom": '<rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><path d="M1.5 9.5h13"/>',
 } as const;
 
 export type IconName = keyof typeof shapes;

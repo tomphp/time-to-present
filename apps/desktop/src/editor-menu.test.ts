@@ -27,6 +27,7 @@ const idle: EditorMenuState = {
   selected: [],
   listenable: false,
   inspectorShown: true,
+  timelineShown: true,
 };
 
 const recordingBar = (recording: boolean): SessionState["recordingBar"] => ({
@@ -44,6 +45,7 @@ function editorParts(ran: string[]): EditorParts {
     recordingBar: { toggle: runs("recording toggle"), reRecord: runs("recording start unless recording") },
     pane: { addEventAtCaret: runs("event at caret") },
     inspector: { retime: runs("Retime field"), toggle: runs("Inspector card button") },
+    timelineDock: { toggle: runs("Timeline card button") },
     preview: { listen: runs("listen"), playFromCursor: runs("play from cursor") },
     clock: { playPause: runs("play/pause button"), restart: runs("restart button") },
     performMenu: { chooseLayout: (layout) => void ran.push(`layout ${layout}`) },
@@ -142,6 +144,13 @@ describe("the Editor's report to the menu bar", () => {
     expect(reports.at(-1)).toMatchObject({ inspectorShown: false });
   });
 
+  it("reports a hidden timeline", () => {
+    const { reports, change } = reporting(idle);
+    change({ timelineShown: false });
+
+    expect(reports.at(-1)).toMatchObject({ timelineShown: false });
+  });
+
   it("reports no clock while the Editor has none", () => {
     const { reports, change } = reporting(idle);
     change({ clock: null, session: null });
@@ -168,6 +177,7 @@ describe("a menu command reaching the Editor", () => {
     expect(run("restart")).toEqual(["restart button"]);
     expect(run("removeUnusedRecordings")).toEqual(["remove unused recordings"]);
     expect(run("toggleInspector")).toEqual(["Inspector card button"]);
+    expect(run("toggleTimeline")).toEqual(["Timeline card button"]);
   });
 
   it("chooses the Performance Layout it names", () => {

@@ -104,7 +104,14 @@
         </div>
       </aside>
     </div>
-    <section id="timeline" class="card" aria-label="Script Time timeline"></section>
+    <section id="timeline-card" class="card" aria-label="Script Time timeline">
+      <div data-resize role="separator" aria-orientation="horizontal" aria-label="Resize timeline" tabindex="0"></div>
+      <header>
+        <h2 data-title>Timeline</h2>
+        <button data-toggle class="icon-btn" type="button"></button>
+      </header>
+      <div id="timeline" data-body></div>
+    </section>
     <script type="module" src="/src/editor.ts"></script>
   </body>
 </html>

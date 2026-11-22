@@ -9,6 +9,7 @@ export interface EditorMenuState {
   selected: string[];
   listenable: boolean;
   inspectorShown: boolean;
+  timelineShown: boolean;
 }
 
 /** The parts of the Editor whose buttons and keys the menu commands share. */
@@ -16,6 +17,7 @@ export interface EditorParts {
   recordingBar: { toggle(): void; reRecord(): void };
   pane: { addEventAtCaret(): void };
   inspector: { retime(): void; toggle(): void };
+  timelineDock: { toggle(): void };
   preview: { listen(): void; playFromCursor(): void };
   clock: { playPause(): void; restart(): void };
   performMenu: { chooseLayout(layout: PerformanceLayout): void };
@@ -29,6 +31,7 @@ const commandsOf = (parts: EditorParts): Partial<Record<MenuCommand, () => void>
   addNamedEvent: () => parts.pane.addEventAtCaret(),
   retime: () => parts.inspector.retime(),
   toggleInspector: () => parts.inspector.toggle(),
+  toggleTimeline: () => parts.timelineDock.toggle(),
   listen: () => parts.preview.listen(),
   layoutTwoWindows: () => parts.performMenu.chooseLayout("twoWindows"),
   layoutCombined: () => parts.performMenu.chooseLayout("combined"),
@@ -38,8 +41,7 @@ const commandsOf = (parts: EditorParts): Partial<Record<MenuCommand, () => void>
   restart: () => parts.clock.restart(),
 });
 
-/** The timeline cannot be hidden yet. */
-const editorReport = ({ session, clock, target, selected, listenable, inspectorShown }: EditorMenuState): WindowReport => ({
+const editorReport = ({ session, clock, target, selected, listenable, inspectorShown, timelineShown }: EditorMenuState): WindowReport => ({
   window: "editor",
   recording: session?.recordingBar?.recording ?? false,
   selection: "reRecord" in target,
@@ -48,7 +50,7 @@ const editorReport = ({ session, clock, target, selected, listenable, inspectorS
   locked: session?.locked ?? false,
   clock,
   inspectorShown,
-  timelineShown: true,
+  timelineShown,
 });
 
 /** Tells the menu bar what the Editor offers whenever that changes, and runs the commands it hands back. */

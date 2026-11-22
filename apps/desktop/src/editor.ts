@@ -21,7 +21,7 @@ import {
 } from "./commands";
 import { editorMenu } from "./editor-menu";
 import { mountInspector } from "./inspector";
-import { loadLayout, saveLayout } from "./layout-preferences";
+import { loadLayout, saveLayout, type LayoutPreferences } from "./layout-preferences";
 import { eventNames, nextMoved } from "./named-events";
 import { onPendingAction } from "./pending-passage";
 import { mountPerformMenu } from "./perform-menu";
@@ -35,6 +35,7 @@ import type { ClockState, SessionState } from "./session";
 import { nudgeOf } from "./timing-controls";
 import { mountTextPane } from "./text-pane";
 import { mountTimeline } from "./timeline";
+import { mountTimelineDock } from "./timeline-dock";
 
 const title = document.querySelector<HTMLInputElement>("#title")!;
 let savedTitle = "";
@@ -42,6 +43,12 @@ let current: SessionState | null = null;
 let selected: string | null = null;
 let clockState: ClockState | null = null;
 let layout = loadLayout(localStorage);
+
+function remember(change: Partial<LayoutPreferences>) {
+  layout = { ...layout, ...change };
+  menu.changed();
+  saveLayout(localStorage, layout);
+}
 
 const selection = sharedSelection((ids) => {
   timeline.select(ids);
@@ -72,13 +79,18 @@ const inspector = mountInspector(
       select(null);
       pane.focus();
     },
-    shownChanged: (inspectorShown) => {
-      layout = { ...layout, inspectorShown };
-      menu.changed();
-      saveLayout(localStorage, layout);
-    },
+    shownChanged: (inspectorShown) => remember({ inspectorShown }),
   },
   layout.inspectorShown,
+);
+
+const timelineDock = mountTimelineDock(
+  document.querySelector<HTMLElement>("#timeline-card")!,
+  {
+    shownChanged: (timelineShown) => remember({ timelineShown }),
+    heightChanged: (timelineHeight) => remember({ timelineHeight }),
+  },
+  { shown: layout.timelineShown, height: layout.timelineHeight },
 );
 
 const timeline = mountTimeline(
@@ -137,6 +149,7 @@ const menu = editorMenu(
     recordingBar,
     pane,
     inspector,
+    timelineDock,
     preview: previewControls,
     clock,
     performMenu,
@@ -149,6 +162,7 @@ const menu = editorMenu(
     selected: selection.ids(),
     listenable: previewControls.listenable(),
     inspectorShown: inspector.shown(),
+    timelineShown: timelineDock.shown(),
   }),
   reportMenuState,
 );

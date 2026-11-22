@@ -1,6 +1,44 @@
-#timeline {
+#timeline-card {
+  position: relative;
   margin-top: var(--gutter);
-  overflow-x: auto;
+}
+
+#timeline-card [hidden] {
+  display: none;
+}
+
+#timeline-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+
+#timeline-card h2 {
+  margin: 0;
+  font-size: var(--text-ui);
+  font-weight: var(--weight-strong);
+}
+
+#timeline-card [data-resize] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--space-3);
+  cursor: ns-resize;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+#timeline-card [data-resize]:hover,
+#timeline-card [data-resize]:focus-visible {
+  background: var(--accent-tint);
+}
+
+#timeline {
+  height: var(--timeline-h);
+  margin-top: var(--gap);
+  overflow: auto;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -12,7 +50,8 @@
 
 #timeline .track {
   position: relative;
-  height: 5.5rem;
+  height: 100%;
+  min-height: 5.5rem;
 }
 
 #timeline .tick {
@@ -28,7 +67,7 @@
   position: absolute;
   top: 1.5rem;
   box-sizing: border-box;
-  height: 3.5rem;
+  height: calc(100% - 2rem);
   overflow: hidden;
   border-radius: var(--radius-xs);
   background: var(--accent-tint);
