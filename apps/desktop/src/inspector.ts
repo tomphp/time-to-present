@@ -65,7 +65,8 @@ export function mountInspector(card: HTMLElement, commands: InspectorCommands, i
   }
 
   function setShown(next: boolean) {
-    body.hidden = title.hidden = !next;
+    body.hidden = !next;
+    title.hidden = !next;
     showAs(toggleButton, { icon: "sidebar", label: next ? "Hide Inspector" : "Show Inspector" });
     if (next === shown) return;
     shown = next;
