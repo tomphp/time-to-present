@@ -7,6 +7,11 @@ describe("formatBytes", () => {
     expect(formatBytes(147_964_211)).toBe("148 MB");
     expect(formatBytes(512)).toBe("1 KB");
   });
+
+  it("moves up a unit when rounding reaches the next one", () => {
+    expect(formatBytes(999_600)).toBe("1 MB");
+    expect(formatBytes(999_600_000)).toBe("1.0 GB");
+  });
 });
 
 describe("describeProgress", () => {

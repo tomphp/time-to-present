@@ -1,9 +1,11 @@
 import type { ModelProgress } from "./commands";
 
 export function formatBytes(bytes: number) {
-  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
-  if (bytes >= 1e6) return `${Math.round(bytes / 1e6)} MB`;
-  return `${Math.max(1, Math.round(bytes / 1e3))} KB`;
+  const megabytes = Math.round(bytes / 1e6);
+  const kilobytes = Math.round(bytes / 1e3);
+  if (megabytes >= 1000) return `${(bytes / 1e9).toFixed(1)} GB`;
+  if (kilobytes >= 1000) return `${megabytes} MB`;
+  return `${Math.max(1, kilobytes)} KB`;
 }
 
 export function describeProgress({ name, downloaded, total }: ModelProgress) {

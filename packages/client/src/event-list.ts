@@ -1,8 +1,9 @@
 import type { ResolvedScript } from "./presentation-script.js";
 import { nameAndData } from "./script-text.js";
 
-/** A Script Time as `m:ss.mmm`, the minutes unpadded and unbounded. */
-function formatScriptTime(scriptTime: number): string {
+/** A Script Time rounded to whole ms as `m:ss.mmm`, the minutes unpadded and unbounded. */
+function formatScriptTime(exactScriptTime: number): string {
+  const scriptTime = Math.round(exactScriptTime);
   const minutes = Math.floor(scriptTime / 60_000);
   const seconds = Math.floor((scriptTime % 60_000) / 1000);
   const ms = scriptTime % 1000;
