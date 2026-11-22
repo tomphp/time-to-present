@@ -1,7 +1,7 @@
-import { describe, test } from "node:test";
+import { after, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { execFile, execFileSync } from "node:child_process";
-import { appendFileSync, copyFileSync, mkdirSync, mkdtempSync } from "node:fs";
+import { appendFileSync, copyFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
@@ -10,8 +10,12 @@ const here = import.meta.dirname;
 const repoRoot = join(here, "..", "..");
 const planCommand = join(here, "plan.mjs");
 
+const throwawayDirs = [];
+after(() => throwawayDirs.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
+
 function throwawayRepo() {
-  const dir = mkdtempSync(join(tmpdir(), "release-plan-"));
+  const dir = mkdtempSync(join(tmpdir(), "release-plan-test-"));
+  throwawayDirs.push(dir);
   const git = (...args) => execFileSync("git", args, { cwd: dir, encoding: "utf8" });
   git("init", "-q", "-b", "main");
   git("config", "user.email", "test@example.com");
@@ -120,6 +124,7 @@ describe("release plan", { concurrency: true }, () => {
     "feat!: a breaking feature",
     "fix(api)!: a breaking fix",
     "fix: a fix\n\nBREAKING CHANGE: the old call is gone",
+    "chore!: drop the old call",
   ];
 
   for (const message of breakingChanges) {
@@ -131,13 +136,15 @@ describe("release plan", { concurrency: true }, () => {
     });
   }
 
-  test("a breaking change after 1.0.0 bumps the major version", async () => {
-    const repo = throwawayRepo();
-    repo.git("tag", "-a", "client-v1.2.3", "-m", "client-v1.2.3");
-    repo.commit("feat!: a breaking feature", "packages/client/src/index.ts");
+  for (const message of ["feat!: a breaking feature", "chore!: drop the old call"]) {
+    test(`a breaking change after 1.0.0 (${message}) bumps the major version`, async () => {
+      const repo = throwawayRepo();
+      repo.git("tag", "-a", "client-v1.2.3", "-m", "client-v1.2.3");
+      repo.commit(message, "packages/client/src/index.ts");
 
-    assert.deepEqual(await repo.nextVersions(), { desktop: null, client: "2.0.0" });
-  });
+      assert.deepEqual(await repo.nextVersions(), { desktop: null, client: "2.0.0" });
+    });
+  }
 
   test("a breaking change to one component leaves the other's version alone", async () => {
     const repo = throwawayRepo();

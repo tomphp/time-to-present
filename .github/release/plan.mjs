@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const PACKAGES = ["desktop", "client"];
-const NO_BUMP = "No conventional commit found to bump current version";
+const NOTHING_TO_BUMP = "No conventional commit found to bump current version";
+const NO_COMMITS = "No commit found to create a changelog";
 const BREAKING_MARKER = "<!-- breaking change -->";
 const NOTES_TEMPLATE = join(import.meta.dirname, "notes.tera");
 
@@ -17,34 +18,57 @@ export function planRelease(repo, commit = "HEAD") {
     const clone = join(work, "repo");
     git(repo, "clone", "--quiet", "--shared", "--no-checkout", repo, clone);
     git(clone, "checkout", "--quiet", "--detach", sha);
-    const config = join(work, "cog.toml");
-    writeFileSync(config, withPackageNotes(readFileSync(join(clone, "cog.toml"), "utf8")));
-    return Object.fromEntries(PACKAGES.map((name) => [name, planPackage(clone, config, name)]));
+    const cog = cogIn(clone, join(work, "cog.toml"));
+    return Object.fromEntries(PACKAGES.map((name) => [name, planPackage(cog, name)]));
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
 }
 
-function planPackage(clone, config, name) {
-  const tagsBefore = packageTags(clone, name);
-  const bump = spawnSync("cog", ["--config", config, "bump", "--auto", "--package", name], {
-    cwd: clone,
-    encoding: "utf8",
-  });
-  if (bump.status !== 0 && !bump.stderr.includes(NO_BUMP)) {
-    throw new Error(`cog bump --package ${name} failed:\n${bump.stderr}`);
-  }
-  const tag = packageTags(clone, name).find((tag) => !tagsBefore.includes(tag));
-  const changelog = tag && readFileSync(join(clone, git(clone, "diff", "--cached", "--name-only")), "utf8");
-  git(clone, "reset", "--quiet", "--hard");
-  if (!tag) return null;
+function planPackage(cog, name) {
+  const changes = cog.changesSinceLastTag(name);
+  if (changes?.breaking) return { version: nextMajor(cog.currentVersion(name)), notes: changes.notes };
+  const version = cog.nextVersion(name);
+  return version && { version, notes: changes.notes };
+}
 
-  const notes = changelog.split(/^- - -$/m)[1];
-  const version = tag.slice(`${name}-v`.length);
-  const breaksZeroDotX = notes.includes(BREAKING_MARKER) && version.startsWith("0.");
+function nextMajor(version) {
+  return `${Number(version.split(".")[0]) + 1}.0.0`;
+}
+
+function cogIn(clone, notesConfig) {
+  writeFileSync(notesConfig, withPackageNotes(readFileSync(join(clone, "cog.toml"), "utf8")));
+  const cog = (...args) => spawnSync("cog", ["--config", notesConfig, ...args], { cwd: clone, encoding: "utf8" });
+  const fail = (args, run) => new Error(`cog ${args.join(" ")} failed:\n${run.stderr}`);
+
   return {
-    version: breaksZeroDotX ? "1.0.0" : version,
-    notes: notes.replace(BREAKING_MARKER, "").trim(),
+    currentVersion(name) {
+      const args = ["get-version", "--package", name];
+      const run = cog(...args);
+      if (run.status !== 0) throw fail(args, run);
+      return run.stdout.trim();
+    },
+
+    nextVersion(name) {
+      const args = ["bump", "--auto", "--dry-run", "--package", name];
+      const run = cog(...args);
+      const tag = run.stdout.trim();
+      if (run.status === 0 && tag.startsWith(`${name}-v`)) return tag.slice(`${name}-v`.length);
+      if (run.status === 0 || run.stderr.includes(NOTHING_TO_BUMP)) return null;
+      throw fail(args, run);
+    },
+
+    changesSinceLastTag(name) {
+      const tagsBefore = packageTags(clone, name);
+      const args = ["bump", "--patch", "--package", name];
+      const run = cog(...args);
+      if (run.status !== 0 && run.stderr.includes(NO_COMMITS)) return null;
+      if (run.status !== 0) throw fail(args, run);
+      const notes = notesIn(writtenChangelog(clone));
+      git(clone, "reset", "--quiet", "--hard");
+      git(clone, "tag", "--delete", ...packageTags(clone, name).filter((tag) => !tagsBefore.includes(tag)));
+      return { notes: notes.replace(BREAKING_MARKER, "").trim(), breaking: notes.includes(BREAKING_MARKER) };
+    },
   };
 }
 
@@ -53,8 +77,20 @@ function withPackageNotes(cogToml) {
   return `${changelogs}\n[changelog]\npackage_template = ${JSON.stringify(NOTES_TEMPLATE)}\n`;
 }
 
+function writtenChangelog(clone) {
+  const written = git(clone, "diff", "--cached", "--name-only").split("\n").filter(Boolean);
+  if (written.length !== 1) throw new Error(`expected cog to write one changelog, got: ${written.join(", ")}`);
+  return readFileSync(join(clone, written[0]), "utf8");
+}
+
 function packageTags(clone, name) {
   return git(clone, "tag", "--list", `${name}-v*`).split("\n").filter(Boolean);
+}
+
+function notesIn(changelog) {
+  const sections = changelog.split(/^- - -$/m);
+  if (sections.length !== 3) throw new Error(`unexpected changelog layout:\n${changelog}`);
+  return sections[1];
 }
 
 if (import.meta.main) {
