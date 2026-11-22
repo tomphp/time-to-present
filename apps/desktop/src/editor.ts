@@ -97,7 +97,6 @@ onPendingAction(script, {
 });
 
 const removeUnused = () => void removeUnusedRecordings().catch(showError);
-document.querySelector("#remove-unused")!.addEventListener("click", removeUnused);
 
 title.addEventListener(
   "change",

@@ -31,7 +31,7 @@ class SilentAudio {
 beforeEach(() => {
   document.body.innerHTML = `
     <p id="error" hidden></p>
-    <button id="preview"></button><button id="listen"></button>`;
+    <button id="play-from-cursor"></button><button id="listen"></button>`;
   Object.assign(globalThis, { AudioContext: SilentAudio });
   previews = [];
   clips = [];
@@ -60,7 +60,7 @@ describe("Play from Cursor from the menu", () => {
   it("plays from the cursor, as its button does", async () => {
     const controls = mount();
     controls.playFromCursor();
-    click("#preview");
+    click("#play-from-cursor");
     await settle();
 
     expect(previews).toEqual([400, 400]);
@@ -104,5 +104,41 @@ describe("Listen from the menu", () => {
     expect(controls.listenable()).toBe(false);
     selected = ["w1"];
     expect(controls.listenable()).toBe(true);
+  });
+});
+
+describe("the transport's buttons", () => {
+  const button = (selector: string) => document.querySelector<HTMLButtonElement>(selector)!;
+
+  it("names Play from Cursor by where it starts", () => {
+    mount();
+
+    expect(button("#play-from-cursor").getAttribute("aria-label")).toBe("Play from the cursor");
+    expect(button("#play-from-cursor").dataset.tooltip).toBe("Play from the cursor");
+    expect(button("#play-from-cursor").textContent).toBe("");
+  });
+
+  it("names Listen by what it plays", () => {
+    mount();
+
+    expect(button("#listen").dataset.tooltip).toBe("Listen to the selected Word");
+    expect(button("#listen").textContent).toBe("");
+  });
+
+  it("disables Play from Cursor under the Edit lock", () => {
+    const controls = mount();
+    expect(button("#play-from-cursor").disabled).toBe(false);
+
+    controls.render(session(true));
+    expect(button("#play-from-cursor").disabled).toBe(true);
+  });
+
+  it("disables Listen until a recorded Word is selected", () => {
+    const controls = mount();
+    expect(button("#listen").disabled).toBe(true);
+
+    selected = ["w1"];
+    controls.selectionChanged();
+    expect(button("#listen").disabled).toBe(false);
   });
 });

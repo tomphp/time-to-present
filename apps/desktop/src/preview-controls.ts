@@ -3,6 +3,7 @@ import { clockPosition, DISCONNECTED, type ClockPanel } from "./clock-view";
 import { preview, recordingClip } from "./commands";
 import { find } from "./dom";
 import { editorAudio, type FetchClip } from "./editor-audio";
+import { showAs } from "./icon-button";
 import { act, showError } from "./report-error";
 import { previewFrom } from "./selection";
 import type { InsertionPoint, SessionState, StreamEvent } from "./session";
@@ -20,12 +21,14 @@ export interface PreviewCommands {
 }
 
 /**
- * Listen and Preview: the buttons, the sound, and following the clock with the text highlight
+ * Listen and Play from Cursor: the buttons, the sound, and following the clock with the text highlight
  * and the timeline playhead, which runs on smoothly between ticks while the clock plays.
  */
 export function mountPreview(targets: PreviewTargets, commands: PreviewCommands = { preview, recordingClip }) {
-  const previewButton = find<HTMLButtonElement>("#preview");
+  const playFromCursorButton = find<HTMLButtonElement>("#play-from-cursor");
   const listenButton = find<HTMLButtonElement>("#listen");
+  showAs(playFromCursorButton, { icon: "play-from-cursor", label: "Play from the cursor" });
+  showAs(listenButton, { icon: "speaker", label: "Listen to the selected Word" });
   const audio = editorAudio(commands.recordingClip);
   let state: SessionState | null = null;
   let panel = DISCONNECTED;
@@ -35,7 +38,7 @@ export function mountPreview(targets: PreviewTargets, commands: PreviewCommands 
   const listenable = () => (state ? listenTarget(state.words, targets.selected(), state.locked) : null);
 
   function renderButtons() {
-    previewButton.disabled = !state || state.locked;
+    playFromCursorButton.disabled = !state || state.locked;
     listenButton.disabled = !listenable();
   }
 
@@ -61,7 +64,7 @@ export function mountPreview(targets: PreviewTargets, commands: PreviewCommands 
     audio.listen(clip).catch(showError);
   }
 
-  previewButton.addEventListener("click", playFromCursor);
+  playFromCursorButton.addEventListener("click", playFromCursor);
   listenButton.addEventListener("click", listen);
 
   return {

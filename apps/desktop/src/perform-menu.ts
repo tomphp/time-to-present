@@ -9,6 +9,7 @@ import {
   sizePresets,
 } from "./commands";
 import { find } from "./dom";
+import { showAs } from "./icon-button";
 import { AUTOMATIC, chooseLayout, chosenSettings, displayChoices } from "./perform-menu-view";
 import { CUSTOM, choiceFor, chosenSize, customSize, isValidPixels, shownNote, sizeChoices } from "./presentation-size-view";
 import { act } from "./report-error";
@@ -102,6 +103,7 @@ async function saveSize() {
 
 /** The Perform menu: this machine's Performance Layout and displays, and the Presentation's own size. */
 export function mountPerformMenu() {
+  showAs(find("#perform-menu > summary"), { icon: "chevron", label: "Performance options" });
   menu.addEventListener("toggle", () => {
     if (menu.open) act(show)();
   });

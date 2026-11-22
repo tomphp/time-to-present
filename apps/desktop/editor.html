@@ -8,11 +8,10 @@
   <body class="editor">
     <header class="toolbar card">
       <input id="title" aria-label="Title" spellcheck="false" />
-      <button id="remove-unused" class="btn" type="button">Remove unused recordings</button>
       <button id="record" class="btn record" type="button" title="Record (⌘R)">Record</button>
       <button id="perform" class="btn primary" type="button" title="Perform (⌘⇧P)">Perform</button>
       <details id="perform-menu" class="menu">
-        <summary aria-label="Performance Layout" title="Performance Layout"></summary>
+        <summary class="icon-btn"></summary>
         <div class="menu-panel popover">
           <label
             >Layout
@@ -36,13 +35,12 @@
           </div>
         </div>
       </details>
-      <div id="clock" class="clock" aria-label="Performance clock">
-        <button id="play-pause" class="btn" type="button">Play</button>
-        <button id="preview" class="btn" type="button" title="Preview from the cursor">Preview</button>
-        <button id="listen" class="btn" type="button" title="Listen to the selected Word">Listen</button>
-        <span id="clock-state" aria-label="Clock state"></span>
+      <div id="clock" class="transport" aria-label="Transport">
+        <button id="play-pause" class="icon-btn" type="button"></button>
+        <button id="play-from-cursor" class="icon-btn" type="button"></button>
+        <button id="listen" class="icon-btn" type="button"></button>
         <span id="clock-elapsed" class="time" aria-label="Script Time">0:00</span>
-        <span id="current-word" aria-label="Current Word"></span>
+        <span id="clock-state" aria-label="Clock state"></span>
       </div>
       <span id="server-summary" class="server" aria-label="Presentation App server"></span>
     </header>

@@ -6,12 +6,17 @@ export interface IconButtonOptions {
   shortcut?: string;
 }
 
-export function iconButton({ icon: name, label, shortcut }: IconButtonOptions): HTMLButtonElement {
+export function iconButton(options: IconButtonOptions): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "icon-btn";
+  showAs(button, options);
+  return button;
+}
+
+/** Gives an icon button its icon, name and tooltip, for buttons in the page and buttons that change. */
+export function showAs(button: HTMLElement, { icon: name, label, shortcut }: IconButtonOptions) {
   button.setAttribute("aria-label", label);
   button.dataset.tooltip = shortcut ? `${label} (${shortcut})` : label;
-  button.append(icon(name));
-  return button;
+  button.replaceChildren(icon(name));
 }

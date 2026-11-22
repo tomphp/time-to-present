@@ -12,7 +12,7 @@ beforeEach(() => {
   document.body.innerHTML = `
     <p id="error" hidden></p>
     <button id="play-pause"></button>
-    <span id="clock-state"></span><span id="clock-elapsed"></span><span id="current-word"></span>`;
+    <span id="clock-elapsed"></span><span id="clock-state"></span>`;
   calls = [];
 });
 
@@ -46,7 +46,7 @@ describe("Play/Pause from the menu", () => {
     button().click();
     await settle();
 
-    expect(button().textContent).toBe("Pause");
+    expect(button().getAttribute("aria-label")).toBe("Pause");
     expect(calls).toEqual(["pause", "pause"]);
   });
 
@@ -68,7 +68,7 @@ describe("Restart from the menu", () => {
     button().click();
     await settle();
 
-    expect(button().textContent).toBe("Restart");
+    expect(button().getAttribute("aria-label")).toBe("Restart");
     expect(calls).toEqual(["reset", "reset"]);
   });
 
@@ -79,5 +79,59 @@ describe("Restart from the menu", () => {
     await settle();
 
     expect(calls).toEqual([]);
+  });
+});
+
+describe("the Play/Pause button", () => {
+  const tooltip = () => button().dataset.tooltip;
+
+  it("plays from where the clock stands while the clock is not playing", () => {
+    mount();
+    clockIs("paused");
+
+    expect(button().getAttribute("aria-label")).toBe("Play from where the clock stands");
+    expect(tooltip()).toBe("Play from where the clock stands");
+  });
+
+  it("pauses while the clock plays", () => {
+    mount();
+    clockIs("playing");
+
+    expect(tooltip()).toBe("Pause");
+  });
+
+  it("shows Restart when the Performance has ended", () => {
+    mount();
+    clockIs("ended");
+
+    expect(tooltip()).toBe("Restart");
+    expect(button().disabled).toBe(false);
+  });
+
+  it("is an icon with no text", () => {
+    mount();
+    clockIs("ready");
+
+    expect(button().querySelector("svg")).not.toBeNull();
+    expect(button().textContent).toBe("");
+  });
+
+  it("is disabled until the clock is heard", () => {
+    mount();
+
+    expect(button().disabled).toBe(true);
+    expect(tooltip()).toBe("Play from where the clock stands");
+  });
+});
+
+describe("the clock readout", () => {
+  it("shows the Script Time and Clock State, and not the Current Word", () => {
+    mount();
+    send({ type: "clock", cause: "play", state: "playing", scriptTime: 65_000, speed: 1 });
+    send({ type: "word", id: "w1", text: "Hello", start: 65_000, duration: 300 } as StreamEvent);
+
+    expect(document.querySelector("#clock-elapsed")!.textContent).toBe("1:05");
+    expect(document.querySelector("#clock-state")!.textContent).toBe("playing");
+    expect(document.body.textContent).not.toContain("Hello");
   });
 });

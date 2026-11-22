@@ -1,7 +1,8 @@
-import { ACTION_LABELS, clockAction, DISCONNECTED, foldClock, type ClockAction, type ClockPanel } from "./clock-view";
+import { ACTION_BUTTONS, clockAction, DISCONNECTED, foldClock, type ClockAction, type ClockPanel } from "./clock-view";
 import { onStreamEvent, pause, preview, reset } from "./commands";
 import { formatElapsed } from "./recording-bar-view";
 import { find } from "./dom";
+import { showAs } from "./icon-button";
 import { act } from "./report-error";
 import type { StreamEvent } from "./session";
 
@@ -23,17 +24,15 @@ export function mountClockControl(
   const button = find<HTMLButtonElement>("#play-pause");
   const state = find<HTMLSpanElement>("#clock-state");
   const elapsed = find<HTMLSpanElement>("#clock-elapsed");
-  const currentWord = find<HTMLSpanElement>("#current-word");
   let panel = DISCONNECTED;
   let action: ClockAction | null = null;
 
   function render() {
     action = clockAction(panel.state);
-    button.textContent = ACTION_LABELS[action ?? "play"];
+    showAs(button, ACTION_BUTTONS[action ?? "play"]);
     button.disabled = action === null;
     state.textContent = panel.state ?? "";
     elapsed.textContent = formatElapsed(panel.scriptTime);
-    currentWord.textContent = panel.currentWord?.text ?? "";
   }
 
   /** Runs what the button offers now, if it is one of `offered`. */
