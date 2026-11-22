@@ -16,6 +16,7 @@ import {
   formatElapsed,
   inputOptions,
   meterFill,
+  recordingCommands,
   shortcut,
 } from "./recording-bar-view";
 import { find } from "./dom";
@@ -101,25 +102,15 @@ function requestCancel() {
 
 /** The recording bar, starting each Recording where the editor reports: over a selection, or at the Insertion Point. */
 export function mountRecordingBar(target: () => RecordingTarget) {
-  const startHere = () => startRecordingAt(target());
+  const recording = recordingCommands(() => bar, target, { openRecordingBar, startRecordingAt, stopRecording });
 
-  async function toggleRecording() {
-    if (bar === null) {
-      await openRecordingBar();
-      return startHere();
-    }
-    return bar.recording ? stopRecording() : startHere();
-  }
-
-  start.addEventListener("click", act(startHere));
+  start.addEventListener("click", act(recording.start));
   document.addEventListener("keydown", (event) => {
-    const key = shortcut(event);
-    if (key === null) return;
+    if (shortcut(event) !== "escape") return;
     event.preventDefault();
-    if (key === "toggle") act(toggleRecording)();
-    if (key === "escape") requestCancel();
+    requestCancel();
   });
-  return { render: renderRecordingBar };
+  return { render: renderRecordingBar, toggle: act(recording.toggle), reRecord: act(recording.begin) };
 }
 
 onMeter(({ peak, clipped, recorded: ms }) => {

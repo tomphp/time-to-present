@@ -8,8 +8,10 @@ import {
   inputOptions,
   liveModelNotice,
   meterFill,
+  recordingCommands,
   shortcut,
 } from "./recording-bar-view";
+import type { RecordingTarget } from "./recording-target";
 import type { RecordingBarState } from "./session";
 
 const builtIn = { name: "MacBook Pro Microphone", channels: 1, sampleRate: 48000 };
@@ -73,15 +75,61 @@ describe("meterFill", () => {
 });
 
 describe("shortcut", () => {
-  it("toggles recording on ⌘R and cancels on Esc", () => {
-    expect(shortcut({ key: "r", metaKey: true })).toBe("toggle");
-    expect(shortcut({ key: "R", metaKey: true })).toBe("toggle");
-    expect(shortcut({ key: "Escape", metaKey: false })).toBe("escape");
+  const press = (key: string, metaKey: boolean) => shortcut({ key, metaKey } as KeyboardEvent);
+
+  it("cancels on Esc", () => {
+    expect(press("Escape", false)).toBe("escape");
   });
 
-  it("ignores R without ⌘ and other keys", () => {
-    expect(shortcut({ key: "r", metaKey: false })).toBeNull();
-    expect(shortcut({ key: "s", metaKey: true })).toBeNull();
+  it("leaves ⌘R to the menu bar's accelerator, so a Recording toggles once", () => {
+    expect(press("r", true)).toBeNull();
+    expect(press("R", true)).toBeNull();
+  });
+
+  it("ignores other keys", () => {
+    expect(press("r", false)).toBeNull();
+    expect(press("s", true)).toBeNull();
+  });
+});
+
+describe("Record / Stop and Re-record Selection", () => {
+  const selection: RecordingTarget = { reRecord: ["w1", "w2"] };
+
+  function recorder(shown: RecordingBarState | null) {
+    const calls: unknown[][] = [];
+    const commands = {
+      openRecordingBar: async () => void calls.push(["open"]),
+      startRecordingAt: async (target: RecordingTarget) => void calls.push(["start", target]),
+      stopRecording: async () => void calls.push(["stop"]),
+    };
+    return { calls, ...recordingCommands(() => shown, () => selection, commands) };
+  }
+
+  it("opens the Recording Bar and starts on the target when it is closed", async () => {
+    const { calls, toggle } = recorder(null);
+    await toggle();
+
+    expect(calls).toEqual([["open"], ["start", selection]]);
+  });
+
+  it("starts on the target when the bar is open, and stops a Recording under way", async () => {
+    const idle = recorder(bar(null));
+    await idle.toggle();
+    const running = recorder(bar(null, true));
+    await running.toggle();
+
+    expect(idle.calls).toEqual([["start", selection]]);
+    expect(running.calls).toEqual([["stop"]]);
+  });
+
+  it("Re-records the selection, but never stops a Recording under way", async () => {
+    const closed = recorder(null);
+    await closed.begin();
+    const running = recorder(bar(null, true));
+    await running.begin();
+
+    expect(closed.calls).toEqual([["open"], ["start", selection]]);
+    expect(running.calls).toEqual([]);
   });
 });
 

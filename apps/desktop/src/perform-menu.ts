@@ -1,5 +1,6 @@
 import {
   displays,
+  onPerformanceSettings,
   performanceSettings,
   sessionState,
   setPerformanceSettings,
@@ -8,7 +9,7 @@ import {
   sizePresets,
 } from "./commands";
 import { find } from "./dom";
-import { AUTOMATIC, chosenSettings, displayChoices } from "./perform-menu-view";
+import { AUTOMATIC, chooseLayout, chosenSettings, displayChoices } from "./perform-menu-view";
 import { CUSTOM, choiceFor, chosenSize, customSize, isValidPixels, shownNote, sizeChoices } from "./presentation-size-view";
 import { act } from "./report-error";
 import type { Display, PresentationSize, ShownSize, SizePreset } from "./session";
@@ -80,6 +81,8 @@ function remember(): Promise<void> {
   );
 }
 
+const pickLayout = (choice: string) => act(() => chooseLayout(choice, { performanceSettings, setPerformanceSettings }))();
+
 function markValidity() {
   customWidth.setAttribute("aria-invalid", String(!isValidPixels(customWidth.value)));
   customHeight.setAttribute("aria-invalid", String(!isValidPixels(customHeight.value)));
@@ -102,8 +105,9 @@ export function mountPerformMenu() {
   menu.addEventListener("toggle", () => {
     if (menu.open) act(show)();
   });
-  for (const select of [layout, teleprompterDisplay, presentationDisplay]) {
-    select.addEventListener("change", act(remember));
-  }
+  layout.addEventListener("change", () => pickLayout(layout.value));
+  for (const select of [teleprompterDisplay, presentationDisplay]) select.addEventListener("change", act(remember));
   for (const field of [presentationSize, customWidth, customHeight]) field.addEventListener("change", act(saveSize));
+  onPerformanceSettings((settings) => (layout.value = settings.layout));
+  return { chooseLayout: pickLayout };
 }

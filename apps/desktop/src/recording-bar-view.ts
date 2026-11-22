@@ -1,3 +1,4 @@
+import type { RecordingTarget } from "./recording-target";
 import type { LiveModel, RecordingBarState } from "./session";
 
 export const CONFIRM_CANCEL_AFTER_MS = 3_000;
@@ -14,10 +15,33 @@ export function meterFill(peak: number) {
   return Math.min(1, Math.max(0, 1 - db / METER_FLOOR_DB));
 }
 
-export function shortcut({ key, metaKey }: { key: string; metaKey: boolean }) {
-  if (metaKey && key.toLowerCase() === "r") return "toggle";
-  if (key === "Escape") return "escape";
-  return null;
+/** The bar's own keys. ⌘R is the menu bar's accelerator alone, so it runs once. */
+export function shortcut({ key }: { key: string }) {
+  return key === "Escape" ? "escape" : null;
+}
+
+export interface RecordingCommands {
+  openRecordingBar(): Promise<void>;
+  startRecordingAt(target: RecordingTarget): Promise<void>;
+  stopRecording(): Promise<void>;
+}
+
+/** Starting and stopping a Recording on the target the Editor reports, opening the bar first if it is closed. */
+export function recordingCommands(
+  bar: () => RecordingBarState | null,
+  target: () => RecordingTarget,
+  commands: RecordingCommands,
+) {
+  const start = () => commands.startRecordingAt(target());
+
+  async function begin() {
+    const shown = bar();
+    if (shown?.recording) return;
+    if (shown === null) await commands.openRecordingBar();
+    return start();
+  }
+
+  return { start, begin, toggle: () => (bar()?.recording ? commands.stopRecording() : begin()) };
 }
 
 export function escapeAction(recording: boolean, recordedMs: number, confirming: boolean) {

@@ -7,16 +7,19 @@ import {
   drag,
   edit,
   nudge,
+  onMenuCommand,
   onSessionState,
   paste,
   recordingWaveform,
   redo,
   renamePresentation,
+  reportMenuState,
   retryTranscription,
   selectEvent,
   startPerformance,
   undo,
 } from "./commands";
+import { editorMenu } from "./editor-menu";
 import { mountEventEditor } from "./event-editor";
 import { mountInspector } from "./inspector";
 import { eventNames, nextMoved } from "./named-events";
@@ -27,7 +30,7 @@ import { mountRecordingBar } from "./recording-bar";
 import { act, showError } from "./report-error";
 import { sharedSelection } from "./selection";
 import { mountServerStatus } from "./server-status";
-import type { SessionState } from "./session";
+import type { ClockState, SessionState } from "./session";
 import { nudgeOf } from "./timing-controls";
 import { mountTextPane } from "./text-pane";
 import { mountTimeline } from "./timeline";
@@ -36,11 +39,13 @@ const title = document.querySelector<HTMLInputElement>("#title")!;
 let savedTitle = "";
 let current: SessionState | null = null;
 let selected: string | null = null;
+let clockState: ClockState | null = null;
 
 const selection = sharedSelection((ids) => {
   timeline.select(ids);
   showInspector();
   previewControls.selectionChanged();
+  menu.changed();
 });
 
 const script = document.querySelector<HTMLElement>("#script")!;
@@ -91,7 +96,8 @@ onPendingAction(script, {
   discard: (recording) => discardTranscription(recording).catch(showError),
 });
 
-document.querySelector("#remove-unused")!.addEventListener("click", () => removeUnusedRecordings().catch(showError));
+const removeUnused = () => void removeUnusedRecordings().catch(showError);
+document.querySelector("#remove-unused")!.addEventListener("click", removeUnused);
 
 title.addEventListener(
   "change",
@@ -107,10 +113,40 @@ title.addEventListener("keydown", (event) => {
   if (event.key === "Enter") title.blur();
 });
 
-const perform = act(startPerformance);
-mountPerformMenu();
+const performMenu = mountPerformMenu();
 
-document.querySelector("#perform")!.addEventListener("click", perform);
+document.querySelector("#perform")!.addEventListener("click", act(startPerformance));
+
+const clock = mountClockControl((panel, event) => {
+  previewControls.clock(panel, event);
+  clockState = panel.state;
+  menu.changed();
+});
+
+const menu = editorMenu(
+  {
+    removeUnusedRecordings: removeUnused,
+    record: recordingBar.toggle,
+    reRecordSelection: recordingBar.reRecord,
+    retime: inspector.retime,
+    listen: previewControls.listen,
+    layoutTwoWindows: () => performMenu.chooseLayout("twoWindows"),
+    layoutCombined: () => performMenu.chooseLayout("combined"),
+    layoutTeleprompterOnly: () => performMenu.chooseLayout("teleprompterOnly"),
+    playPause: clock.playPause,
+    playFromCursor: previewControls.playFromCursor,
+    restart: clock.restart,
+  },
+  () => ({
+    session: current,
+    clock: clockState,
+    target: pane.recordingTarget(),
+    listenable: previewControls.listenable(),
+  }),
+  reportMenuState,
+);
+onMenuCommand(menu.run);
+document.addEventListener("selectionchange", menu.changed);
 
 document.addEventListener("keydown", (event) => {
   if (!(event.metaKey || event.ctrlKey) || event.key !== "'" || !current) return;
@@ -163,8 +199,9 @@ function render(state: SessionState) {
   timeline.render(state.words, state.namedEvents, state.movedEvents, state.scriptEnd, selection.ids(), state.locked);
   recordingBar.render(state.recordingBar);
   previewControls.render(state);
+  menu.changed();
 }
 
 onSessionState(render);
-mountClockControl(previewControls.clock);
 mountServerStatus();
+menu.changed();

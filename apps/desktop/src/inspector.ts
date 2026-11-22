@@ -68,5 +68,11 @@ export function mountInspector(form: HTMLFormElement, commands: InspectorCommand
     return send(retimeEdit(ids, percent.value));
   });
 
-  return { render };
+  function retime() {
+    if (wordFields.hidden || locked) return;
+    percent.focus();
+    percent.select();
+  }
+
+  return { render, retime };
 }

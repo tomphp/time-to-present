@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { AUTOMATIC, chosenSettings, displayChoices } from "./perform-menu-view";
+import { AUTOMATIC, chooseLayout, chosenSettings, displayChoices } from "./perform-menu-view";
+import type { PerformanceSettings } from "./session";
 
 const displays = [
   { name: "Built-in Retina Display", primary: true },
@@ -48,5 +49,30 @@ describe("chosen settings", () => {
 
   test("refuse a layout the core does not know", () => {
     expect(() => chosenSettings({ ...menu, layout: "sideways" })).toThrow("sideways");
+  });
+});
+
+describe("choosing a Performance Layout", () => {
+  const remembered: PerformanceSettings = {
+    layout: "twoWindows",
+    teleprompterDisplay: "Built-in Retina Display",
+    presentationDisplay: "Projector",
+  };
+
+  function choose(layout: string) {
+    const saved: PerformanceSettings[] = [];
+    const commands = {
+      performanceSettings: async () => remembered,
+      setPerformanceSettings: async (settings: PerformanceSettings) => void saved.push(settings),
+    };
+    return chooseLayout(layout, commands).then(() => saved);
+  }
+
+  test("changes the layout and keeps the remembered displays", async () => {
+    expect(await choose("combined")).toEqual([{ ...remembered, layout: "combined" }]);
+  });
+
+  test("refuses a layout it does not know", async () => {
+    await expect(choose("sideBySide")).rejects.toThrow("sideBySide");
   });
 });

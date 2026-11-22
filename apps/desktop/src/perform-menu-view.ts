@@ -30,6 +30,18 @@ export function chosenSettings(menu: MenuValues): PerformanceSettings {
   };
 }
 
+export interface LayoutCommands {
+  performanceSettings(): Promise<PerformanceSettings>;
+  setPerformanceSettings(settings: PerformanceSettings): Promise<void>;
+}
+
+/** Changes the Performance Layout alone, keeping the displays this machine remembers. */
+export async function chooseLayout(layout: string, commands: LayoutCommands) {
+  const chosen = oneOf(LAYOUTS, layout);
+  const settings = await commands.performanceSettings();
+  await commands.setPerformanceSettings({ ...settings, layout: chosen });
+}
+
 const chosenDisplay = (value: string) => (value === AUTOMATIC ? null : value);
 
 function oneOf<T extends string>(known: readonly T[], value: string): T {
