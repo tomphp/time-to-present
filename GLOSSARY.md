@@ -84,7 +84,11 @@ Scaling the durations and Gaps of a selection of Words by a percentage.
 Playing one Word's own Recording with a second of audio either side. It never touches the Performance clock.
 
 **Preview**:
-Playing the Script from the cursor on the shared clock, with highlight and sound. Only a clock the editor started sounds, so a Performance started elsewhere plays silently in the editor.
+Playing the Script from the cursor on the shared clock, with highlight and sound. It sounds the Script as Audio Runs and always follows Script Time. Trim start inside a Run changes a Word's edges, not the sound. Only a clock the editor started sounds, so a Performance started elsewhere plays silently in the editor.
+
+**Audio Run**:
+A stretch of consecutive spoken Words whose audio follows on unbroken in one Recording, so Preview sounds it as one piece. Every edit that puts a seam in the audio ends one Run and starts the next.
+_Avoid_: segment, chunk
 
 **Moved badge**:
 A temporary mark on a Named Event that the app re-anchored automatically (after a delete, merge, cut or Re-record), so you can review it. It lasts for the session and is never saved.
