@@ -55,6 +55,8 @@ const VIEW: &[Entry] = &[
     Entry::Submenu(
         "Teleprompter",
         &[
+            Command(Ticker),
+            Separator,
             Command(Blank),
             Command(Markers),
             Separator,

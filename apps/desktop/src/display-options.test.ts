@@ -29,6 +29,12 @@ describe("display keys", () => {
     expect(press("ArrowDown", command)).toBe("readingLineDown");
   });
 
+  it("maps T to the Ticker, and not with a modifier", () => {
+    expect(press("t")).toBe("ticker");
+    expect(press("T")).toBe("ticker");
+    for (const modifier of ["metaKey", "ctrlKey", "altKey", "shiftKey"]) expect(press("t", { [modifier]: true })).toBeNull();
+  });
+
   it("ignores other keys and other modifiers", () => {
     expect(press("x")).toBeNull();
     expect(press("b", { metaKey: true })).toBeNull();
@@ -43,6 +49,14 @@ describe("applying display actions", () => {
     expect(isRepeatable("readingLineDown")).toBe(true);
     expect(isRepeatable("markers")).toBe(false);
     expect(isRepeatable("blank")).toBe(false);
+    expect(isRepeatable("ticker")).toBe(false);
+  });
+
+  it("switches between the Page and the Ticker", () => {
+    expect(DEFAULT_OPTIONS.view).toBe("page");
+    const ticker = applyAction(DEFAULT_OPTIONS, "ticker", "a");
+    expect(ticker.view).toBe("ticker");
+    expect(applyAction(ticker, "ticker", "a").view).toBe("page");
   });
 
   it("toggles markers", () => {
@@ -86,14 +100,27 @@ describe("remembering options", () => {
 
   it("round-trips through storage", () => {
     const storage = memory();
-    const options = applyAction(applyAction(DEFAULT_OPTIONS, "markers", "glass"), "mirror", "glass");
+    const options = { ...applyAction(applyAction(DEFAULT_OPTIONS, "ticker", "glass"), "mirror", "glass"), readMark: 0.6 };
     saveOptions(storage, options);
     expect(loadOptions(storage)).toEqual(options);
   });
 
   it("ignores stored values of the wrong type or out of range", () => {
-    const stored = JSON.stringify({ markers: "yes", fontSize: "big", readingLine: 7, mirrors: 3 });
+    const stored = JSON.stringify({ markers: "yes", fontSize: "big", readingLine: 7, view: "sideways", readMark: 0.95, mirrors: 3 });
     expect(loadOptions({ getItem: () => stored })).toEqual(DEFAULT_OPTIONS);
+    expect(loadOptions({ getItem: () => JSON.stringify({ readMark: "left" }) }).readMark).toBe(1 / 3);
+  });
+
+  it("loads options stored before the Ticker as the Page with the Read Mark a third of the way across", () => {
+    const stored = JSON.stringify({ markers: false, fontSize: 64, readingLine: 0.5, mirrors: {} });
+    expect(loadOptions({ getItem: () => stored })).toEqual({
+      ...DEFAULT_OPTIONS,
+      markers: false,
+      fontSize: 64,
+      readingLine: 0.5,
+      view: "page",
+      readMark: 1 / 3,
+    });
   });
 
   it("falls back to defaults when nothing or garbage is stored", () => {

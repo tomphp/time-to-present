@@ -31,6 +31,7 @@ import {
   isDisplayAction,
   isRepeatable,
   type DisplayOptions,
+  type TeleprompterView,
 } from "./display-options";
 import { formatElapsed } from "./recording-bar-view";
 import {
@@ -53,6 +54,8 @@ import { serverStatusView } from "./server-status-view";
 import type { ScriptWord, TimedEvent } from "./session";
 import { mountDisplay } from "./teleprompter-display";
 import { mountPage } from "./teleprompter-page";
+import type { TeleprompterRenderer } from "./teleprompter-renderer";
+import { mountTicker } from "./teleprompter-ticker";
 import { navigation } from "./teleprompter-seek";
 import {
   currentWord,
@@ -68,10 +71,11 @@ const paused = find<HTMLParagraphElement>("#paused");
 const stage = find<HTMLDivElement>("#stage");
 const pane = find<HTMLElement>("#pane");
 const prompter = find<HTMLElement>("#prompter");
-const renderer = mountPage(column, stage);
+const VIEWS: Record<TeleprompterView, typeof mountPage> = { page: mountPage, ticker: mountTicker };
 const screenKey = () => `${screen.width}x${screen.height}@${devicePixelRatio}`;
 
 let options: DisplayOptions = { ...DEFAULT_OPTIONS };
+let renderer: TeleprompterRenderer = VIEWS[options.view](column, stage);
 
 const bar = {
   warning: find<HTMLParagraphElement>("#bar-warning"),
@@ -141,7 +145,9 @@ function frame() {
     over,
     cue: cueSettings && approachCue(words, followed, scriptTime, cueSettings),
     clock: followed,
+    scriptTime,
     readingLine: options.readingLine,
+    readMark: options.readMark,
   });
   requestAnimationFrame(frame);
 }
@@ -182,11 +188,20 @@ function onKey(event: KeyboardEvent) {
   } else if (navigate(event)) event.preventDefault();
 }
 
+/** Shows the Script in the other view from where the clock stands now, without touching the clock. */
+function switchView(view: TeleprompterView) {
+  renderer.destroy();
+  renderer = VIEWS[view](column, stage);
+  renderer.render(words, events, scriptEnd);
+  document.body.classList.toggle("ticker", view === "ticker");
+}
+
 function applyOptions() {
   const mirror = mirrorFor(options, screenKey());
   document.body.classList.toggle("markers-hidden", !options.markers);
   document.body.style.fontSize = `${options.fontSize}px`;
   document.body.style.setProperty("--reading-line", String(options.readingLine));
+  document.body.style.setProperty("--read-mark", String(options.readMark));
   const [mirrored, upright] = isCombined() ? [prompter, pane] : [pane, prompter];
   mirrored.style.transform = mirrorTransform(mirror);
   upright.style.transform = "";
@@ -201,6 +216,7 @@ const display = mountDisplay({
   render(next, blanked) {
     stage.classList.toggle("blanked", blanked);
     if (next === options) return;
+    if (next.view !== options.view) switchView(next.view);
     options = next;
     applyOptions();
   },
@@ -235,7 +251,7 @@ onSessionState((state) => {
   scriptEnd = state.scriptEnd;
   renderTicks();
   words = state.words;
-  renderer.render(state.words, state.namedEvents);
+  renderer.render(state.words, state.namedEvents, state.scriptEnd);
 });
 void onStreamEvent((event) => {
   const at = performance.now();

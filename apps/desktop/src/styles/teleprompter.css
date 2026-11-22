@@ -126,6 +126,46 @@ body.teleprompter #reading-line {
   color: var(--reading-accent);
 }
 
+body.teleprompter #read-mark {
+  display: none;
+}
+
+body.teleprompter.ticker #reading-line {
+  display: none;
+}
+
+body.teleprompter.ticker #read-mark {
+  display: block;
+  position: absolute;
+  top: calc(var(--reading-line) * 100% - var(--line));
+  left: calc(var(--read-mark) * 100%);
+  width: 2px;
+  height: calc(var(--line) * 2);
+  margin-left: -1px;
+  background: var(--reading-accent);
+  opacity: 0.6;
+}
+
+body.teleprompter.ticker #column {
+  position: absolute;
+  top: calc(var(--reading-line) * 100% - var(--line) / 2);
+  left: 0;
+  width: 0;
+  height: var(--line);
+  margin: 0;
+  white-space: nowrap;
+}
+
+body.teleprompter.ticker #column > * {
+  position: absolute;
+  top: 0;
+  margin: 0;
+}
+
+body.teleprompter.ticker #column .space {
+  visibility: hidden;
+}
+
 body.teleprompter #paused {
   position: fixed;
   inset: 0;

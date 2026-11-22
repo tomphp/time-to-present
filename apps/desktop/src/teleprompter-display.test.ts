@@ -14,7 +14,7 @@ function mount() {
   return { display, report, render, storage };
 }
 
-const idle = { window: "teleprompter", blanked: false, markers: true, mirrored: false, flipped: false };
+const idle = { window: "teleprompter", blanked: false, markers: true, mirrored: false, flipped: false, ticker: false };
 
 describe("the Teleprompter's display", () => {
   it("reports its display as soon as it is shown", () => {
@@ -44,6 +44,16 @@ describe("the Teleprompter's display", () => {
 
     expect(render).toHaveBeenLastCalledWith(expect.objectContaining({ fontSize: 52 }), true);
     expect(storage.get("teleprompter-display-options")).toContain('"fontSize":52');
+  });
+
+  it("saves and reports a switch to the Ticker", () => {
+    const { display, report, render, storage } = mount();
+
+    display.perform("ticker");
+
+    expect(report).toHaveBeenLastCalledWith({ ...idle, ticker: true });
+    expect(render).toHaveBeenLastCalledWith(expect.objectContaining({ view: "ticker" }), false);
+    expect(storage.get("teleprompter-display-options")).toContain('"view":"ticker"');
   });
 
   it("reports an unchanged mirror for size and Reading Line changes", () => {

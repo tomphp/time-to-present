@@ -5,19 +5,33 @@ export interface Mirror {
   vertical: boolean;
 }
 
+export type TeleprompterView = "page" | "ticker";
+
 /** What the presenter tunes for their rig; remembered on this machine, with the mirror kept per display. */
 export interface DisplayOptions {
   markers: boolean;
   fontSize: number;
   readingLine: number;
+  view: TeleprompterView;
+  /** Where the Read Mark stands on the Ticker, as a fraction of the stage's width. */
+  readMark: number;
   mirrors: Record<string, Mirror>;
 }
 
-export const DEFAULT_OPTIONS: DisplayOptions = { markers: true, fontSize: 48, readingLine: 1 / 3, mirrors: {} };
+export const DEFAULT_OPTIONS: DisplayOptions = {
+  markers: true,
+  fontSize: 48,
+  readingLine: 1 / 3,
+  view: "page",
+  readMark: 1 / 3,
+  mirrors: {},
+};
 export const NOT_MIRRORED: Mirror = { horizontal: false, vertical: false };
 
 const FONT_SIZES = { min: 16, max: 160, step: 4 };
 const READING_LINE = { min: 0.1, max: 0.9, step: 0.05 };
+const READ_MARK = { min: 0.1, max: 0.9 };
+const VIEWS: TeleprompterView[] = ["page", "ticker"];
 const STORAGE_KEY = "teleprompter-display-options";
 
 export type DisplayAction =
@@ -28,7 +42,8 @@ export type DisplayAction =
   | "fontLarger"
   | "fontSmaller"
   | "readingLineUp"
-  | "readingLineDown";
+  | "readingLineDown"
+  | "ticker";
 
 const ACTIONS: Record<DisplayAction, true> = {
   blank: true,
@@ -39,6 +54,7 @@ const ACTIONS: Record<DisplayAction, true> = {
   fontSmaller: true,
   readingLineUp: true,
   readingLineDown: true,
+  ticker: true,
 };
 
 export const isDisplayAction = (command: string): command is DisplayAction => Object.hasOwn(ACTIONS, command);
@@ -51,7 +67,7 @@ interface Keys {
   shiftKey: boolean;
 }
 
-const PLAIN_KEYS: Record<string, DisplayAction> = { b: "blank", ".": "blank", e: "markers", m: "mirror" };
+const PLAIN_KEYS: Record<string, DisplayAction> = { b: "blank", ".": "blank", e: "markers", m: "mirror", t: "ticker" };
 const COMMAND_KEYS: Record<string, DisplayAction> = {
   "+": "fontLarger",
   "=": "fontLarger",
@@ -87,6 +103,8 @@ export function applyAction(options: DisplayOptions, action: DisplayAction, disp
       return { ...options, readingLine: clamp(options.readingLine - READING_LINE.step, READING_LINE) };
     case "readingLineDown":
       return { ...options, readingLine: clamp(options.readingLine + READING_LINE.step, READING_LINE) };
+    case "ticker":
+      return { ...options, view: options.view === "ticker" ? "page" : "ticker" };
     case "blank":
       return options;
   }
@@ -116,6 +134,8 @@ export function loadOptions(storage: Pick<Storage, "getItem">): DisplayOptions {
       markers: typeof stored.markers === "boolean" ? stored.markers : DEFAULT_OPTIONS.markers,
       fontSize: within(stored.fontSize, FONT_SIZES, DEFAULT_OPTIONS.fontSize),
       readingLine: within(stored.readingLine, READING_LINE, DEFAULT_OPTIONS.readingLine),
+      view: VIEWS.includes(stored.view) ? stored.view : DEFAULT_OPTIONS.view,
+      readMark: within(stored.readMark, READ_MARK, DEFAULT_OPTIONS.readMark),
       mirrors: typeof stored.mirrors === "object" && stored.mirrors !== null ? stored.mirrors : {},
     };
   } catch {

@@ -7,12 +7,14 @@ export interface ViewFrame {
   over: boolean;
   cue: Cue | null;
   clock: Followed;
+  scriptTime: number;
   readingLine: number;
+  readMark: number;
 }
 
 /** What the Teleprompter window drives each frame, whichever Teleprompter View is showing the Script. */
 export interface TeleprompterRenderer {
-  render(words: ScriptWord[], events: TimedEvent[]): void;
+  render(words: ScriptWord[], events: TimedEvent[], scriptEnd: number): void;
   show(frame: ViewFrame): void;
   /** Scrolling never moves the clock: it only looks ahead or back while the clock stands still. */
   scrollFreelyBy(delta: number, clock: Followed): void;
