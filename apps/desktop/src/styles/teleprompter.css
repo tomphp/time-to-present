@@ -164,6 +164,7 @@ body.teleprompter.ticker #column > * {
 
 body.teleprompter.ticker #column .space {
   visibility: hidden;
+  white-space: pre;
 }
 
 body.teleprompter.ticker #column .break-mark {
