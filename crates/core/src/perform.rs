@@ -1,4 +1,10 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+
+mod presets;
+mod size;
+
+pub use presets::{SIZE_PRESETS, Shape, SizePreset};
+pub use size::{DisplayArea, FittedWindow, OutOfBounds, PixelSize, PresentationSize, fit};
 
 /// A key pressed in the Presentation Window's page, as its injected listener reports it.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -149,34 +155,6 @@ pub fn display_for(
     remembered.and_then(named).or(default)
 }
 
-/// How large the Presentation Window is while it is not fullscreen.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PresentationSize {
-    #[serde(rename = "1280x720")]
-    Hd720,
-    #[default]
-    #[serde(rename = "1920x1080")]
-    Hd1080,
-    #[serde(rename = "fit")]
-    Fit,
-}
-
-impl PresentationSize {
-    /// The window's size in points on a display of the given size, never larger than it fits at 16:9.
-    pub fn within(self, (width, height): (f64, f64)) -> (f64, f64) {
-        let fit = if width * 9.0 > height * 16.0 {
-            ((height * 16.0 / 9.0).floor(), height)
-        } else {
-            (width, (width * 9.0 / 16.0).floor())
-        };
-        match self {
-            Self::Hd720 if fit.0 >= 1280.0 => (1280.0, 720.0),
-            Self::Hd1080 if fit.0 >= 1920.0 => (1920.0, 1080.0),
-            _ => fit,
-        }
-    }
-}
-
 /// Which windows Perform opens.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -194,5 +172,12 @@ pub struct PerformanceSettings {
     pub layout: PerformanceLayout,
     pub teleprompter_display: Option<String>,
     pub presentation_display: Option<String>,
+    #[serde(deserialize_with = "known_or_default")]
     pub presentation_size: PresentationSize,
+}
+
+/// A size an older version wrote, such as `"fit"`, reads as the default.
+fn known_or_default<'de, D: Deserializer<'de>>(reader: D) -> Result<PresentationSize, D::Error> {
+    let written = serde_json::Value::deserialize(reader)?;
+    Ok(PresentationSize::deserialize(written).unwrap_or_default())
 }

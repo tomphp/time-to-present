@@ -1,8 +1,9 @@
-import { displays, performanceSettings, setPerformanceSettings } from "./commands";
+import { displays, performanceSettings, setPerformanceSettings, sizePresets } from "./commands";
 import { find } from "./dom";
 import { AUTOMATIC, chosenSettings, displayChoices } from "./perform-menu-view";
+import { sizeChoices, sizeValue } from "./presentation-size-view";
 import { act } from "./report-error";
-import type { Display } from "./session";
+import type { Display, PresentationSize, SizePreset } from "./session";
 
 const menu = find<HTMLDetailsElement>("#perform-menu");
 const layout = find<HTMLSelectElement>("#perform-layout");
@@ -15,10 +16,22 @@ function fill(select: HTMLSelectElement, connected: Display[], remembered: strin
   select.value = remembered ?? AUTOMATIC;
 }
 
+function fillSizes(presets: SizePreset[], saved: PresentationSize) {
+  const options = sizeChoices(presets).map((entry) => {
+    if (!("group" in entry)) return new Option(entry.label, entry.value);
+    const group = document.createElement("optgroup");
+    group.label = entry.group;
+    group.append(...entry.choices.map(({ value, label }) => new Option(label, value)));
+    return group;
+  });
+  presentationSize.replaceChildren(...options);
+  presentationSize.value = sizeValue(saved);
+}
+
 async function show() {
-  const [settings, connected] = await Promise.all([performanceSettings(), displays()]);
+  const [settings, connected, presets] = await Promise.all([performanceSettings(), displays(), sizePresets()]);
   layout.value = settings.layout;
-  presentationSize.value = settings.presentationSize;
+  fillSizes(presets, settings.presentationSize);
   fill(teleprompterDisplay, connected, settings.teleprompterDisplay);
   fill(presentationDisplay, connected, settings.presentationDisplay);
 }

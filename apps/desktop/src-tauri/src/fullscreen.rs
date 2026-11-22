@@ -1,6 +1,7 @@
 use std::ops::Deref;
 
 use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, Monitor, WebviewWindow};
+use ttp_core::perform::DisplayArea;
 
 use crate::window_set::WindowSet;
 use crate::{CommandResult, message};
@@ -17,7 +18,16 @@ impl Deref for Fullscreen {
     }
 }
 
-pub fn logical_size(monitor: &Monitor) -> (f64, f64) {
+pub fn area(monitor: &Monitor) -> DisplayArea {
+    let (width, height) = logical_size(monitor);
+    DisplayArea {
+        width,
+        height,
+        scale: monitor.scale_factor(),
+    }
+}
+
+fn logical_size(monitor: &Monitor) -> (f64, f64) {
     let size = monitor.size().to_logical::<f64>(monitor.scale_factor());
     (size.width, size.height)
 }

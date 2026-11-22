@@ -176,7 +176,18 @@ export type StreamEvent =
 
 export type PerformanceLayout = "twoWindows" | "combined" | "teleprompterOnly";
 
-export type PresentationSize = "1280x720" | "1920x1080" | "fit";
+export interface PixelSize {
+  width: number;
+  height: number;
+}
+
+export type PresentationSize = "fillDisplay" | PixelSize;
+
+export type Shape = "landscape" | "vertical" | "square" | "portrait";
+
+export interface SizePreset extends PixelSize {
+  shape: Shape;
+}
 
 export interface PerformanceSettings {
   layout: PerformanceLayout;

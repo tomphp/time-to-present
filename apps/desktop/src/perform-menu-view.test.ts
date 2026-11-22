@@ -32,7 +32,7 @@ describe("chosen settings", () => {
     layout: "teleprompterOnly",
     teleprompterDisplay: AUTOMATIC,
     presentationDisplay: "Projector",
-    presentationSize: "fit",
+    presentationSize: "1080x1920",
   };
 
   test("leave Automatic displays to the core and keep chosen ones", () => {
@@ -40,7 +40,7 @@ describe("chosen settings", () => {
       layout: "teleprompterOnly",
       teleprompterDisplay: null,
       presentationDisplay: "Projector",
-      presentationSize: "fit",
+      presentationSize: { width: 1080, height: 1920 },
     });
   });
 

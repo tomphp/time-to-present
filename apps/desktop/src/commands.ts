@@ -13,6 +13,7 @@ import type {
   PerformanceSettings,
   ServerStatus,
   SessionState,
+  SizePreset,
   Snapshot,
   StreamEvent,
   Waveform,
@@ -115,6 +116,7 @@ export const setSpeed = (speed: number) => invoke<void>("set_speed", { speed });
 export const reset = () => invoke<void>("reset");
 export const startPerformance = () => invoke<void>("perform");
 export const displays = () => invoke<Display[]>("displays");
+export const sizePresets = () => invoke<SizePreset[]>("size_presets");
 export const performanceSettings = () => invoke<PerformanceSettings>("performance_settings");
 export const setPerformanceSettings = (performance: PerformanceSettings) =>
   invoke<void>("set_performance_settings", { performance });

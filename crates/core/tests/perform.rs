@@ -1,6 +1,7 @@
 use ttp_core::perform::{
-    Display, FocusedWindow, FullscreenMenuItem, KeyTarget, KeyWindow, PageKey, PageKeyAction,
-    PerformanceWindow, PresentationSize, classify, display_for, fullscreen_menu_item,
+    Display, DisplayArea, FocusedWindow, FullscreenMenuItem, KeyTarget, KeyWindow, PageKey,
+    PageKeyAction, PerformanceWindow, PixelSize, PresentationSize, SIZE_PRESETS, Shape, classify,
+    display_for, fit, fullscreen_menu_item,
 };
 
 fn press(key: &str) -> PageKey {
@@ -315,34 +316,162 @@ fn there_is_no_display_to_choose_when_none_are_connected() {
     );
 }
 
-#[test]
-fn a_size_preset_gives_the_presentation_window_that_size() {
-    let display = (2560.0, 1440.0);
+fn pixels(width: u32, height: u32) -> PresentationSize {
+    PresentationSize::Pixels(PixelSize::new(width, height).unwrap())
+}
 
-    assert_eq!(PresentationSize::Hd720.within(display), (1280.0, 720.0));
-    assert_eq!(PresentationSize::Hd1080.within(display), (1920.0, 1080.0));
+fn display(width: f64, height: f64, scale: f64) -> DisplayArea {
+    DisplayArea {
+        width,
+        height,
+        scale,
+    }
 }
 
 #[test]
-fn fit_fills_the_display_at_16_by_9() {
+fn a_pixel_size_opens_at_that_many_pixels_of_content() {
+    let at_1x = fit(pixels(1920, 1080), display(2560.0, 1440.0, 1.0));
+    let at_2x = fit(pixels(1920, 1080), display(2560.0, 1440.0, 2.0));
+
+    assert_eq!(at_1x.points, (1920.0, 1080.0));
+    assert_eq!(at_2x.points, (960.0, 540.0));
+    assert_eq!(at_2x.pixels, (1920, 1080));
+}
+
+#[test]
+fn a_vertical_preset_fits_a_retina_display_at_half_its_pixels() {
+    let window = fit(pixels(1080, 1920), display(1512.0, 982.0, 2.0));
+
+    assert_eq!(window.points, (540.0, 960.0));
+    assert_eq!(window.pixels, (1080, 1920));
+    assert!(!window.shrank);
+}
+
+#[test]
+fn a_size_too_big_for_the_display_shrinks_to_the_largest_window_of_its_shape() {
+    let window = fit(pixels(2160, 3840), display(1512.0, 982.0, 2.0));
+
+    assert_eq!(window.points, (552.0, 982.0));
+    assert_eq!(window.pixels, (1104, 1964));
+    assert!(window.shrank);
+}
+
+#[test]
+fn a_size_too_wide_for_the_display_shrinks_to_its_width() {
+    let window = fit(pixels(3840, 2160), display(1440.0, 900.0, 1.0));
+
+    assert_eq!(window.points, (1440.0, 810.0));
+    assert_eq!(window.pixels, (1440, 810));
+    assert!(window.shrank);
+}
+
+#[test]
+fn a_size_that_exactly_fills_the_display_is_not_shrunk() {
+    let window = fit(pixels(2880, 1800), display(1440.0, 900.0, 2.0));
+
+    assert_eq!(window.points, (1440.0, 900.0));
+    assert!(!window.shrank);
+}
+
+#[test]
+fn fill_display_is_the_largest_16_by_9_window_that_fits() {
+    let fill = |width, height| fit(PresentationSize::FillDisplay, display(width, height, 2.0));
+
+    assert_eq!(fill(1440.0, 900.0).points, (1440.0, 810.0));
+    assert_eq!(fill(1920.0, 1200.0).points, (1920.0, 1080.0));
+    assert_eq!(fill(1000.0, 500.0).points, (888.0, 500.0));
+    assert_eq!(fill(1440.0, 900.0).pixels, (2880, 1620));
+    assert!(!fill(1440.0, 900.0).shrank);
+}
+
+#[test]
+fn only_fill_display_goes_fullscreen_on_a_display_of_its_own() {
+    let retina = display(1512.0, 982.0, 2.0);
+
+    assert!(fit(PresentationSize::FillDisplay, retina).fullscreen_on_own_display);
+    assert!(!fit(pixels(1920, 1080), retina).fullscreen_on_own_display);
+    assert!(!fit(pixels(7680, 4320), retina).fullscreen_on_own_display);
+}
+
+#[test]
+fn a_pixel_size_is_a_whole_number_of_pixels_from_320_to_7680_each_way() {
+    assert!(PixelSize::new(320, 320).is_ok());
+    assert!(PixelSize::new(7680, 7680).is_ok());
+    assert!(PixelSize::new(319, 1080).is_err());
+    assert!(PixelSize::new(1920, 7681).is_err());
+    assert!(PixelSize::new(0, 0).is_err());
+}
+
+#[test]
+fn a_written_size_outside_the_bounds_is_refused() {
+    let read = |json| serde_json::from_str::<PresentationSize>(json);
+
     assert_eq!(
-        PresentationSize::Fit.within((1440.0, 900.0)),
-        (1440.0, 810.0)
+        read(r#"{"width": 1080, "height": 1920}"#).unwrap(),
+        pixels(1080, 1920)
     );
     assert_eq!(
-        PresentationSize::Fit.within((1920.0, 1200.0)),
-        (1920.0, 1080.0)
+        read(r#""fillDisplay""#).unwrap(),
+        PresentationSize::FillDisplay
+    );
+    assert!(read(r#"{"width": 100, "height": 1920}"#).is_err());
+    assert!(read(r#"{"width": 1080.5, "height": 1920}"#).is_err());
+}
+
+#[test]
+fn a_size_is_written_as_its_pixels_or_fill_display() {
+    assert_eq!(
+        serde_json::to_value(pixels(1080, 1920)).unwrap(),
+        serde_json::json!({"width": 1080, "height": 1920})
     );
     assert_eq!(
-        PresentationSize::Fit.within((1000.0, 500.0)),
-        (888.0, 500.0)
+        serde_json::to_value(PresentationSize::FillDisplay).unwrap(),
+        serde_json::json!("fillDisplay")
     );
 }
 
 #[test]
-fn a_preset_larger_than_the_display_shrinks_to_fit() {
+fn the_presentation_size_defaults_to_1920_by_1080() {
+    assert_eq!(PresentationSize::default(), pixels(1920, 1080));
+}
+
+#[test]
+fn the_size_presets_are_grouped_by_shape() {
+    let presets: Vec<_> = SIZE_PRESETS
+        .iter()
+        .map(|preset| (preset.size, preset.shape))
+        .collect();
+
     assert_eq!(
-        PresentationSize::Hd1080.within((1440.0, 900.0)),
-        (1440.0, 810.0)
+        presets,
+        [
+            (PixelSize::new(1280, 720).unwrap(), Shape::Landscape),
+            (PixelSize::new(1920, 1080).unwrap(), Shape::Landscape),
+            (PixelSize::new(2560, 1440).unwrap(), Shape::Landscape),
+            (PixelSize::new(3840, 2160).unwrap(), Shape::Landscape),
+            (PixelSize::new(720, 1280).unwrap(), Shape::Vertical),
+            (PixelSize::new(1080, 1920).unwrap(), Shape::Vertical),
+            (PixelSize::new(1080, 1080).unwrap(), Shape::Square),
+            (PixelSize::new(1080, 1350).unwrap(), Shape::Portrait),
+        ]
+    );
+}
+
+#[test]
+fn a_pixel_size_equal_to_a_preset_is_that_preset() {
+    let vertical = PixelSize::new(1080, 1920).unwrap();
+
+    assert_eq!(
+        vertical.preset().map(|preset| preset.shape),
+        Some(Shape::Vertical)
+    );
+    assert_eq!(PixelSize::new(1000, 1000).unwrap().preset(), None);
+}
+
+#[test]
+fn a_preset_is_offered_as_its_pixels_and_shape() {
+    assert_eq!(
+        serde_json::to_value(SIZE_PRESETS[5]).unwrap(),
+        serde_json::json!({"width": 1080, "height": 1920, "shape": "vertical"})
     );
 }

@@ -495,6 +495,7 @@ pub fn run() {
             displays::displays,
             perform::performance_settings,
             perform::set_performance_settings,
+            perform::size_presets,
             perform::leave_fullscreen,
             perform::toggle_fullscreen,
             perform::forward_key
