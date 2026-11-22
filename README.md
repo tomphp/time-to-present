@@ -1,6 +1,6 @@
 # Time to Present
 
-A macOS presentation app with a built-in teleprompter. The words of the domain
+A presentation app for macOS and Linux with a built-in teleprompter. The words of the domain
 are in [GLOSSARY.md](GLOSSARY.md), and the decisions behind it in [docs/adr](docs/adr).
 
 ## Layout

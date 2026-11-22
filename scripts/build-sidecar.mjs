@@ -7,13 +7,13 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const sidecar = "ttp-stt-sidecar";
 const suffix = process.platform === "win32" ? ".exe" : "";
-const engine = process.platform === "darwin" ? "metal" : "whisper";
+const feature = process.platform === "darwin" ? "metal" : "whisper";
 
 const host = execFileSync("rustc", ["-vV"], { encoding: "utf8" }).match(/^host: (.+)$/m)[1];
 
 execFileSync(
   "cargo",
-  ["build", "-p", sidecar, "--bin", sidecar, "--release", "--features", engine],
+  ["build", "-p", sidecar, "--bin", sidecar, "--release", "--features", feature],
   { cwd: root, stdio: "inherit" },
 );
 

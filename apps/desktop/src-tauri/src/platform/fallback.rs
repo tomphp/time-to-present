@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use ttp_core::capture::Access;
 use ttp_core::platform::AppNap;
 
@@ -8,6 +10,10 @@ pub fn request_microphone_access() -> Access {
 
 /// Only AppKit adds a Full Screen item of its own.
 pub fn leave_full_screen_out_of_the_menu() {}
+
+pub fn open_in_browser(url: &str) -> std::io::Result<()> {
+    Command::new("xdg-open").arg(url).spawn().map(drop)
+}
 
 pub struct ProcessActivity;
 
