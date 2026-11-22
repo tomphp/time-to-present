@@ -5,6 +5,7 @@ mod live;
 mod protocol;
 #[cfg(feature = "whisper")]
 pub mod whisper;
+pub mod words;
 
 use std::io::{BufRead, Write};
 use std::path::Path;

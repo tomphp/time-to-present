@@ -1,4 +1,4 @@
-mod words;
+mod segments;
 
 use std::path::Path;
 use std::sync::{Arc, Mutex, mpsc};
@@ -10,6 +10,7 @@ use whisper_rs::{
 };
 
 use crate::engine::{Engine, Loader, Mode, Word};
+use crate::words;
 
 /// whisper.cpp through whisper-rs. The live pass decodes each window on its
 /// own with plain token timestamps; a Transcription adds DTW token timing when
@@ -78,7 +79,7 @@ impl Engine for Whisper {
             }
         }
         .map_err(|e| e.to_string())?;
-        Ok(words::from_tokens(state, self.end_of_text))
+        Ok(words::join(&segments::read(state, self.end_of_text)))
     }
 }
 
