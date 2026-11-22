@@ -43,3 +43,15 @@ jobs:
             base=$(git merge-base origin/main HEAD)
           fi
           cog check --ignore-merge-commits "$base..HEAD"
+
+  release-rehearsal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - uses: cocogitto/cocogitto-action@v4.2.0
+        with:
+          install-only: true
+      - run: node --test '.github/release/*.test.mjs'
