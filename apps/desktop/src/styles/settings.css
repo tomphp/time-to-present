@@ -9,9 +9,6 @@ body.settings {
 
 body.settings h1 {
   margin: 0 0 var(--gap);
-}
-
-body.settings h1 {
   font-size: var(--text-heading);
   font-weight: var(--weight-strong);
 }
