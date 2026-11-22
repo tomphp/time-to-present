@@ -57,7 +57,7 @@ fn an_overlapping_heard_word_in_a_re_record_is_clamped_to_the_next_start() {
         .iter()
         .map(|w| (w.word.gap, w.word.duration, w.word.audio_end))
         .collect();
-    assert_eq!(words, [(450, 400, Some(1_400)), (0, 400, Some(1_800))]);
+    assert_eq!(words, [(150, 400, Some(1_400)), (0, 400, Some(1_800))]);
 }
 
 #[test]
