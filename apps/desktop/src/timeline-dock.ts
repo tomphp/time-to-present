@@ -1,5 +1,5 @@
 import { showAs } from "./icon-button";
-import { TIMELINE_HEIGHTS } from "./layout-preferences";
+import { clampTimelineHeight, TIMELINE_HEIGHTS } from "./layout-preferences";
 
 export interface TimelineDockCommands {
   shownChanged(shown: boolean): void;
@@ -19,10 +19,8 @@ export function mountTimelineDock(
   const toggleButton = card.querySelector<HTMLButtonElement>("[data-toggle]")!;
   let { shown, height } = initial;
 
-  const clamp = (value: number) => Math.min(TIMELINE_HEIGHTS.max, Math.max(TIMELINE_HEIGHTS.min, value));
-
   function setHeight(next: number) {
-    height = clamp(next);
+    height = clampTimelineHeight(next);
     card.style.setProperty("--timeline-h", `${height}px`);
     handle.setAttribute("aria-valuenow", String(height));
   }
@@ -46,10 +44,12 @@ export function mountTimelineDock(
     const end = () => {
       document.removeEventListener("pointermove", move);
       document.removeEventListener("pointerup", end);
-      commands.heightChanged(height);
+      document.removeEventListener("pointercancel", end);
+      if (height !== startHeight) commands.heightChanged(height);
     };
     document.addEventListener("pointermove", move);
     document.addEventListener("pointerup", end);
+    document.addEventListener("pointercancel", end);
   });
   handle.addEventListener("keydown", (event) => {
     const step = { ArrowUp: KEY_STEP, ArrowDown: -KEY_STEP }[event.key];

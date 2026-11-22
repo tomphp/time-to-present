@@ -82,6 +82,13 @@ describe("the docked timeline card", () => {
     expect(dock.height()).toBe(220);
   });
 
+  it("saves nothing for a click that does not move", () => {
+    const { commands } = load();
+    dragTo(500, 500);
+
+    expect(commands.heightChanged).not.toHaveBeenCalled();
+  });
+
   it("resizes from the keyboard", () => {
     const { dock, commands } = load({ height: 200 });
     handle().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));

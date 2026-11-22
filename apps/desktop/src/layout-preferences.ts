@@ -13,10 +13,11 @@ export const DEFAULT_LAYOUT: LayoutPreferences = { inspectorShown: true, timelin
 
 const flag = (value: unknown, fallback: boolean) => (typeof value === "boolean" ? value : fallback);
 
+export const clampTimelineHeight = (value: number) =>
+  Math.min(TIMELINE_HEIGHTS.max, Math.max(TIMELINE_HEIGHTS.min, value));
+
 const timelineHeight = (value: unknown) =>
-  typeof value === "number" && value >= TIMELINE_HEIGHTS.min && value <= TIMELINE_HEIGHTS.max
-    ? value
-    : DEFAULT_LAYOUT.timelineHeight;
+  typeof value === "number" && value === clampTimelineHeight(value) ? value : DEFAULT_LAYOUT.timelineHeight;
 
 export function loadLayout(storage: Pick<Storage, "getItem">): LayoutPreferences {
   try {
