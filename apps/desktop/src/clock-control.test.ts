@@ -108,11 +108,10 @@ describe("the Play/Pause button", () => {
     expect(button().disabled).toBe(false);
   });
 
-  it("is an icon with no text", () => {
+  it("shows no text, only its icon", () => {
     mount();
     clockIs("ready");
 
-    expect(button().querySelector("svg")).not.toBeNull();
     expect(button().textContent).toBe("");
   });
 

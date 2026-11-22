@@ -20,7 +20,7 @@
 
 .menu {
   position: relative;
-  margin-left: calc(var(--space-3) - var(--gap));
+  margin-left: var(--split-pull);
 }
 
 .menu summary {
