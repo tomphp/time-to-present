@@ -252,4 +252,4 @@ export type WindowReport =
       inspectorShown: boolean;
       timelineShown: boolean;
     }
-  | { window: "teleprompter"; blanked: boolean; markers: boolean; mirrored: boolean; flipped: boolean };
+  | { window: "teleprompter"; blanked: boolean; markers: boolean; mirrored: boolean; flipped: boolean; ticker: boolean };

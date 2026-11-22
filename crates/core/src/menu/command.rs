@@ -33,6 +33,9 @@ pub enum MenuCommand {
     FontSmaller,
     ReadingLineUp,
     ReadingLineDown,
+    ReadMarkLeft,
+    ReadMarkRight,
+    Ticker,
 }
 
 /// Whether the shell runs a command itself or hands it to the focused window.
@@ -43,7 +46,7 @@ pub enum Route {
 }
 
 impl MenuCommand {
-    pub const ALL: [MenuCommand; 28] = [
+    pub const ALL: [MenuCommand; 31] = [
         Self::Settings,
         Self::NewPresentation,
         Self::OpenFolder,
@@ -72,6 +75,9 @@ impl MenuCommand {
         Self::FontSmaller,
         Self::ReadingLineUp,
         Self::ReadingLineDown,
+        Self::ReadMarkLeft,
+        Self::ReadMarkRight,
+        Self::Ticker,
     ];
 
     pub fn route(self) -> Route {
@@ -116,6 +122,9 @@ impl MenuCommand {
             Self::FontSmaller => "fontSmaller",
             Self::ReadingLineUp => "readingLineUp",
             Self::ReadingLineDown => "readingLineDown",
+            Self::ReadMarkLeft => "readMarkLeft",
+            Self::ReadMarkRight => "readMarkRight",
+            Self::Ticker => "ticker",
         }
     }
 
@@ -140,7 +149,7 @@ impl MenuCommand {
         self.layout().is_some()
             || matches!(
                 self,
-                Self::Blank | Self::Markers | Self::Mirror | Self::Flip
+                Self::Blank | Self::Markers | Self::Mirror | Self::Flip | Self::Ticker
             )
     }
 
@@ -164,6 +173,9 @@ impl MenuCommand {
                 | Self::FontSmaller
                 | Self::ReadingLineUp
                 | Self::ReadingLineDown
+                | Self::ReadMarkLeft
+                | Self::ReadMarkRight
+                | Self::Ticker
         )
     }
 }

@@ -55,6 +55,8 @@ const VIEW: &[Entry] = &[
     Entry::Submenu(
         "Teleprompter",
         &[
+            Command(Ticker),
+            Separator,
             Command(Blank),
             Command(Markers),
             Separator,
@@ -65,6 +67,8 @@ const VIEW: &[Entry] = &[
             Command(FontSmaller),
             Command(ReadingLineUp),
             Command(ReadingLineDown),
+            Command(ReadMarkLeft),
+            Command(ReadMarkRight),
         ],
     ),
 ];

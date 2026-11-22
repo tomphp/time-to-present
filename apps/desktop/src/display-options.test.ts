@@ -29,6 +29,20 @@ describe("display keys", () => {
     expect(press("ArrowDown", command)).toBe("readingLineDown");
   });
 
+  it("maps ⌘←/⌘→ to the Read Mark, and not without ⌘", () => {
+    expect(press("ArrowLeft", { metaKey: true })).toBe("readMarkLeft");
+    expect(press("ArrowRight", { metaKey: true })).toBe("readMarkRight");
+    expect(press("ArrowLeft")).toBeNull();
+    expect(press("ArrowRight", { altKey: true })).toBeNull();
+    expect(press("ArrowLeft", { metaKey: true, ctrlKey: true })).toBeNull();
+  });
+
+  it("maps T to the Ticker, and not with a modifier", () => {
+    expect(press("t")).toBe("ticker");
+    expect(press("T")).toBe("ticker");
+    for (const modifier of ["metaKey", "ctrlKey", "altKey", "shiftKey"]) expect(press("t", { [modifier]: true })).toBeNull();
+  });
+
   it("ignores other keys and other modifiers", () => {
     expect(press("x")).toBeNull();
     expect(press("b", { metaKey: true })).toBeNull();
@@ -41,8 +55,18 @@ describe("applying display actions", () => {
   it("repeats only font size and Reading Line steps while a key is held", () => {
     expect(isRepeatable("fontLarger")).toBe(true);
     expect(isRepeatable("readingLineDown")).toBe(true);
+    expect(isRepeatable("readMarkLeft")).toBe(true);
+    expect(isRepeatable("readMarkRight")).toBe(true);
     expect(isRepeatable("markers")).toBe(false);
     expect(isRepeatable("blank")).toBe(false);
+    expect(isRepeatable("ticker")).toBe(false);
+  });
+
+  it("switches between the Page and the Ticker", () => {
+    expect(DEFAULT_OPTIONS.view).toBe("page");
+    const ticker = applyAction(DEFAULT_OPTIONS, "ticker", "a");
+    expect(ticker.view).toBe("ticker");
+    expect(applyAction(ticker, "ticker", "a").view).toBe("page");
   });
 
   it("toggles markers", () => {
@@ -73,6 +97,17 @@ describe("applying display actions", () => {
     expect(options.readingLine).toBeLessThan(1);
   });
 
+  it("steps the Read Mark by 0.05 and keeps it within 0.1 and 0.9", () => {
+    const left = applyAction(DEFAULT_OPTIONS, "readMarkLeft", "a");
+    expect(left.readMark).toBe(0.28);
+    expect(applyAction(left, "readMarkRight", "a").readMark).toBe(0.33);
+    let options = DEFAULT_OPTIONS;
+    for (let i = 0; i < 100; i++) options = applyAction(options, "readMarkLeft", "a");
+    expect(options.readMark).toBe(0.1);
+    for (let i = 0; i < 100; i++) options = applyAction(options, "readMarkRight", "a");
+    expect(options.readMark).toBe(0.9);
+  });
+
   it("leaves the options alone on blank, which is not remembered", () => {
     expect(applyAction(DEFAULT_OPTIONS, "blank", "a")).toBe(DEFAULT_OPTIONS);
   });
@@ -86,14 +121,27 @@ describe("remembering options", () => {
 
   it("round-trips through storage", () => {
     const storage = memory();
-    const options = applyAction(applyAction(DEFAULT_OPTIONS, "markers", "glass"), "mirror", "glass");
+    const options = { ...applyAction(applyAction(DEFAULT_OPTIONS, "ticker", "glass"), "mirror", "glass"), readMark: 0.6 };
     saveOptions(storage, options);
     expect(loadOptions(storage)).toEqual(options);
   });
 
   it("ignores stored values of the wrong type or out of range", () => {
-    const stored = JSON.stringify({ markers: "yes", fontSize: "big", readingLine: 7, mirrors: 3 });
+    const stored = JSON.stringify({ markers: "yes", fontSize: "big", readingLine: 7, view: "sideways", readMark: 0.95, mirrors: 3 });
     expect(loadOptions({ getItem: () => stored })).toEqual(DEFAULT_OPTIONS);
+    expect(loadOptions({ getItem: () => JSON.stringify({ readMark: "left" }) }).readMark).toBe(1 / 3);
+  });
+
+  it("loads options stored before the Ticker as the Page with the Read Mark a third of the way across", () => {
+    const stored = JSON.stringify({ markers: false, fontSize: 64, readingLine: 0.5, mirrors: {} });
+    expect(loadOptions({ getItem: () => stored })).toEqual({
+      ...DEFAULT_OPTIONS,
+      markers: false,
+      fontSize: 64,
+      readingLine: 0.5,
+      view: "page",
+      readMark: 1 / 3,
+    });
   });
 
   it("falls back to defaults when nothing or garbage is stored", () => {

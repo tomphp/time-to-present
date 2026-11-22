@@ -54,6 +54,7 @@ const TELEPROMPTER: TeleprompterReport = TeleprompterReport {
     markers: false,
     mirrored: false,
     flipped: false,
+    ticker: false,
 };
 
 const SCRIPT_AND_EDITOR_VIEW: [MenuCommand; 9] = [
@@ -68,7 +69,7 @@ const SCRIPT_AND_EDITOR_VIEW: [MenuCommand; 9] = [
     MenuCommand::ToggleTimeline,
 ];
 
-const TELEPROMPTER_OPTIONS: [MenuCommand; 8] = [
+const TELEPROMPTER_OPTIONS: [MenuCommand; 11] = [
     MenuCommand::Blank,
     MenuCommand::Markers,
     MenuCommand::Mirror,
@@ -77,6 +78,9 @@ const TELEPROMPTER_OPTIONS: [MenuCommand; 8] = [
     MenuCommand::FontSmaller,
     MenuCommand::ReadingLineUp,
     MenuCommand::ReadingLineDown,
+    MenuCommand::ReadMarkLeft,
+    MenuCommand::ReadMarkRight,
+    MenuCommand::Ticker,
 ];
 
 fn enabled(command: MenuCommand, focused: FocusedWindow) -> bool {
@@ -408,11 +412,25 @@ fn the_teleprompter_options_are_checked_as_the_window_reports_them() {
                 ..TELEPROMPTER
             },
         ),
+        (
+            MenuCommand::Ticker,
+            TeleprompterReport {
+                ticker: true,
+                ..TELEPROMPTER
+            },
+        ),
     ];
     for (command, on) in options {
         assert!(checked(command, on), "{command:?}");
         assert!(!checked(command, TELEPROMPTER), "{command:?}");
     }
+}
+
+#[test]
+fn ticker_view_is_a_check_mark_the_teleprompter_window_hears_by_its_id() {
+    assert!(MenuCommand::Ticker.is_checkable());
+    assert_eq!(MenuCommand::Ticker.route(), Route::Window);
+    assert_eq!(MenuCommand::from_id("ticker"), Some(MenuCommand::Ticker));
 }
 
 #[test]
@@ -445,6 +463,9 @@ fn the_teleprompter_display_keys_are_in_their_titles_and_not_accelerators() {
             "Smaller Text (⌘−)",
             "Raise Reading Line (⌘↑)",
             "Lower Reading Line (⌘↓)",
+            "Move Read Mark Left (⌘←)",
+            "Move Read Mark Right (⌘→)",
+            "Ticker View (T)",
         ]
     );
     for command in TELEPROMPTER_OPTIONS {

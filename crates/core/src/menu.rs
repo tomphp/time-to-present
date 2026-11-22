@@ -33,6 +33,7 @@ pub struct TeleprompterReport {
     pub markers: bool,
     pub mirrored: bool,
     pub flipped: bool,
+    pub ticker: bool,
 }
 
 /// The last report a window made, for the shell to keep by window label.
@@ -169,6 +170,7 @@ fn checked(command: MenuCommand, context: &MenuContext) -> bool {
         MenuCommand::Markers => report.markers,
         MenuCommand::Mirror => report.mirrored,
         MenuCommand::Flip => report.flipped,
+        MenuCommand::Ticker => report.ticker,
         _ => false,
     }
 }
@@ -214,5 +216,8 @@ fn label(command: MenuCommand, context: &MenuContext) -> &'static str {
         FontSmaller => "Smaller Text (⌘−)",
         ReadingLineUp => "Raise Reading Line (⌘↑)",
         ReadingLineDown => "Lower Reading Line (⌘↓)",
+        ReadMarkLeft => "Move Read Mark Left (⌘←)",
+        ReadMarkRight => "Move Read Mark Right (⌘→)",
+        Ticker => "Ticker View (T)",
     }
 }

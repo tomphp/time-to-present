@@ -16,7 +16,14 @@ export function mountDisplay({ storage, screenKey, render, report }: DisplayHost
   const show = () => {
     render(options, blanked);
     const { horizontal, vertical } = mirrorFor(options, screenKey());
-    report({ window: "teleprompter", blanked, markers: options.markers, mirrored: horizontal, flipped: vertical });
+    report({
+      window: "teleprompter",
+      blanked,
+      markers: options.markers,
+      mirrored: horizontal,
+      flipped: vertical,
+      ticker: options.view === "ticker",
+    });
   };
 
   show();

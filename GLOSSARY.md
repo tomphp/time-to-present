@@ -191,8 +191,22 @@ The Presentation Size that makes the Presentation Window fullscreen on a display
 **Performance Layout**:
 How the Performance is arranged on screen. There are three: **Two windows** (a Teleprompter Window and a Presentation Window on separate displays), **Combined** (Presentation App and Teleprompter side by side in one window), and **Teleprompter only**.
 
+**Teleprompter View**:
+How the Teleprompter lays out the Script. There are two: Page and Ticker. It is chosen per machine.
+
+**Page**:
+The Teleprompter View with the Script in lines and paragraphs, scrolling up past the Reading Line.
+
+**Ticker**:
+The Teleprompter View with the Words on one line, scrolling past the Read Mark and spaced to match their timing.
+_Avoid_: crawl, strip, horizontal mode
+
+**Read Mark**:
+The fixed vertical line on the Ticker that each Word reaches at the moment it starts.
+_Avoid_: read marker, marker (markers are the Named Event chips)
+
 **Reading Line**:
-The fixed height on the Teleprompter, about a third of the way down, where the current line is held as the text scrolls.
+The height on the Teleprompter where the current line is held. On the Page it is fixed about a third of the way down while the text scrolls; on the Ticker, it is the height the line sits at.
 
 **Approach Cue**:
 The fill in the next Word's underline during a Gap that shows how long until it is spoken.
