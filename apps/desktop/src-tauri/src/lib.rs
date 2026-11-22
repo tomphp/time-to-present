@@ -12,7 +12,7 @@ use ttp_core::platform::Platform;
 use ttp_core::script::{Edit, EditError};
 use ttp_core::session::{Session, SessionState};
 use ttp_core::settings::Settings;
-use ttp_core::store::StoreError;
+use ttp_core::store::{self, StoreError};
 use ttp_core::time::MonotonicTime;
 use ttp_core::transcription::{SidecarLiveTranscriber, SidecarTranscriber};
 use ttp_core::waveform::{self, Waveform};
@@ -51,8 +51,23 @@ struct App {
 
 #[derive(Serialize)]
 struct Recent {
-    folders: Vec<PathBuf>,
+    presentations: Vec<RecentPresentation>,
     dropped: Vec<PathBuf>,
+}
+
+#[derive(Serialize)]
+struct RecentPresentation {
+    folder: PathBuf,
+    title: Option<String>,
+}
+
+impl RecentPresentation {
+    fn read(folder: &Path) -> Self {
+        Self {
+            folder: folder.to_path_buf(),
+            title: store::title(folder).ok(),
+        }
+    }
 }
 
 type CommandResult<T> = Result<T, String>;
@@ -100,18 +115,21 @@ fn open_presentation(app: &AppHandle, state: &App, folder: &Path) -> CommandResu
 
 #[tauri::command]
 fn recent_presentations(app: AppHandle, state: State<'_, App>) -> CommandResult<Recent> {
-    let recent = {
+    let (folders, dropped) = {
         let mut settings = state.settings.lock().unwrap();
         let dropped = settings.drop_missing().map_err(message)?;
-        Recent {
-            folders: settings.recent().to_vec(),
-            dropped,
-        }
+        (settings.recent().to_vec(), dropped)
     };
-    if !recent.dropped.is_empty() {
+    if !dropped.is_empty() {
         menu::recent_changed(&app);
     }
-    Ok(recent)
+    Ok(Recent {
+        presentations: folders
+            .iter()
+            .map(|folder| RecentPresentation::read(folder))
+            .collect(),
+        dropped,
+    })
 }
 
 #[tauri::command]

@@ -15,8 +15,8 @@
         "label": "start",
         "title": "Time to Present",
         "url": "index.html",
-        "width": 420,
-        "height": 320,
+        "width": 760,
+        "height": 480,
         "resizable": false
       }
     ],

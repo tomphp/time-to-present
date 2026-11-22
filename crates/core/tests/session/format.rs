@@ -55,3 +55,25 @@ fn a_newer_presentation_is_refused_without_writing_anything() {
     );
     assert_eq!(fs::read_dir(&folder).unwrap().count(), 1);
 }
+
+#[test]
+fn the_title_is_read_without_opening_or_writing_the_presentation() {
+    let (_harness, folder) = Harness::with_fixture("before-titles");
+    let before = fs::read_to_string(folder.join("presentation.json")).unwrap();
+
+    assert_eq!(store::title(&folder).unwrap(), "Old talk");
+    assert_eq!(
+        fs::read_to_string(folder.join("presentation.json")).unwrap(),
+        before
+    );
+}
+
+#[test]
+fn a_folder_without_a_presentation_has_no_title() {
+    let harness = Harness::new();
+
+    assert!(matches!(
+        store::title(harness.parent()),
+        Err(StoreError::NotAPresentation(_))
+    ));
+}

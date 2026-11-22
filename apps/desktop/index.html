@@ -6,20 +6,30 @@
     <link rel="stylesheet" href="/src/styles/start.css" />
   </head>
   <body class="start">
-    <h1>Time to Present</h1>
-    <form id="new-presentation">
-      <label>Title <input name="title" required autofocus /></label>
-      <button class="btn primary" type="submit">New Presentation…</button>
-    </form>
-    <button id="open-folder" class="btn" type="button">Open Folder…</button>
-    <section id="recent" hidden>
-      <h2>Recent</h2>
-      <ul id="recent-list"></ul>
-    </section>
-    <button id="check-microphone" class="btn" type="button">Check microphone</button>
-    <button id="open-settings" class="btn" type="button">Settings…</button>
-    <p id="notice" role="status" hidden></p>
-    <p id="error" role="alert" hidden></p>
+    <aside class="start-actions">
+      <img class="app-icon" src="/src-tauri/icons/128x128@2x.png" alt="" />
+      <h1>Time to Present</h1>
+      <button id="new-presentation" class="action primary" type="button">New Presentation…</button>
+      <button id="open-folder" class="action" type="button">Open Folder…</button>
+      <button id="check-microphone" class="action" type="button">Check microphone</button>
+    </aside>
+    <main class="recent card">
+      <h2 id="recent-heading">Recent</h2>
+      <p id="notice" class="banner" role="status" hidden></p>
+      <p id="error" class="banner" role="alert" hidden></p>
+      <ul id="recent-list" role="listbox" tabindex="0" aria-labelledby="recent-heading"></ul>
+      <p id="recent-empty" class="muted" hidden>Presentations you open appear here.</p>
+    </main>
+    <div class="sheet" hidden>
+      <form id="title-dialog" class="popover" role="dialog" aria-modal="true" aria-labelledby="title-dialog-heading">
+        <h2 id="title-dialog-heading">New Presentation</h2>
+        <label>Title <input name="title" required /></label>
+        <div class="dialog-buttons">
+          <button class="btn" type="button" data-cancel>Cancel</button>
+          <button class="btn primary" type="submit">Choose Folder…</button>
+        </div>
+      </form>
+    </div>
     <script type="module" src="/src/start.ts"></script>
   </body>
 </html>

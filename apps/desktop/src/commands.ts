@@ -30,8 +30,14 @@ export const newPresentation = (parent: string, title: string) =>
 
 export const openFolder = (folder: string) => invoke<SessionState>("open_folder", { folder });
 
+export interface RecentPresentation {
+  folder: string;
+  /** Null when the folder's presentation.json could not be read. */
+  title: string | null;
+}
+
 export interface Recent {
-  folders: string[];
+  presentations: RecentPresentation[];
   dropped: string[];
 }
 
