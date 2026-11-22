@@ -39,6 +39,13 @@ body.editor {
   display: none;
 }
 
+.workspace {
+  display: flex;
+  gap: var(--gutter);
+  align-items: flex-start;
+  margin-top: var(--gutter);
+}
+
 #script {
   flex: 1;
   min-width: 0;

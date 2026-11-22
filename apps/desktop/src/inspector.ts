@@ -100,7 +100,8 @@ export function mountInspector(card: HTMLElement, commands: InspectorCommands, i
     submitted.preventDefault();
     return send(retimeEdit(ids, percent.value), timing);
   });
-  toggleButton.addEventListener("click", () => setShown(!shown));
+  const toggle = () => setShown(!shown);
+  toggleButton.addEventListener("click", toggle);
   setShown(shown);
 
   /** Adding a Named Event shows the Inspector; selecting one leaves a hidden Inspector hidden. */
@@ -122,7 +123,7 @@ export function mountInspector(card: HTMLElement, commands: InspectorCommands, i
     openEvent,
     closeEvent: eventEditor.close,
     retime,
-    toggle: () => setShown(!shown),
+    toggle,
     shown: () => shown,
   };
 }

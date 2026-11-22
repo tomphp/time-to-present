@@ -74,8 +74,8 @@ const inspector = mountInspector(
     },
     shownChanged: (inspectorShown) => {
       layout = { ...layout, inspectorShown };
-      saveLayout(localStorage, layout);
       menu.changed();
+      saveLayout(localStorage, layout);
     },
   },
   layout.inspectorShown,
