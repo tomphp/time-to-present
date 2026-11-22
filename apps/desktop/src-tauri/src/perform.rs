@@ -138,11 +138,30 @@ fn set_fullscreen(app: &AppHandle, window: &WebviewWindow, fullscreen: bool) -> 
         return Ok(());
     }
     if fullscreen {
+        set_title_bar(window, false)?;
         fullscreen::enter_in_place(app, window)?;
     } else {
         fullscreen::leave(app, window)?;
+        set_title_bar(window, true)?;
     }
     fullscreen_changed(window, fullscreen)
+}
+
+/// The Presentation Window has a title bar only while Windowed, outside the shared content, so its
+/// inner size is put back should the platform change it.
+fn set_title_bar(window: &WebviewWindow, shown: bool) -> CommandResult<()> {
+    if window.label() != PRESENTATION_WINDOW {
+        return Ok(());
+    }
+    let scale = window.scale_factor().map_err(message)?;
+    let inner = window.inner_size().map_err(message)?;
+    window.set_decorations(shown).map_err(message)?;
+    if window.inner_size().map_err(message)? != inner {
+        window
+            .set_size(inner.to_logical::<f64>(scale))
+            .map_err(message)?;
+    }
+    Ok(())
 }
 
 fn fullscreen_changed(window: &WebviewWindow, fullscreen: bool) -> CommandResult<()> {
@@ -223,14 +242,16 @@ fn show_presentation(
         teleprompter_monitor.is_some_and(|shared| shared.position() == monitor.position());
     if shares_teleprompter_display {
         fullscreen::leave(app, &presentation)?;
+        set_title_bar(&presentation, true)?;
         place(&presentation, &monitor, size)?;
     } else {
+        set_title_bar(&presentation, false)?;
         fullscreen::enter(app, &presentation, &monitor, size)?;
     }
     fullscreen_changed(&presentation, !shares_teleprompter_display)
 }
 
-/// The chrome-less window showing the Presentation App, never mirrored, its keys forwarded.
+/// The window showing the Presentation App, never mirrored, its keys forwarded.
 fn presentation_window(
     app: &AppHandle,
     state: &App,
