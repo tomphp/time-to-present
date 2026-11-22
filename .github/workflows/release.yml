@@ -97,3 +97,110 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           NOTES: ${{ needs.plan.outputs.client-notes }}
         run: gh release create "$TAG" --verify-tag --title "Client $VERSION" --notes "$NOTES"
+
+  desktop-build:
+    needs: [plan, client]
+    if: >-
+      !cancelled() && needs.plan.outputs.desktop-version != ''
+      && contains(fromJSON('["success", "skipped"]'), needs.client.result)
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            bundles: dmg
+            installers: dmg/*.dmg
+          - os: windows-latest
+            bundles: nsis
+            installers: nsis/*-setup.exe
+          - os: ubuntu-22.04
+            bundles: appimage,deb
+            installers: appimage/*.AppImage deb/*.deb
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      VERSION: ${{ needs.plan.outputs.desktop-version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: ./.github/actions/desktop-toolchain
+      - name: Stamp the Desktop App with the latest Client release
+        run: |
+          client_tag=$(git tag --merged "$HEAD_SHA" --list 'client-v*' --sort=-v:refname | head -n 1)
+          node scripts/stamp.mjs desktop "$VERSION" "${client_tag#client-v}"
+      - name: Build the installers, signing ad hoc on macOS
+        env:
+          APPLE_SIGNING_IDENTITY: "-"
+        run: npm run tauri -w @time-to-present/desktop -- build --bundles "${{ matrix.bundles }}"
+      - name: Check the signature keeps the hardened runtime and entitlements
+        if: runner.os == 'macOS'
+        run: |
+          app="target/release/bundle/macos/Time to Present.app"
+          codesign --verify --strict --verbose=2 "$app"
+          codesign -dv "$app" 2>&1 | grep -E 'flags=0x[0-9a-f]+\([^)]*adhoc[^)]*runtime'
+          codesign -d --entitlements - "$app" | grep -q com.apple.security.device.audio-input
+      - name: Collect the installers with no spaces in their names
+        env:
+          INSTALLERS: ${{ matrix.installers }}
+        run: |
+          shopt -s failglob
+          mkdir -p "$RUNNER_TEMP/installers"
+          cd target/release/bundle
+          for installer in $INSTALLERS; do
+            name=$(basename "$installer")
+            cp "$installer" "$RUNNER_TEMP/installers/${name// /-}"
+          done
+          ls -l "$RUNNER_TEMP/installers"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ runner.os }}
+          path: ${{ runner.temp }}/installers/*
+          if-no-files-found: error
+
+  desktop-release:
+    needs: [plan, desktop-build]
+    if: ${{ !cancelled() && needs.desktop-build.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.plan.outputs.desktop-version }}
+      TAG: desktop-v${{ needs.plan.outputs.desktop-version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          path: ${{ runner.temp }}/installers
+          merge-multiple: true
+      - name: Write the checksums
+        working-directory: ${{ runner.temp }}/installers
+        run: |
+          sha256sum -- * > "$RUNNER_TEMP/checksums.txt"
+          cat "$RUNNER_TEMP/checksums.txt"
+      - name: Tag the release
+        run: |
+          if [ "$(git rev-parse -q --verify "refs/tags/$TAG^{commit}")" = "$HEAD_SHA" ]; then
+            echo "$TAG is already on $HEAD_SHA; going on to release it"
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            tag -a "$TAG" -m "$TAG" "$HEAD_SHA"
+          git push origin "refs/tags/$TAG"
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOTES: ${{ needs.plan.outputs.desktop-notes }}
+        run: |
+          { printf '%s\n\n' "$NOTES"; cat .github/release/desktop-install.md; } > "$RUNNER_TEMP/notes.md"
+          gh release create "$TAG" --verify-tag --title "Desktop App $VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md" "$RUNNER_TEMP"/installers/* "$RUNNER_TEMP/checksums.txt"
