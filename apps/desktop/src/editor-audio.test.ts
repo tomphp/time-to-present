@@ -262,7 +262,7 @@ describe("gain ramps", () => {
   });
 
   it("ramps in a middle piece that arrives late and so starts part way in", async () => {
-    const { clock, previewing, played, advance, stream } = harness(longRun);
+    const { clock, previewing, played, advance } = harness(longRun);
     clock("playing", 0);
     previewing(true);
     advance(1_500);
