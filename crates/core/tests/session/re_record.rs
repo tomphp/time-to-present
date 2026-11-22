@@ -43,6 +43,24 @@ fn recording_over_a_selection_shows_the_range_while_capturing_and_pending_and_ke
 }
 
 #[test]
+fn an_overlapping_heard_word_in_a_re_record_is_clamped_to_the_next_start() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    re_record(&harness, &mut session, &["w2"]);
+
+    harness
+        .transcriber
+        .hear(&[("big", 1_000, 1_500), ("planet.", 1_400, 1_800)]);
+    session.poll().unwrap();
+
+    let words: Vec<_> = session.state().words[1..3]
+        .iter()
+        .map(|w| (w.word.gap, w.word.duration, w.word.audio_end))
+        .collect();
+    assert_eq!(words, [(450, 400, Some(1_400)), (0, 400, Some(1_800))]);
+}
+
+#[test]
 fn the_live_transcript_of_a_re_record_sits_between_the_words_either_side_of_the_range() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);

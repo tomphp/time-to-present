@@ -136,6 +136,31 @@ fn heard_words_replace_the_pending_passage_with_inner_gaps_from_the_audio_as_one
 }
 
 #[test]
+fn an_overlapping_heard_word_is_clamped_to_the_next_start_so_script_time_follows_recording_time() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    record(&harness, &mut session, before("w2"));
+
+    harness
+        .transcriber
+        .hear(&[("brave", 500, 950), ("new", 900, 1100), ("day", 1100, 1300)]);
+    session.poll().unwrap();
+
+    let words: Vec<_> = session.state().words[1..4]
+        .iter()
+        .map(|w| (w.word.gap, w.word.duration, w.word.audio_end))
+        .collect();
+    assert_eq!(
+        words,
+        [
+            (150, 400, Some(900)),
+            (0, 200, Some(1100)),
+            (0, 200, Some(1300))
+        ]
+    );
+}
+
+#[test]
 fn a_passage_inserted_before_the_first_word_takes_its_gap_and_that_word_keeps_its_own() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);
