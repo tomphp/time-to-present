@@ -41,9 +41,9 @@ describe("the rehearsal on the Ticker", () => {
   it("gives fast Words the floor width so that no Word overlaps the next", () => {
     const morning = words.findIndex(({ text }) => text === "morning,");
     expect(ticker.words[morning].width).toBe("morning,".length * CHAR + SPACE);
-    ticker.words.forEach(({ left, width }, index) => {
-      expect(width).toBeGreaterThanOrEqual(words[index].text.length * CHAR + SPACE);
-      expect(ticker.words[index + 1]?.left ?? ticker.end).toBe(left + width);
+    const lefts = [...words.map(({ start }) => stripX(ticker, start)), stripX(ticker, scriptEnd)];
+    words.forEach(({ text }, index) => {
+      expect(lefts[index + 1] - lefts[index]).toBeGreaterThanOrEqual(text.length * CHAR + SPACE);
     });
   });
 
@@ -62,7 +62,7 @@ describe("the rehearsal on the Ticker", () => {
     [1_400 + 1_100 / 4, 150 + 165 / 4],
     [3_150 + 800, 412.5 + 120],
     [5_849, 732.5 + (599 / 600) * 140],
-  ])("moves linearly between starts: at %d ms the strip is at %d px", (t, x) => {
+  ])("moves linearly between starts: at %s ms the strip is at %s px", (t, x) => {
     expect(stripX(ticker, t)).toBeCloseTo(x);
   });
 
@@ -70,7 +70,7 @@ describe("the rehearsal on the Ticker", () => {
     [0, -75],
     [250, -37.5],
     [499, -0.15],
-  ])("brings the first Word in at the scale during the lead-in: at %d ms the strip is at %d px", (t, x) => {
+  ])("brings the first Word in at the scale during the lead-in: at %s ms the strip is at %s px", (t, x) => {
     expect(stripX(ticker, t)).toBeCloseTo(x);
   });
 
@@ -81,6 +81,7 @@ describe("the rehearsal on the Ticker", () => {
 
   it("sits each Named Event's tick where the strip is at its time", () => {
     expect(namedEvents.map(({ time }) => stripX(ticker, time))).toEqual([-75, 315]);
+    expect(stripX(ticker, scriptEnd + 500)).toBe(ticker.end);
   });
 
   it("free-scrolls from the first Word's left edge to END's", () => {
@@ -135,6 +136,20 @@ describe("edge cases", () => {
       { left: 120, width: 50 },
     ]);
     expect([200, 400, 600].map((t) => stripX(stacked, t))).toEqual([20, 80, 100]);
+  });
+
+  it("brings Words that start together in during the lead-in, then passes all but the last in an instant", () => {
+    const together = tickerGeometry(
+      measure([scriptWord("w1", "Go", { start: 500 }), scriptWord("w2", "up", { start: 500 })]),
+      1_000,
+      SPACE,
+    );
+    expect(together.scale).toBe(0.06);
+    expect(edges(together)).toEqual([
+      { left: 0, width: 30 },
+      { left: 30, width: 30 },
+    ]);
+    expect([0, 499, 500, 750].map((t) => stripX(together, t))).toEqual([-30, -0.06, 30, 45]);
   });
 
   it("leaves every Word at its floor with no scale when all slots are zero-duration", () => {
