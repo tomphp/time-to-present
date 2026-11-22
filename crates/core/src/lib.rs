@@ -1,6 +1,7 @@
 pub mod capture;
 pub mod clip;
 pub mod clock;
+pub mod menu;
 pub mod models;
 pub mod perform;
 pub mod platform;

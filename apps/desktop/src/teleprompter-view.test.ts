@@ -5,7 +5,6 @@ import {
   followClock,
   heldFreeScroll,
   isOver,
-  isPerformShortcut,
   keyCommand,
   scriptTimeAt,
   scrollFreely,
@@ -223,13 +222,5 @@ describe("the keymap", () => {
     expect(keyCommand(" ", "ended")).toBeNull();
     expect(keyCommand(" ", null)).toBeNull();
     expect(keyCommand("Enter", "paused")).toBeNull();
-  });
-});
-
-describe("opening the Teleprompter", () => {
-  it("is ⌘⇧P", () => {
-    expect(isPerformShortcut({ key: "P", metaKey: true, shiftKey: true })).toBe(true);
-    expect(isPerformShortcut({ key: "p", metaKey: true, shiftKey: false })).toBe(false);
-    expect(isPerformShortcut({ key: "p", metaKey: false, shiftKey: true })).toBe(false);
   });
 });

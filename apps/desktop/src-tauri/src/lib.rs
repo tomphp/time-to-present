@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -78,11 +78,16 @@ async fn open_folder(
     state: State<'_, App>,
     folder: PathBuf,
 ) -> CommandResult<SessionState> {
-    let session = Session::open(&folder, state.platform.clone()).map_err(|error| {
+    open_presentation(&app, &state, &folder)
+}
+
+fn open_presentation(app: &AppHandle, state: &App, folder: &Path) -> CommandResult<SessionState> {
+    let session = Session::open(folder, state.platform.clone()).map_err(|error| {
         if !folder.is_dir() {
-            if let Err(error) = state.settings.lock().unwrap().forget_recent(&folder) {
+            if let Err(error) = state.settings.lock().unwrap().forget_recent(folder) {
                 eprintln!("could not update the Recent list: {error}");
             }
+            menu::recent_changed(app);
             return format!(
                 "{} no longer exists, so it was removed from Recent",
                 folder.display()
@@ -90,17 +95,23 @@ async fn open_folder(
         }
         message(error)
     })?;
-    show(&app, &state, session)
+    show(app, state, session)
 }
 
 #[tauri::command]
-fn recent_presentations(state: State<'_, App>) -> CommandResult<Recent> {
-    let mut settings = state.settings.lock().unwrap();
-    let dropped = settings.drop_missing().map_err(message)?;
-    Ok(Recent {
-        folders: settings.recent().to_vec(),
-        dropped,
-    })
+fn recent_presentations(app: AppHandle, state: State<'_, App>) -> CommandResult<Recent> {
+    let recent = {
+        let mut settings = state.settings.lock().unwrap();
+        let dropped = settings.drop_missing().map_err(message)?;
+        Recent {
+            folders: settings.recent().to_vec(),
+            dropped,
+        }
+    };
+    if !recent.dropped.is_empty() {
+        menu::recent_changed(&app);
+    }
+    Ok(recent)
 }
 
 #[tauri::command]
@@ -391,6 +402,8 @@ fn show(app: &AppHandle, state: &App, mut session: Session) -> CommandResult<Ses
         eprintln!("saving the previous Presentation failed: {error}");
     }
     emit_server_status(app);
+    menu::recent_changed(app);
+    menu::refresh(app);
     if app.get_webview_window(EDITOR_WINDOW).is_none() {
         WebviewWindowBuilder::new(app, EDITOR_WINDOW, WebviewUrl::App("editor.html".into()))
             .title(&opened.title)
@@ -500,7 +513,8 @@ pub fn run() {
             perform::size_presets,
             perform::leave_fullscreen,
             perform::toggle_fullscreen,
-            perform::forward_key
+            perform::forward_key,
+            menu::report_menu_state
         ])
         .build(tauri::generate_context!())
         .expect("error while building Time to Present")

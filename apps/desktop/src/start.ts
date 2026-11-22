@@ -1,5 +1,5 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { newPresentation, openFolder, openSettings, recentPresentations } from "./commands";
+import { newPresentation, onMenuCommand, openFolder, openSettings, recentPresentations } from "./commands";
 
 const form = document.querySelector<HTMLFormElement>("#new-presentation")!;
 const error = document.querySelector<HTMLParagraphElement>("#error")!;
@@ -73,5 +73,9 @@ async function checkMicrophone() {
 
 document.querySelector("#open-settings")!.addEventListener("click", () => void openSettings());
 document.querySelector("#check-microphone")!.addEventListener("click", checkMicrophone);
+
+onMenuCommand((command) => {
+  if (command === "newPresentation") form.querySelector<HTMLInputElement>("[name=title]")!.focus();
+});
 
 void showRecent();

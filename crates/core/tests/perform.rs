@@ -1,7 +1,6 @@
 use ttp_core::perform::{
-    Display, DisplayArea, FocusedWindow, FullscreenMenuItem, KeyTarget, KeyWindow, PageKey,
-    PageKeyAction, PerformanceWindow, PixelSize, PresentationSize, SIZE_PRESETS, Shape, classify,
-    display_for, fit, fullscreen_menu_item,
+    Display, DisplayArea, KeyTarget, PageKey, PageKeyAction, PerformanceWindow, PixelSize,
+    PresentationSize, SIZE_PRESETS, Shape, classify, display_for, fit,
 };
 
 fn press(key: &str) -> PageKey {
@@ -180,64 +179,6 @@ fn escape_typed_into_a_focused_text_input_stays_with_the_page() {
     };
 
     assert_eq!(classify(&in_a_field), PageKeyAction::StayWithPage);
-}
-
-#[test]
-fn the_full_screen_item_is_disabled_without_a_focused_performance_window() {
-    for focused in [FocusedWindow::None, FocusedWindow::Other] {
-        assert!(!fullscreen_menu_item(focused).enabled, "{focused:?}");
-    }
-}
-
-#[test]
-fn a_fullscreen_performance_window_offers_to_exit_full_screen() {
-    assert_eq!(
-        fullscreen_menu_item(FocusedWindow::Performance { fullscreen: true }),
-        FullscreenMenuItem {
-            enabled: true,
-            label: "Exit Full Screen"
-        }
-    );
-}
-
-#[test]
-fn a_windowed_performance_window_offers_to_enter_full_screen() {
-    assert_eq!(
-        fullscreen_menu_item(FocusedWindow::Performance { fullscreen: false }),
-        FullscreenMenuItem {
-            enabled: true,
-            label: "Enter Full Screen"
-        }
-    );
-}
-
-#[test]
-fn the_key_window_is_the_one_that_last_gained_focus() {
-    let mut key_window = KeyWindow::default();
-    key_window.focus_changed("editor", true);
-    key_window.focus_changed("editor", false);
-    key_window.focus_changed("teleprompter", true);
-
-    assert_eq!(key_window.label(), Some("teleprompter"));
-}
-
-#[test]
-fn focus_lost_after_another_window_gained_it_leaves_that_window_key() {
-    let mut key_window = KeyWindow::default();
-    key_window.focus_changed("editor", true);
-    key_window.focus_changed("teleprompter", true);
-    key_window.focus_changed("editor", false);
-
-    assert_eq!(key_window.label(), Some("teleprompter"));
-}
-
-#[test]
-fn no_window_is_key_once_the_key_window_loses_focus() {
-    let mut key_window = KeyWindow::default();
-    key_window.focus_changed("editor", true);
-    key_window.focus_changed("editor", false);
-
-    assert_eq!(key_window.label(), None);
 }
 
 fn displays() -> Vec<Display> {

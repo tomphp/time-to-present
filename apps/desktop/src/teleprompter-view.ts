@@ -114,6 +114,3 @@ export function keyCommand(key: string, state: ClockState | null): "play" | "pau
   const action = PLAY_PAUSE_KEYS.has(key) ? clockAction(state) : null;
   return action === "reset" ? null : action;
 }
-
-export const isPerformShortcut = ({ key, metaKey, shiftKey }: { key: string; metaKey: boolean; shiftKey: boolean }) =>
-  metaKey && shiftKey && key.toLowerCase() === "p";
