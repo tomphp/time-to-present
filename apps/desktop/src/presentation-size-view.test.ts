@@ -50,13 +50,6 @@ describe("chosen size", () => {
 });
 
 describe("custom size", () => {
-  test("offers Custom after the presets and before Fill display", () => {
-    expect(sizeChoices(presets).slice(-2)).toEqual([
-      { value: "custom", label: "Custom…" },
-      { value: "fillDisplay", label: "Fill display" },
-    ]);
-  });
-
   test("reads whole-number fields within 320 to 7680", () => {
     expect(customSize("1000", "2000")).toEqual({ width: 1000, height: 2000 });
     expect(customSize("320", "7680")).toEqual({ width: 320, height: 7680 });

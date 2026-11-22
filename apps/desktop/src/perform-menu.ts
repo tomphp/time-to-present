@@ -36,7 +36,10 @@ function fillSizes(presets: SizePreset[], saved: PresentationSize) {
   });
   presentationSize.replaceChildren(...options);
   presentationSize.value = choiceFor(saved, presets);
-  if (saved !== "fillDisplay") [customWidth.value, customHeight.value] = [String(saved.width), String(saved.height)];
+  const { width, height } = saved === "fillDisplay" ? { width: 1920, height: 1080 } : saved;
+  customWidth.value = String(width);
+  customHeight.value = String(height);
+  markValidity();
   showCustomFields();
 }
 
@@ -67,11 +70,15 @@ function remember(): Promise<void> {
   );
 }
 
+function markValidity() {
+  customWidth.setAttribute("aria-invalid", String(!isValidPixels(customWidth.value)));
+  customHeight.setAttribute("aria-invalid", String(!isValidPixels(customHeight.value)));
+}
+
 async function saveSize() {
   showCustomFields();
   if (presentationSize.value !== CUSTOM) return setPresentationSize(chosenSize(presentationSize.value));
-  customWidth.setAttribute("aria-invalid", String(!isValidPixels(customWidth.value)));
-  customHeight.setAttribute("aria-invalid", String(!isValidPixels(customHeight.value)));
+  markValidity();
   const size = customSize(customWidth.value, customHeight.value);
   if (size) await setPresentationSize(size);
 }

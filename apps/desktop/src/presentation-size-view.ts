@@ -50,13 +50,15 @@ export function choiceFor(size: PresentationSize, presets: SizePreset[]): string
   return known ? value : CUSTOM;
 }
 
-/** The size typed into the Custom fields, or null while either is not a whole number of pixels in bounds. */
-export function customSize(width: string, height: string): { width: number; height: number } | null {
-  const pixels = [width, height].map((text) => (/^\d+$/.test(text.trim()) ? Number(text) : NaN));
-  const valid = pixels.map((value) => value >= MIN_PIXELS && value <= MAX_PIXELS);
-  return valid[0] && valid[1] ? { width: pixels[0], height: pixels[1] } : null;
+function parsePixels(text: string): number | null {
+  const pixels = /^\d+$/.test(text.trim()) ? Number(text) : NaN;
+  return pixels >= MIN_PIXELS && pixels <= MAX_PIXELS ? pixels : null;
 }
 
-export function isValidPixels(text: string): boolean {
-  return customSize(text, String(MIN_PIXELS)) !== null;
+export const isValidPixels = (text: string): boolean => parsePixels(text) !== null;
+
+/** The size typed into the Custom fields, or null while either is not a whole number of pixels in bounds. */
+export function customSize(width: string, height: string): PresentationSize | null {
+  const [w, h] = [parsePixels(width), parsePixels(height)];
+  return w === null || h === null ? null : { width: w, height: h };
 }
