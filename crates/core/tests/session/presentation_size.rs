@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use serde_json::{Value, json};
 use ttp_core::perform::{PixelSize, PresentationSize};
 
-use crate::support::Harness;
+use crate::support::{Harness, correct};
 
 fn vertical() -> PresentationSize {
     PresentationSize::Pixels(PixelSize::new(1080, 1920).unwrap())
@@ -25,6 +25,17 @@ fn setting_the_presentation_size_saves_it_at_once_and_it_survives_reopening() {
     let reopened = harness.open(&folder).state();
     assert_eq!(reopened.presentation_size, vertical());
     assert_eq!(reopened, session.state());
+}
+
+#[test]
+fn setting_the_presentation_size_saves_a_script_edit_waiting_for_autosave_with_it() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    session.edit(correct("w1", "Hullo,")).unwrap();
+
+    session.set_presentation_size(vertical()).unwrap();
+
+    assert_eq!(harness.open(&folder).state(), session.state());
 }
 
 #[test]

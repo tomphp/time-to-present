@@ -9,7 +9,6 @@ use ttp_core::perform::{
     PresentationSize, SIZE_PRESETS, SizePreset, classify, fit,
 };
 use ttp_core::settings::ApproachCue;
-use ttp_core::store::StoreError;
 
 use crate::displays::monitor_for;
 use crate::fullscreen::{self, Fullscreen, area, place};
@@ -51,7 +50,7 @@ impl Deref for FocusedPerformanceWindows {
 #[tauri::command]
 pub fn perform(app: AppHandle, state: State<'_, App>) -> CommandResult<()> {
     let size = with_session(&state, |session| {
-        Ok::<_, StoreError>(session.presentation_size())
+        Ok::<_, String>(session.presentation_size())
     })?;
     let performance = state.settings.lock().unwrap().performance().clone();
     let teleprompter =

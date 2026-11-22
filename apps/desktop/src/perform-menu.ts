@@ -58,7 +58,7 @@ function remember(): Promise<void> {
   );
 }
 
-const resize = () => setPresentationSize(chosenSize(presentationSize.value));
+const saveSize = () => setPresentationSize(chosenSize(presentationSize.value));
 
 /** The Perform menu: this machine's Performance Layout and displays, and the Presentation's own size. */
 export function mountPerformMenu() {
@@ -68,5 +68,5 @@ export function mountPerformMenu() {
   for (const select of [layout, teleprompterDisplay, presentationDisplay]) {
     select.addEventListener("change", act(remember));
   }
-  presentationSize.addEventListener("change", act(resize));
+  presentationSize.addEventListener("change", act(saveSize));
 }

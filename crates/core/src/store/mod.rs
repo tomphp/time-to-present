@@ -22,9 +22,10 @@ pub struct Recording {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Presentation {
     pub title: String,
-    #[serde(default, rename = "presentationSize")]
+    #[serde(default)]
     pub presentation_size: PresentationSize,
     pub recordings: Vec<Recording>,
     #[serde(flatten)]
