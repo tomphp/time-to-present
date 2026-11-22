@@ -80,7 +80,7 @@ const prompter = find<HTMLElement>("#prompter");
 const screenKey = () => `${screen.width}x${screen.height}@${devicePixelRatio}`;
 const FLASH = "fired";
 
-let options: DisplayOptions = DEFAULT_OPTIONS;
+let options: DisplayOptions = { ...DEFAULT_OPTIONS };
 let layoutKey = "";
 
 const bar = {

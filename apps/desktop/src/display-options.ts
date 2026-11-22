@@ -41,7 +41,7 @@ const ACTIONS: Record<DisplayAction, true> = {
   readingLineDown: true,
 };
 
-export const isDisplayAction = (command: string): command is DisplayAction => command in ACTIONS;
+export const isDisplayAction = (command: string): command is DisplayAction => Object.hasOwn(ACTIONS, command);
 
 interface Keys {
   key: string;
