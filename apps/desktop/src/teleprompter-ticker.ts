@@ -7,8 +7,13 @@ import { breakMarkX, freeScrollRange, stripX, tickerGeometry, type Ticker } from
 const NORMAL_SPACE = " ";
 const PILCROW = "¶";
 
-interface Placed<T> {
-  at: T;
+interface BreakMark {
+  after: number;
+  element: HTMLElement;
+}
+
+interface EventTick {
+  time: number;
   element: HTMLElement;
 }
 
@@ -30,8 +35,8 @@ export function mountTicker(column: HTMLElement, stage: HTMLElement): Teleprompt
   let words: ScriptWord[] = [];
   let scriptEnd = 0;
   let spans: HTMLSpanElement[] = [];
-  let breaks: Placed<number>[] = [];
-  let markers: Placed<number>[] = [];
+  let breaks: BreakMark[] = [];
+  let ticks: EventTick[] = [];
   let current: number | null = null;
   let countdown: HTMLSpanElement | null = null;
   let geometry: Ticker | null = null;
@@ -56,8 +61,8 @@ export function mountTicker(column: HTMLElement, stage: HTMLElement): Teleprompt
     const measured = words.map(({ start }, index) => ({ start, textWidth: spans[index].offsetWidth }));
     const placed = tickerGeometry(measured, scriptEnd, space.offsetWidth);
     placed.words.forEach(({ left }, index) => (spans[index].style.left = `${left}px`));
-    breaks.forEach(({ at, element }) => (element.style.left = `${breakMarkX(placed.words[at])}px`));
-    markers.forEach(({ at, element }) => (element.style.left = `${stripX(placed, at)}px`));
+    breaks.forEach(({ after, element }) => (element.style.left = `${breakMarkX(placed.words[after])}px`));
+    ticks.forEach(({ time, element }) => (element.style.left = `${stripX(placed, time)}px`));
     end.style.left = `${placed.end}px`;
     return placed;
   }
@@ -78,9 +83,9 @@ export function mountTicker(column: HTMLElement, stage: HTMLElement): Teleprompt
         span.textContent = text;
         return span;
       });
-      breaks = next.flatMap(({ breakAfter }, at) => (breakAfter === "paragraph" ? [{ at, element: breakMark() }] : []));
-      markers = events.map((event) => ({ at: event.time, element: marker(event) }));
-      const placed = [...breaks, ...markers].map(({ element }) => element);
+      breaks = next.flatMap(({ breakAfter }, after) => (breakAfter === "paragraph" ? [{ after, element: breakMark() }] : []));
+      ticks = events.map((event) => ({ time: event.time, element: marker(event) }));
+      const placed = [...breaks, ...ticks].map(({ element }) => element);
       column.replaceChildren(...spans, ...placed, end, space);
       geometry = null;
       countdown = null;
@@ -93,7 +98,8 @@ export function mountTicker(column: HTMLElement, stage: HTMLElement): Teleprompt
       end.classList.toggle("over", frame.over);
       geometry ??= layOut();
       scriptTime = frame.scriptTime;
-      free = heldFreeScroll(free, frame.clock);
+      const held = heldFreeScroll(free, frame.clock);
+      free = held && scrollFreely(held, frame.clock, 0, freeScrollRange(geometry, scriptTime));
       const x = frame.readMark * stage.clientWidth - stripX(geometry, scriptTime) - (free?.offset ?? 0);
       column.style.transform = `translateX(${x}px)`;
     },

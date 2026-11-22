@@ -19,6 +19,7 @@ import {
 } from "./teleprompter-view";
 
 const SCROLL_EASE = "transform 200ms ease";
+
 export function mountPage(column: HTMLElement, stage: HTMLElement): TeleprompterRenderer {
   const end = endMark();
 
