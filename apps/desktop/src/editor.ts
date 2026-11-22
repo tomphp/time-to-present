@@ -128,6 +128,7 @@ const menu = editorMenu(
     removeUnusedRecordings: removeUnused,
     record: recordingBar.toggle,
     reRecordSelection: recordingBar.reRecord,
+    addNamedEvent: pane.addEventAtCaret,
     retime: inspector.retime,
     listen: previewControls.listen,
     layoutTwoWindows: () => performMenu.chooseLayout("twoWindows"),

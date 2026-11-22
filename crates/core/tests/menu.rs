@@ -448,12 +448,30 @@ fn the_teleprompter_display_keys_are_in_their_titles_and_not_accelerators() {
 fn the_global_shortcuts_are_menu_accelerators() {
     assert_eq!(MenuCommand::Settings.accelerator(), Some("Cmd+,"));
     assert_eq!(MenuCommand::Record.accelerator(), Some("Cmd+R"));
-    assert_eq!(MenuCommand::AddNamedEvent.accelerator(), Some("Cmd+'"));
     assert_eq!(MenuCommand::Perform.accelerator(), Some("Shift+Cmd+P"));
     assert_eq!(
         MenuCommand::ToggleFullscreen.accelerator(),
         Some("Ctrl+Cmd+F")
     );
+}
+
+#[test]
+fn add_named_event_shows_the_scripts_own_key_and_leaves_it_to_the_script() {
+    assert_eq!(
+        in_editor(MenuCommand::AddNamedEvent, EDITOR).label,
+        "Add Named Event (⌘E)"
+    );
+    assert_eq!(MenuCommand::AddNamedEvent.accelerator(), None);
+}
+
+#[test]
+fn the_editors_window_keys_are_never_menu_accelerators_so_each_runs_once() {
+    for command in MenuCommand::ALL {
+        assert!(
+            !matches!(command.accelerator(), Some("Cmd+E" | "Cmd+'")),
+            "{command:?}"
+        );
+    }
 }
 
 #[test]

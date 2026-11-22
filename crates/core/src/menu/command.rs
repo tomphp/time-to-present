@@ -121,12 +121,11 @@ impl MenuCommand {
     }
 
     /// The modifier shortcuts that work from anywhere today. The Teleprompter's display keys stay
-    /// with its window, so the Editor keeps its caret keys.
+    /// with its window, so the Editor keeps its caret keys, and ⌘E stays with the Script.
     pub fn accelerator(self) -> Option<&'static str> {
         match self {
             Self::Settings => Some("Cmd+,"),
             Self::Record => Some("Cmd+R"),
-            Self::AddNamedEvent => Some("Cmd+'"),
             Self::Perform => Some("Shift+Cmd+P"),
             Self::ToggleFullscreen => Some("Ctrl+Cmd+F"),
             _ => None,

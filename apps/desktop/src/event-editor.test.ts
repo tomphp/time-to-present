@@ -147,7 +147,7 @@ describe("the text pane's event keys", () => {
     const root = document.querySelector<HTMLElement>("#script")!;
     const pane = mountTextPane(root, commands, hooks, vi.fn());
     pane.render(state);
-    return { root, hooks };
+    return { root, hooks, pane };
   }
 
   it("⌘E asks for a new event anchored at the caret", async () => {
@@ -158,6 +158,27 @@ describe("the text pane's event keys", () => {
     await settle();
 
     expect(hooks.insertEventAt).toHaveBeenCalledWith({ anchor: "w2", offset: 0 });
+  });
+
+  it("Add Named Event from the menu asks for a new event at the caret, as ⌘E does", async () => {
+    const { root, hooks, pane } = mountPane();
+    placeCaret(root, { word: "w1", offset: 3 });
+
+    pane.addEventAtCaret();
+    root.dispatchEvent(new KeyboardEvent("keydown", { key: "e", metaKey: true, bubbles: true }));
+    await settle();
+
+    expect(hooks.insertEventAt.mock.calls).toEqual([[{ anchor: "w2", offset: 0 }], [{ anchor: "w2", offset: 0 }]]);
+  });
+
+  it("Add Named Event from the menu puts the event at the Script's end when there is no caret", async () => {
+    const { hooks, pane } = mountPane();
+    window.getSelection()!.removeAllRanges();
+
+    pane.addEventAtCaret();
+    await settle();
+
+    expect(hooks.insertEventAt).toHaveBeenCalledWith({ anchor: "w2", offset: 450 });
   });
 
   it("clicking a chip selects its event", () => {

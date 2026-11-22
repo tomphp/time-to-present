@@ -183,7 +183,7 @@ fn label(command: MenuCommand, context: &MenuContext) -> &'static str {
         Record if reported(|editor| editor.recording) => "Stop",
         Record => "Record",
         ReRecordSelection => "Re-record Selection",
-        AddNamedEvent => "Add Named Event",
+        AddNamedEvent => "Add Named Event (⌘E)",
         Retime => "Retime…",
         Listen => "Listen",
         Perform => "Perform",

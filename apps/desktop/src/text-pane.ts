@@ -198,14 +198,20 @@ export function mountTextPane(
     }
     if (key === "e") {
       event.preventDefault();
-      const selection = selectionAtKeystroke();
-      enqueue(async () => {
-        const caret = selection()?.start ?? { slotAfter: lastId(words) };
-        lastCaret = caret;
-        events.insertEventAt(eventAnchorAt(words, caret));
-      });
+      addEventAtCaret();
     }
   });
+
+  /** Asks for a new Named Event at the caret, or at the Script's end without one. */
+  function addEventAtCaret() {
+    if (locked) return;
+    const selection = selectionAtKeystroke();
+    enqueue(async () => {
+      const caret = selection()?.start ?? { slotAfter: lastId(words) };
+      lastCaret = caret;
+      events.insertEventAt(eventAnchorAt(words, caret));
+    });
+  }
 
   root.addEventListener("copy", (event) => {
     const ids = putOnClipboard(event);
@@ -322,6 +328,7 @@ export function mountTextPane(
     focus,
     insertionPoint,
     recordingTarget,
+    addEventAtCaret,
     select: (range: Range) => placeRange(root, range),
   };
 }
