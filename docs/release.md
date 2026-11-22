@@ -7,7 +7,10 @@ main and plans each component's next version. When the Client bumps, it publishe
 Nothing is committed: the versions live only in the tags and in what is published.
 
 A failed publish leaves no tag, so the next run on main picks the commits up again. A version that
-is already on npm counts as published, so a re-run after a failed tag push goes on to tag it.
+is already on npm counts as published, so a re-run after a failed tag push goes on to tag it. If
+only creating the GitHub Release failed, a re-run plans nothing, as the tag is already there: create
+it by hand with `gh release create client-vX.Y.Z --verify-tag --notes "…"`, copying the notes from
+the failed run's plan job.
 
 ## One-off setup
 
@@ -38,7 +41,8 @@ Do these once, in order.
    git push origin desktop-v0.1.0 client-v0.1.0
    ```
 
-   If a release run started before the tags were pushed, cancel it with `gh run cancel`.
+   A release run that starts before the tags are pushed fails its plan job without releasing
+   anything.
 
 ## Local signed build
 

@@ -13,7 +13,7 @@ const planCommand = join(here, "plan.mjs");
 const throwawayDirs = [];
 after(() => throwawayDirs.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
 
-function throwawayRepo() {
+function throwawayRepo({ seeded = true } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "release-plan-test-"));
   throwawayDirs.push(dir);
   const git = (...args) => execFileSync("git", args, { cwd: dir, encoding: "utf8" });
@@ -35,8 +35,10 @@ function throwawayRepo() {
   };
 
   commit("chore: seed", "apps/desktop/package.json", "packages/client/package.json");
-  git("tag", "-a", "desktop-v0.1.0", "-m", "desktop-v0.1.0");
-  git("tag", "-a", "client-v0.1.0", "-m", "client-v0.1.0");
+  if (seeded) {
+    git("tag", "-a", "desktop-v0.1.0", "-m", "desktop-v0.1.0");
+    git("tag", "-a", "client-v0.1.0", "-m", "client-v0.1.0");
+  }
 
   const plan = async (...commit) =>
     JSON.parse((await promisify(execFile)("node", [planCommand, ...commit], { cwd: dir })).stdout);
@@ -246,6 +248,14 @@ describe("release plan", { concurrency: true }, () => {
     repo.commit("fix: a Desktop App fix", "apps/desktop/src/main.ts");
 
     assert.deepEqual(await repo.nextVersions(), { desktop: "0.1.1", client: null });
+  });
+
+  test("planning fails when a component has no tag to count from", async () => {
+    const repo = throwawayRepo({ seeded: false });
+    repo.git("tag", "-a", "desktop-v0.1.0", "-m", "desktop-v0.1.0");
+    repo.commit("feat: a Client feature", "packages/client/src/index.ts");
+
+    await assert.rejects(repo.plan(), /no client-v\* tag/);
   });
 
   test("planning leaves the repo's tags, commits and files as they were", async () => {

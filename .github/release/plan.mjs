@@ -10,11 +10,14 @@ const BREAKING_MARKER = "<!-- breaking change -->";
 const NOTES_TEMPLATE = join(import.meta.dirname, "notes.tera");
 
 const git = (cwd, ...args) => execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+const tagsOf = (cwd, names, ...filter) =>
+  git(cwd, "tag", "--list", ...names.map((name) => `${name}-v*`), ...filter).split("\n").filter(Boolean);
 
 export function planRelease(repo, commit = "HEAD") {
   const sha = git(repo, "rev-parse", "--verify", `${commit}^{commit}`);
-  const releasedAfter = laterReleaseTag(repo, sha);
+  const releasedAfter = releaseTagAfter(repo, sha);
   if (releasedAfter) return { desktop: null, client: null, releasedAfter };
+  requireTagsToCountFrom(repo, sha);
   const work = mkdtempSync(join(tmpdir(), "release-plan-"));
   try {
     const clone = join(work, "repo");
@@ -27,11 +30,17 @@ export function planRelease(repo, commit = "HEAD") {
   }
 }
 
-function laterReleaseTag(repo, sha) {
-  const releaseTags = (...filter) =>
-    git(repo, "tag", "--list", ...PACKAGES.map((name) => `${name}-v*`), ...filter).split("\n").filter(Boolean);
-  const onSha = releaseTags("--points-at", sha);
-  return releaseTags("--contains", sha).find((tag) => !onSha.includes(tag));
+function releaseTagAfter(repo, sha) {
+  const onSha = tagsOf(repo, PACKAGES, "--points-at", sha);
+  return tagsOf(repo, PACKAGES, "--contains", sha).find((tag) => !onSha.includes(tag));
+}
+
+function requireTagsToCountFrom(repo, sha) {
+  const untagged = PACKAGES.filter((name) => tagsOf(repo, [name], "--merged", sha).length === 0);
+  if (untagged.length > 0) {
+    const patterns = untagged.map((name) => `${name}-v*`).join(", ");
+    throw new Error(`no ${patterns} tag reaches ${sha}: push the seed tags (docs/release.md)`);
+  }
 }
 
 function planPackage(cog, name) {
@@ -69,14 +78,14 @@ function cogIn(clone, notesConfig) {
     },
 
     changesSinceLastTag(name) {
-      const tagsBefore = packageTags(clone, name);
+      const tagsBefore = tagsOf(clone, [name]);
       const args = ["bump", "--patch", "--package", name];
       const run = cog(...args);
       if (run.status !== 0 && run.stderr.includes(NO_COMMITS)) return null;
       if (run.status !== 0) throw fail(args, run);
       const notes = notesIn(writtenChangelog(clone));
       git(clone, "reset", "--quiet", "--hard");
-      git(clone, "tag", "--delete", ...packageTags(clone, name).filter((tag) => !tagsBefore.includes(tag)));
+      git(clone, "tag", "--delete", ...tagsOf(clone, [name]).filter((tag) => !tagsBefore.includes(tag)));
       return { notes: notes.replace(BREAKING_MARKER, "").trim(), breaking: notes.includes(BREAKING_MARKER) };
     },
   };
@@ -91,10 +100,6 @@ function writtenChangelog(clone) {
   const written = git(clone, "diff", "--cached", "--name-only").split("\n").filter(Boolean);
   if (written.length !== 1) throw new Error(`expected cog to write one changelog, got: ${written.join(", ")}`);
   return readFileSync(join(clone, written[0]), "utf8");
-}
-
-function packageTags(clone, name) {
-  return git(clone, "tag", "--list", `${name}-v*`).split("\n").filter(Boolean);
 }
 
 function notesIn(changelog) {

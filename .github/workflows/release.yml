@@ -11,8 +11,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 env:
   HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -40,7 +39,8 @@ jobs:
           install-only: true
       - id: plan
         run: |
-          node .github/release/plan.mjs "$HEAD_SHA" | tee "$RUNNER_TEMP/plan.json"
+          node .github/release/plan.mjs "$HEAD_SHA" > "$RUNNER_TEMP/plan.json"
+          cat "$RUNNER_TEMP/plan.json"
           delimiter="notes-$(openssl rand -hex 16)"
           {
             for component in client desktop; do
@@ -55,6 +55,9 @@ jobs:
     needs: plan
     if: needs.plan.outputs.client-version != ''
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     env:
       PACKAGE: "@time-to-present/client"
       VERSION: ${{ needs.plan.outputs.client-version }}
@@ -75,7 +78,10 @@ jobs:
       - run: npm run build -w "$PACKAGE"
       - name: Publish to npm with trusted publishing
         run: |
-          if [ "$(npm view "$PACKAGE@$VERSION" version 2>/dev/null)" = "$VERSION" ]; then
+          if ! published=$(npm view "$PACKAGE@$VERSION" version 2> "$RUNNER_TEMP/npm-view.log"); then
+            grep -q E404 "$RUNNER_TEMP/npm-view.log" || { cat "$RUNNER_TEMP/npm-view.log" >&2; exit 1; }
+          fi
+          if [ "$published" = "$VERSION" ]; then
             echo "$PACKAGE@$VERSION is already published; going on to tag it"
           else
             npm publish -w "$PACKAGE" --access public --no-provenance
