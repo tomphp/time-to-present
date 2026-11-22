@@ -13,7 +13,8 @@ const FLAG_DRAG_PX = 3;
 const CURSORS = { body: "grab", start: "ew-resize", end: "ew-resize" };
 
 /**
- * The Script Time timeline: a block per Word at its Script Time. Clicking a block picks it,
+ * The Script Time timeline: a Word Block per Word at its Script Time, each earlier one drawn above
+ * any later one it overlaps, as it is the one picked. Clicking a block picks it,
  * dragging its body Moves it and dragging an edge Trims it, each drag one Session drag. A flag
  * per Named Event sits at its Script Time; clicking one picks it and dragging it re-anchors it.
  * Under the edit lock a click still picks a Word, but nothing drags and no flag is picked.
@@ -27,10 +28,12 @@ export function mountTimeline(
   const track = document.createElement("div");
   track.className = "track";
   const ticks = document.createElement("div");
+  const layer = document.createElement("div");
+  layer.className = "blocks";
   const head = document.createElement("div");
   head.className = "playhead";
   head.hidden = true;
-  track.append(ticks, head);
+  track.append(ticks, layer, head);
   root.append(track);
 
   const blocks = new Map<string, ReturnType<typeof timelineBlock>>();
@@ -78,9 +81,10 @@ export function mountTimeline(
       if (!block) {
         block = timelineBlock(word.id);
         blocks.set(word.id, block);
-        track.append(block.element);
+        layer.append(block.element);
       }
       block.update(word, laidOut[index], selected.has(word.id), waveformFor(word));
+      block.element.style.zIndex = String(words.length - index);
     });
   }
 
