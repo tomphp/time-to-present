@@ -8,13 +8,14 @@ export interface EditorMenuState {
   target: RecordingTarget;
   selected: string[];
   listenable: boolean;
+  inspectorShown: boolean;
 }
 
 /** The parts of the Editor whose buttons and keys the menu commands share. */
 export interface EditorParts {
   recordingBar: { toggle(): void; reRecord(): void };
   pane: { addEventAtCaret(): void };
-  inspector: { retime(): void };
+  inspector: { retime(): void; toggle(): void };
   preview: { listen(): void; playFromCursor(): void };
   clock: { playPause(): void; restart(): void };
   performMenu: { chooseLayout(layout: PerformanceLayout): void };
@@ -27,6 +28,7 @@ const commandsOf = (parts: EditorParts): Partial<Record<MenuCommand, () => void>
   reRecordSelection: () => parts.recordingBar.reRecord(),
   addNamedEvent: () => parts.pane.addEventAtCaret(),
   retime: () => parts.inspector.retime(),
+  toggleInspector: () => parts.inspector.toggle(),
   listen: () => parts.preview.listen(),
   layoutTwoWindows: () => parts.performMenu.chooseLayout("twoWindows"),
   layoutCombined: () => parts.performMenu.chooseLayout("combined"),
@@ -36,8 +38,8 @@ const commandsOf = (parts: EditorParts): Partial<Record<MenuCommand, () => void>
   restart: () => parts.clock.restart(),
 });
 
-/** The Inspector and timeline cannot be hidden yet. */
-const editorReport = ({ session, clock, target, selected, listenable }: EditorMenuState): WindowReport => ({
+/** The timeline cannot be hidden yet. */
+const editorReport = ({ session, clock, target, selected, listenable, inspectorShown }: EditorMenuState): WindowReport => ({
   window: "editor",
   recording: session?.recordingBar?.recording ?? false,
   selection: "reRecord" in target,
@@ -45,7 +47,7 @@ const editorReport = ({ session, clock, target, selected, listenable }: EditorMe
   listenable,
   locked: session?.locked ?? false,
   clock,
-  inspectorShown: true,
+  inspectorShown,
   timelineShown: true,
 });
 

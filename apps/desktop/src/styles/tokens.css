@@ -58,6 +58,9 @@
   --app-icon-size: 88px;
   --action-h: 44px;
   --sheet-w: 22rem;
+  --inspector-w: 17rem;
+  --editor-max-w: 68rem;
+  --caps-tracking: 0.06em;
   --chip-gap: 0.25em;
   --chip-pad-x: 0.5em;
   --chip-text: 0.65em;

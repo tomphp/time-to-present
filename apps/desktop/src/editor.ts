@@ -20,8 +20,8 @@ import {
   undo,
 } from "./commands";
 import { editorMenu } from "./editor-menu";
-import { mountEventEditor } from "./event-editor";
 import { mountInspector } from "./inspector";
+import { loadLayout, saveLayout } from "./layout-preferences";
 import { eventNames, nextMoved } from "./named-events";
 import { onPendingAction } from "./pending-passage";
 import { mountPerformMenu } from "./perform-menu";
@@ -41,6 +41,7 @@ let savedTitle = "";
 let current: SessionState | null = null;
 let selected: string | null = null;
 let clockState: ClockState | null = null;
+let layout = loadLayout(localStorage);
 
 const selection = sharedSelection((ids) => {
   timeline.select(ids);
@@ -56,20 +57,29 @@ const pane = mountTextPane(
   {
     insertEventAt: (at) => {
       select(null);
-      eventEditor.open({ kind: "new", at });
+      inspector.openEvent({ kind: "new", at });
     },
     selectEvent: select,
   },
   selection.fromText,
 );
-const eventEditor = mountEventEditor(document.querySelector<HTMLFormElement>("#event-editor")!, {
-  edit,
-  names: () => eventNames(current?.namedEvents ?? []),
-  closed: () => {
-    select(null);
-    pane.focus();
+const inspector = mountInspector(
+  document.querySelector<HTMLElement>("#inspector")!,
+  {
+    edit,
+    names: () => eventNames(current?.namedEvents ?? []),
+    closed: () => {
+      select(null);
+      pane.focus();
+    },
+    shownChanged: (inspectorShown) => {
+      layout = { ...layout, inspectorShown };
+      saveLayout(localStorage, layout);
+      menu.changed();
+    },
   },
-});
+  layout.inspectorShown,
+);
 
 const timeline = mountTimeline(
   document.querySelector<HTMLElement>("#timeline")!,
@@ -87,8 +97,6 @@ const previewControls = mountPreview({
   highlight: pane.highlight,
   playhead: timeline.playhead,
 });
-
-const inspector = mountInspector(document.querySelector<HTMLFormElement>("#inspector")!, { edit });
 
 const recordingBar = mountRecordingBar(pane.recordingTarget);
 
@@ -140,6 +148,7 @@ const menu = editorMenu(
     target: pane.recordingTarget(),
     selected: selection.ids(),
     listenable: previewControls.listenable(),
+    inspectorShown: inspector.shown(),
   }),
   reportMenuState,
 );
@@ -173,7 +182,7 @@ function showInspector() {
   inspector.render(current?.words ?? [], selection.ids(), event, current?.locked ?? false);
 }
 
-/** Selecting a Named Event opens it in the event editor and clears its Moved badge. */
+/** Selecting a Named Event opens it in the Inspector and clears its Moved badge. */
 function select(id: string | null) {
   if (id && current?.locked) return;
   selected = id;
@@ -181,7 +190,7 @@ function select(id: string | null) {
   showInspector();
   const event = current?.namedEvents.find((named) => named.id === id);
   if (!event) return;
-  eventEditor.open({ kind: "existing", event });
+  inspector.openEvent({ kind: "existing", event });
   void selectEvent(event.id).catch(console.error);
 }
 
@@ -190,7 +199,7 @@ function render(state: SessionState) {
   savedTitle = state.title;
   document.title = state.title;
   title.value = state.title;
-  if (state.locked || (selected && !state.namedEvents.some((event) => event.id === selected))) eventEditor.close();
+  if (state.locked || (selected && !state.namedEvents.some((event) => event.id === selected))) inspector.closeEvent();
   selection.update(state.words);
   pane.render(state);
   renderScriptHint(document.querySelector<HTMLElement>("#script-hint")!, state.words.length);

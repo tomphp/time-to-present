@@ -6,7 +6,7 @@
 @import "./timeline.css";
 
 body.editor {
-  max-width: 48rem;
+  max-width: var(--editor-max-w);
   margin: 0 auto;
   padding: var(--gutter);
 }
@@ -40,8 +40,9 @@ body.editor {
 }
 
 #script {
+  flex: 1;
+  min-width: 0;
   min-height: 3em;
-  margin-top: var(--gutter);
   font: var(--script-weight) var(--text-script) / var(--script-leading) var(--font-script);
   outline: none;
   white-space: pre-wrap;
@@ -131,27 +132,4 @@ body.editor {
   color: var(--danger);
   font-style: normal;
   font-size: var(--text-small);
-}
-
-#event-editor {
-  display: grid;
-  grid-template-columns: 1fr 2fr auto auto;
-  gap: var(--space-4);
-  align-items: end;
-  margin: var(--gutter) 0;
-}
-
-#event-editor label {
-  display: grid;
-  gap: var(--space-2);
-}
-
-#event-editor[hidden],
-#event-editor [hidden] {
-  display: none;
-}
-
-#event-editor [role="alert"] {
-  grid-column: 1 / -1;
-  margin: 0;
 }

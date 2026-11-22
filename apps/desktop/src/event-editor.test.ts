@@ -1,21 +1,11 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import page from "../editor.html?raw";
 import { mountEventEditor } from "./event-editor";
 import type { Edit, SessionState } from "./session";
 import { mountTextPane } from "./text-pane";
 import { placeCaret } from "./dom-caret";
 import { scriptWord } from "./test-words";
-
-const FORM = `
-  <form id="event-editor" hidden>
-    <input name="name" list="event-names" />
-    <datalist id="event-names"></datalist>
-    <textarea name="data"></textarea>
-    <p role="alert" hidden></p>
-    <button type="submit">Save</button>
-    <button type="button" data-cancel>Cancel</button>
-  </form>
-  <article id="script"></article>`;
 
 const settle = () => new Promise((resolve) => setTimeout(resolve));
 
@@ -45,7 +35,7 @@ function type(text: string) {
 }
 
 beforeEach(() => {
-  document.body.innerHTML = FORM;
+  document.documentElement.innerHTML = page.replace(/^<!doctype html>/i, "");
   form = document.querySelector<HTMLFormElement>("#event-editor")!;
   edits = [];
   closed = 0;

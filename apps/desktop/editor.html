@@ -69,30 +69,41 @@
       </p>
       <button id="close-recording-bar" class="btn" type="button">Close</button>
     </section>
-    <form id="event-editor" class="card" aria-label="Named Event" hidden>
-      <label>Name <input name="name" list="event-names" autocomplete="off" spellcheck="false" /></label>
-      <datalist id="event-names"></datalist>
-      <label>Data <textarea name="data" rows="3" spellcheck="false" placeholder="Optional JSON"></textarea></label>
-      <p role="alert" hidden></p>
-      <button class="btn primary" type="submit">Save</button>
-      <button class="btn" type="button" data-cancel>Cancel</button>
-    </form>
-    <form id="inspector" class="card" aria-label="Timing" hidden>
-      <span data-word>
-        <label>Gap ms <input name="gap" inputmode="numeric" autocomplete="off" /></label>
-        <label>Duration ms <input name="duration" inputmode="numeric" autocomplete="off" /></label>
-        <label>Retime % <input name="percent" inputmode="decimal" value="100" autocomplete="off" /></label>
-        <button class="btn" type="submit">Retime</button>
-      </span>
-      <span data-event>
-        <label>Offset ms <input name="offset" inputmode="numeric" autocomplete="off" /></label>
-      </span>
-      <p role="alert" hidden></p>
-    </form>
     <p id="server-notice" class="banner" role="status" hidden></p>
     <p id="error" class="banner" role="alert" hidden></p>
     <p id="script-hint" class="hint" hidden></p>
-    <article id="script" class="card" aria-label="Script"></article>
+    <div class="workspace">
+      <article id="script" class="card" aria-label="Script"></article>
+      <aside id="inspector" class="card" aria-label="Inspector">
+        <header>
+          <h2 data-title>Inspector</h2>
+          <button data-toggle class="icon-btn" type="button"></button>
+        </header>
+        <div data-body>
+          <p data-hint class="muted">Select a Word to see its timing, or press ⌘E to add a Named Event.</p>
+          <form id="timing" aria-label="Timing" hidden>
+            <h3>Timing</h3>
+            <label>Gap ms <input name="gap" inputmode="numeric" autocomplete="off" /></label>
+            <label>Duration ms <input name="duration" inputmode="numeric" autocomplete="off" /></label>
+            <label>Retime % <input name="percent" inputmode="decimal" value="100" autocomplete="off" /></label>
+            <button class="btn" type="submit">Retime</button>
+            <p role="alert" hidden></p>
+          </form>
+          <form id="event-editor" aria-label="Named Event" hidden>
+            <h3>Named Event</h3>
+            <label>Name <input name="name" list="event-names" autocomplete="off" spellcheck="false" /></label>
+            <datalist id="event-names"></datalist>
+            <label>Data <textarea name="data" rows="4" spellcheck="false" placeholder="Optional JSON"></textarea></label>
+            <label data-offset>Offset ms <input name="offset" inputmode="numeric" autocomplete="off" /></label>
+            <p role="alert" hidden></p>
+            <div class="actions">
+              <button class="btn" type="button" data-cancel>Cancel</button>
+              <button class="btn primary" type="submit">Save</button>
+            </div>
+          </form>
+        </div>
+      </aside>
+    </div>
     <section id="timeline" class="card" aria-label="Script Time timeline"></section>
     <script type="module" src="/src/editor.ts"></script>
   </body>

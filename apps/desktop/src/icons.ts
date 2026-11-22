@@ -18,6 +18,7 @@ const shapes = {
   external: '<path d="M9 2.5h4.5V7M13.5 2.5 7.5 8.5M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3"/>',
   swap: '<path d="M2.5 5.5h10l-2.5-2.5M13.5 10.5h-10l2.5 2.5"/>',
   close: '<path d="M4 4l8 8M12 4l-8 8"/>',
+  sidebar: '<rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><path d="M10 2.5v11"/>',
 } as const;
 
 export type IconName = keyof typeof shapes;

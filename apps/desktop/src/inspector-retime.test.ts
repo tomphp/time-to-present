@@ -1,29 +1,15 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { mountInspector } from "./inspector";
+import { describe, expect, it } from "vitest";
+import { find, loadInspector } from "./test-inspector";
 import { scriptWord } from "./test-words";
 
 const words = [scriptWord("w1", "Hello,"), scriptWord("w2", "world.")];
 
-let form: HTMLFormElement;
-beforeEach(() => {
-  document.body.innerHTML = `
-    <form id="inspector" hidden>
-      <span data-word>
-        <input name="gap" /><input name="duration" /><input name="percent" value="100" />
-        <button type="submit">Retime</button>
-      </span>
-      <span data-event><input name="offset" /></span>
-      <p role="alert" hidden></p>
-    </form>`;
-  form = document.querySelector<HTMLFormElement>("#inspector")!;
-});
-
-const percent = () => form.querySelector<HTMLInputElement>("[name=percent]")!;
+const percent = () => find<HTMLInputElement>("#timing [name=percent]");
 
 describe("Retime… from the menu", () => {
   it("focuses the Retime field with its value selected, ready to type over", () => {
-    const inspector = mountInspector(form, { edit: vi.fn() });
+    const { inspector } = loadInspector();
     inspector.render(words, ["w1", "w2"], null, false);
     inspector.retime();
 
@@ -32,10 +18,19 @@ describe("Retime… from the menu", () => {
   });
 
   it("leaves the focus alone when no Word is selected", () => {
-    const inspector = mountInspector(form, { edit: vi.fn() });
+    const { inspector } = loadInspector();
     inspector.render(words, [], null, false);
     inspector.retime();
 
     expect(document.activeElement).not.toBe(percent());
+  });
+
+  it("retimes the selected Words by the percentage", () => {
+    const { inspector, commands } = loadInspector();
+    inspector.render(words, ["w1", "w2"], null, false);
+    percent().value = "120";
+    find<HTMLFormElement>("#timing").requestSubmit();
+
+    expect(commands.edit).toHaveBeenCalledWith({ kind: "retime", words: ["w1", "w2"], percent: 120 });
   });
 });
