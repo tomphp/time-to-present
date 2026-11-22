@@ -161,16 +161,148 @@ fn an_overlapping_heard_word_is_clamped_to_the_next_start_so_script_time_follows
 }
 
 #[test]
-fn a_clamped_heard_word_never_ends_before_it_starts() {
+fn a_clamped_heard_word_lasts_at_least_the_minimum() {
     let (harness, folder) = Harness::with_fixture("hello-world");
     let mut session = harness.open(&folder);
     record(&harness, &mut session, before("w2"));
 
-    harness.transcriber.hear(&[("a", 500, 600), ("b", 450, 700)]);
+    harness
+        .transcriber
+        .hear(&[("a", 500, 600), ("b", 450, 700)]);
     session.poll().unwrap();
 
     let a = &session.state().words[1].word;
-    assert_eq!((a.duration, a.audio_end), (0, Some(500)));
+    assert_eq!(
+        (a.duration, a.audio_start, a.audio_end),
+        (80, Some(420), Some(500))
+    );
+}
+
+#[test]
+fn every_landed_word_lasts_at_least_80_ms_and_its_duration_spans_its_audio() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    record(&harness, &mut session, before("w2"));
+
+    harness.transcriber.hear(&[
+        ("one", 500, 500),
+        ("two", 520, 530),
+        ("three", 540, 540),
+        ("four", 1_000, 1_010),
+    ]);
+    session.poll().unwrap();
+
+    for landed in &session.state().words[1..5] {
+        let word = &landed.word;
+        assert!(word.duration >= 80, "{word:?}");
+        assert_eq!(
+            Some(word.duration),
+            word.audio_end
+                .zip(word.audio_start)
+                .map(|(end, start)| end - start)
+        );
+    }
+}
+
+#[test]
+fn a_short_word_with_silence_after_it_grows_into_it_and_later_words_keep_their_script_times() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    record(&harness, &mut session, before("w2"));
+
+    harness
+        .transcriber
+        .hear(&[("brave", 500, 800), ("a", 900, 920), ("new", 1_100, 1_300)]);
+    session.poll().unwrap();
+
+    let state = session.state();
+    assert_eq!(
+        starts(&state),
+        [
+            ("Hello,", 400),
+            ("brave", 850),
+            ("a", 1_250),
+            ("new", 1_450),
+            ("world.", 1_800),
+            ("Typed", 2_350)
+        ]
+    );
+    let a = &state.words[2].word;
+    assert_eq!(
+        (a.gap, a.duration, a.audio_start, a.audio_end),
+        (100, 80, Some(900), Some(980))
+    );
+    assert_eq!(state.words[3].word.gap, 120);
+}
+
+#[test]
+fn a_short_word_with_silence_only_before_it_grows_earlier_and_its_gap_shrinks_to_match() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    record(&harness, &mut session, before("w2"));
+
+    harness
+        .transcriber
+        .hear(&[("brave", 500, 800), ("a", 900, 920), ("new", 920, 1_100)]);
+    session.poll().unwrap();
+
+    let state = session.state();
+    assert_eq!(starts(&state)[2..4], [("a", 1_190), ("new", 1_270)]);
+    let a = &state.words[2].word;
+    assert_eq!(
+        (a.gap, a.duration, a.audio_start, a.audio_end),
+        (40, 80, Some(840), Some(920))
+    );
+}
+
+#[test]
+fn a_short_first_word_into_an_empty_script_grows_earlier_and_its_lead_in_shrinks_to_match() {
+    let harness = Harness::new();
+    let mut session = harness.create("Talk");
+    record(&harness, &mut session, InsertionPoint::default());
+
+    harness
+        .transcriber
+        .hear(&[("Hi", 700, 720), ("there", 720, 900)]);
+    session.poll().unwrap();
+
+    let state = session.state();
+    assert_eq!(starts(&state), [("Hi", 640), ("there", 720)]);
+    assert_eq!(state.words[0].word.audio_start, Some(640));
+}
+
+#[test]
+fn a_packed_short_word_zeroes_the_next_gap_and_moves_later_words_on_by_the_shortfall() {
+    let (harness, folder) = Harness::with_fixture("hello-world");
+    let mut session = harness.open(&folder);
+    record(&harness, &mut session, before("w2"));
+
+    harness.transcriber.hear(&[
+        ("brave", 500, 860),
+        ("a", 870, 890),
+        ("new", 890, 1_100),
+        ("day", 1_200, 1_400),
+    ]);
+    session.poll().unwrap();
+
+    let state = session.state();
+    assert_eq!(
+        starts(&state)[1..6],
+        [
+            ("brave", 850),
+            ("a", 1_210),
+            ("new", 1_290),
+            ("day", 1_600),
+            ("world.", 1_950)
+        ]
+    );
+    let a = &state.words[2].word;
+    assert_eq!(
+        (a.duration, a.audio_start, a.audio_end),
+        (80, Some(860), Some(940))
+    );
+    let new = &state.words[3].word;
+    assert_eq!((new.gap, new.audio_start), (0, Some(890)));
 }
 
 #[test]
