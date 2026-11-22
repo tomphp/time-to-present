@@ -16,6 +16,7 @@ function run(args: string[], cwd: string) {
 }
 
 const succeeds = (out: string) => ({ code: 0, out, err: "" });
+const fails = (code: number, message: string) => ({ code, out: "", err: expect.stringContaining(message) });
 
 function presentationFolder(contents: string | object) {
   const folder = mkdtempSync(join(tmpdir(), "ttp-"));
@@ -106,17 +107,12 @@ describe("finding presentation.json", () => {
 
   it("names the folder it started from when it finds nothing", () => {
     const empty = mkdtempSync(join(tmpdir(), "ttp-empty-"));
-    const { code, out, err } = run(["text"], empty);
-    expect({ code, out }).toEqual({ code: 1, out: "" });
-    expect(err).toContain(empty);
-    expect(err).toContain("any folder above it");
+    expect(run(["text"], empty)).toEqual(fails(1, `${empty} or any folder above it`));
   });
 
   it("fails on a path that does not exist", () => {
     const missing = join(tmpdir(), "no-such-presentation");
-    const { code, out, err } = run(["events", missing], tmpdir());
-    expect({ code, out }).toEqual({ code: 1, out: "" });
-    expect(err).toContain(missing);
+    expect(run(["events", missing], tmpdir())).toEqual(fails(1, missing));
   });
 });
 
@@ -180,18 +176,12 @@ describe("ttp on edge cases", () => {
     ["a negative formatVersion", JSON.stringify({ formatVersion: -1, words: [], namedEvents: [] }), "formatVersion"],
     ["words that are not an array", JSON.stringify({ formatVersion: 1, words: {}, namedEvents: [] }), "not arrays"],
   ])("fails clearly on a presentation.json with %s", (_, contents, message) => {
-    const { code, out, err } = run(["text"], presentationFolder(contents));
-    expect({ code, out }).toEqual({ code: 1, out: "" });
-    expect(err).toContain(message);
+    expect(run(["text"], presentationFolder(contents))).toEqual(fails(1, message));
   });
 
   it.each([[["slides"]], [["text", "--json"]], [["events", "--events"]], [["text", "a", "b"]]])(
     "fails with the usage on %j",
-    (args) => {
-      const { code, out, err } = run(args, presentation({}));
-      expect({ code, out }).toEqual({ code: 2, out: "" });
-      expect(err).toContain("usage: ttp");
-    },
+    (args) => expect(run(args, presentation({}))).toEqual(fails(2, "usage: ttp")),
   );
 
   it.each([[[]], [["--help"]], [["text", "--help"]], [["events", "-h"]]])("prints help for %j", (args) => {

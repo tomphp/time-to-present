@@ -6,15 +6,11 @@ import type { PresentationScript } from "./presentation-script.js";
 export const FORMAT_VERSION = 1;
 const FILE_NAME = "presentation.json";
 
-export type PresentationFile =
-  | { ok: true; script: PresentationScript }
-  | { ok: false; error: "not found" | "malformed" | "too new"; message: string };
+export type PresentationError = "not found" | "malformed" | "too new";
 
-const failure = (error: "not found" | "malformed" | "too new", message: string): PresentationFile => ({
-  ok: false,
-  error,
-  message,
-});
+export type PresentationFile = { ok: true; script: PresentationScript } | { ok: false; error: PresentationError; message: string };
+
+const failure = (error: PresentationError, message: string): PresentationFile => ({ ok: false, error, message });
 
 function searchUpFrom(folder: string): string | null {
   for (let current = folder; ; current = dirname(current)) {
@@ -24,9 +20,9 @@ function searchUpFrom(folder: string): string | null {
   }
 }
 
-function fileAt(path: string): string | null {
-  if (!existsSync(path)) return null;
-  return statSync(path).isDirectory() ? (existsSync(join(path, FILE_NAME)) ? join(path, FILE_NAME) : null) : path;
+function presentationFileAt(path: string): string | null {
+  const file = existsSync(path) && statSync(path).isDirectory() ? join(path, FILE_NAME) : path;
+  return existsSync(file) ? file : null;
 }
 
 function parse(file: string): PresentationFile {
@@ -52,13 +48,16 @@ function parse(file: string): PresentationFile {
   return { ok: true, script: { words, namedEvents } };
 }
 
-/** Reads the Script of the `presentation.json` at `path` (a Presentation folder or the file), else the first one found searching up from `cwd`. */
+/**
+ * Reads the Script of the `presentation.json` at `path`, a Presentation folder or the file,
+ * else of the first one found searching up from `cwd`.
+ */
 export function loadPresentation(cwd: string, path?: string): PresentationFile {
   if (path === undefined) {
     const found = searchUpFrom(cwd);
     return found ? parse(found) : failure("not found", `no ${FILE_NAME} in ${cwd} or any folder above it`);
   }
   const target = resolve(cwd, path);
-  const found = fileAt(target);
+  const found = presentationFileAt(target);
   return found ? parse(found) : failure("not found", `no ${FILE_NAME} at ${target}`);
 }

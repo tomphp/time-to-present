@@ -17,7 +17,10 @@ export interface ResolvedScript {
 
 const SCRIPT_START = "scriptStart";
 
-/** Works out Script Time as the core does: each Word after the last one's end plus its Gap, each event at its anchor plus its offset. */
+/**
+ * Works out Script Time as the core does: each Word at the last one's end plus its Gap, and
+ * each Named Event at its anchor plus its offset.
+ */
 export function resolveScript({ words, namedEvents }: PresentationScript): ResolvedScript {
   let previousEnd = 0;
   const timed: ScriptWord[] = words.map(({ id, text, gap, duration, breakAfter }) => {

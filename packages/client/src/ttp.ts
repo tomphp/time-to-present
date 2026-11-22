@@ -25,15 +25,16 @@ Commands:
 Run ttp <command> --help for more.
 `;
 
+/** A command with its one boolean option, such as `text --events`. */
 interface Command {
-  flag: string;
+  option: string;
   help: string;
-  print(script: ResolvedScript, flagged: boolean): string;
+  print(script: ResolvedScript, withOption: boolean): string;
 }
 
 const commands: Record<string, Command> = {
   text: {
-    flag: "events",
+    option: "events",
     help: `usage: ttp text [path] [--events]
 
 Prints the Script Text: the Words of the Script as plain prose, with a new line where
@@ -45,7 +46,7 @@ the Script has a line break and a blank line where it has a paragraph break.
     print: (script, events) => (events ? scriptTextWithEvents(script) : scriptText(script)),
   },
   events: {
-    flag: "json",
+    option: "json",
     help: `usage: ttp events [path] [--json]
 
 Prints every Named Event in firing order, one per line: its Script Time as m:ss.mmm,
@@ -63,7 +64,7 @@ function parse(command: Command, args: string[]) {
     return parseArgs({
       args,
       allowPositionals: true,
-      options: { [command.flag]: { type: "boolean" }, help: { type: "boolean", short: "h" } },
+      options: { [command.option]: { type: "boolean" }, help: { type: "boolean", short: "h" } },
     });
   } catch (error) {
     return (error as Error).message;
@@ -97,6 +98,6 @@ export function ttp(args: string[], terminal: Terminal): number {
     terminal.err(`ttp: ${file.message}\n`);
     return EXIT.unreadable;
   }
-  terminal.out(command.print(resolveScript(file.script), parsed.values[command.flag] === true));
+  terminal.out(command.print(resolveScript(file.script), parsed.values[command.option] === true));
   return EXIT.ok;
 }

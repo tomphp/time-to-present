@@ -60,6 +60,9 @@ With no desktop app, use `simulate()` as above. `connection` is `reconnecting` w
 stream is lost or the Presentation is closed, and `error` holds why a Client closed itself,
 such as a protocol version mismatch.
 
+Before `npx ttp` works from a checkout of this repository, build the Client with
+`npm run build` in `packages/client`: the `ttp` bin is its compiled `dist/cli.js`.
+
 ## Reading the Script from the command line
 
 The `ttp` command prints a Presentation's Script without the Recordings, audio

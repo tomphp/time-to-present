@@ -2,7 +2,7 @@ import type { ResolvedScript } from "./presentation-script.js";
 import { nameAndData } from "./script-text.js";
 
 /** A Script Time as `m:ss.mmm`, the minutes unpadded and unbounded. */
-export function clockTime(scriptTime: number): string {
+function formatScriptTime(scriptTime: number): string {
   const minutes = Math.floor(scriptTime / 60_000);
   const seconds = Math.floor((scriptTime % 60_000) / 1000);
   const ms = scriptTime % 1000;
@@ -15,7 +15,7 @@ export function eventLines({ namedEvents, anchorOf }: ResolvedScript): string {
     .map((event) => {
       const anchor = anchorOf(event);
       const at = anchor ? `at ${JSON.stringify(anchor.text)}` : "at start";
-      return `${clockTime(event.scriptTime)}  ${nameAndData(event, "  ")}  ${at}\n`;
+      return `${formatScriptTime(event.scriptTime)}  ${nameAndData(event, "  ")}  ${at}\n`;
     })
     .join("");
 }
