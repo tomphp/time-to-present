@@ -1,6 +1,6 @@
-import type { StreamState } from "./stream-state";
-import type { EventMap, EventName, NamedEvent } from "./protocol";
-import { readonly, writable, type Store } from "./store";
+import type { StreamState } from "./stream-state.js";
+import type { EventMap, EventName, NamedEvent } from "./protocol.js";
+import { readonly, writable, type Store } from "./store.js";
 
 /** A Fold's state, and whether it last changed from a live Named Event rather than a Snapshot. */
 export interface Folded<State> {

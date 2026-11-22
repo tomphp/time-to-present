@@ -1,4 +1,4 @@
-import type { Unsubscribe } from "./store";
+import type { Unsubscribe } from "./store.js";
 
 export interface Channel<T> {
   emit(value: T): void;

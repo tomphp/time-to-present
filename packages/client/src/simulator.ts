@@ -1,12 +1,12 @@
-import { deliver } from "./channel";
-import { PROTOCOL_VERSION, type EventMap, type Script, type StreamEvent } from "./protocol";
-import type { Source, SourceListener } from "./source";
-import { followKeys } from "./keyboard";
-import { seekTargets } from "./seek-targets";
-import { simulatedClock } from "./simulated-clock";
-import type { Unsubscribe } from "./store";
-import { timelineOf, type SimulatedScript } from "./timeline";
-import { manualWall, realWall } from "./wall";
+import { deliver } from "./channel.js";
+import { PROTOCOL_VERSION, type EventMap, type Script, type StreamEvent } from "./protocol.js";
+import type { Source, SourceListener } from "./source.js";
+import { followKeys } from "./keyboard.js";
+import { seekTargets } from "./seek-targets.js";
+import { simulatedClock } from "./simulated-clock.js";
+import type { Unsubscribe } from "./store.js";
+import { timelineOf, type SimulatedScript } from "./timeline.js";
+import { manualWall, realWall } from "./wall.js";
 
 /** How a Simulator's wall time passes. */
 export interface SimulateOptions {

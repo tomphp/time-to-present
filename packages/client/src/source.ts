@@ -1,5 +1,5 @@
-import { STREAM_EVENT_TYPES, type StreamEvent } from "./protocol";
-import type { Unsubscribe } from "./store";
+import { STREAM_EVENT_TYPES, type StreamEvent } from "./protocol.js";
+import type { Unsubscribe } from "./store.js";
 
 /** What a Source tells the Client it is following. */
 export interface SourceListener {

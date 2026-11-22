@@ -1,4 +1,4 @@
-import type { Unsubscribe } from "./store";
+import type { Unsubscribe } from "./store.js";
 
 /** The wall time a Simulator runs its clock over, in integer ms, and its animation frames. */
 export interface Wall {

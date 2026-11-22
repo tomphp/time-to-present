@@ -1,4 +1,4 @@
-import { channel, deliver } from "./channel";
+import { channel, deliver } from "./channel.js";
 
 /** Stops a subscription or hook. */
 export type Unsubscribe = () => void;

@@ -1,11 +1,11 @@
-import { fold, type Folded, type Reducers } from "./fold";
-import { hooks, type Hooks } from "./hooks";
-import { PROTOCOL_VERSION, type Clock, type EventMap, type Script, type StreamEvent, type Word } from "./protocol";
-import { scriptStore } from "./script";
-import { eventStream, type Source } from "./source";
-import { readonly, writable, type Store, type Unsubscribe } from "./store";
-import { trackStream } from "./stream-state";
-import { followTime, type Time } from "./time";
+import { fold, type Folded, type Reducers } from "./fold.js";
+import { hooks, type Hooks } from "./hooks.js";
+import { PROTOCOL_VERSION, type Clock, type EventMap, type Script, type StreamEvent, type Word } from "./protocol.js";
+import { scriptStore } from "./script.js";
+import { eventStream, type Source } from "./source.js";
+import { readonly, writable, type Store, type Unsubscribe } from "./store.js";
+import { trackStream } from "./stream-state.js";
+import { followTime, type Time } from "./time.js";
 
 /** How `connect()` finds the Performance. */
 export interface ConnectOptions {

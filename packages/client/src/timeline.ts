@@ -1,4 +1,4 @@
-import type { EventMap, NamedEvent, ScriptWord, StreamEvent, Word } from "./protocol";
+import type { EventMap, NamedEvent, ScriptWord, StreamEvent, Word } from "./protocol.js";
 
 /** What `simulate()` plays: the Script in the `/_ttp/v1/script` shape, its versions and end optional. */
 export interface SimulatedScript<Events extends EventMap = EventMap> {

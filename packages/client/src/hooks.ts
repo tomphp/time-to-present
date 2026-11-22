@@ -1,6 +1,6 @@
-import type { StreamState } from "./stream-state";
-import type { ClockChange, EventMap, EventName, NamedEvent, Snapshot, Word } from "./protocol";
-import type { Unsubscribe } from "./store";
+import type { StreamState } from "./stream-state.js";
+import type { ClockChange, EventMap, EventName, NamedEvent, Snapshot, Word } from "./protocol.js";
+import type { Unsubscribe } from "./store.js";
 
 /**
  * One-shot reactions to live events. None is ever called for past events, so they are not

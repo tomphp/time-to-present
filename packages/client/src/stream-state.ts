@@ -1,6 +1,6 @@
-import { channel } from "./channel";
-import type { Clock, ClockChange, NamedEvent, Snapshot, StreamEvent, Word } from "./protocol";
-import { writable } from "./store";
+import { channel } from "./channel.js";
+import type { Clock, ClockChange, NamedEvent, Snapshot, StreamEvent, Word } from "./protocol.js";
+import { writable } from "./store.js";
 
 const READY: Clock = { state: "ready", scriptTime: 0, speed: 1 };
 

@@ -1,7 +1,7 @@
-import type { EventMap, Script } from "./protocol";
-import type { Source } from "./source";
-import { readonly, writable, type Store } from "./store";
-import type { StreamState } from "./stream-state";
+import type { EventMap, Script } from "./protocol.js";
+import type { Source } from "./source.js";
+import { readonly, writable, type Store } from "./store.js";
+import type { StreamState } from "./stream-state.js";
 
 /**
  * Fetches the Script on first subscribe, again whenever a Snapshot's `scriptVersion`
