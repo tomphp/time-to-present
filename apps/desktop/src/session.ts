@@ -118,6 +118,7 @@ export type Edit =
   | { kind: "insertEvent"; anchor: string; offset: number; name: string; data?: unknown }
   | { kind: "setEvent"; event: string; name: string; data?: unknown }
   | { kind: "moveEvent"; event: string; anchor: string; offset: number }
+  | { kind: "deleteEvent"; event: string }
   | { kind: "move"; word: string; by: number }
   | { kind: "trimStart"; word: string; by: number }
   | { kind: "trimEnd"; word: string; by: number }
@@ -223,6 +224,7 @@ export type MenuCommand =
   | "record"
   | "reRecordSelection"
   | "addNamedEvent"
+  | "deleteNamedEvent"
   | "retime"
   | "listen"
   | "layoutTwoWindows"
@@ -245,6 +247,7 @@ export type WindowReport =
       retimable: boolean;
       listenable: boolean;
       locked: boolean;
+      eventSelected: boolean;
       clock: ClockState | null;
       inspectorShown: boolean;
       timelineShown: boolean;

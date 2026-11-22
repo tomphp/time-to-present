@@ -54,6 +54,9 @@ pub enum Edit {
         anchor: Anchor,
         offset: Ms,
     },
+    DeleteEvent {
+        event: String,
+    },
     Move {
         word: String,
         by: Ms,
@@ -187,6 +190,14 @@ impl Script {
                 let event = self.event_mut(&event)?;
                 event.anchor = anchor;
                 event.offset = offset;
+            }
+            Edit::DeleteEvent { event } => {
+                let index = self
+                    .named_events
+                    .iter()
+                    .position(|named| named.id == event)
+                    .ok_or(EditError::UnknownEvent(event))?;
+                self.named_events.remove(index);
             }
             Edit::SetOffset { event, offset } => {
                 self.named_events

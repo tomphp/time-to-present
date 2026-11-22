@@ -16,6 +16,7 @@ enum Step {
     SetBreak(usize, Option<BreakAfter>),
     Insert(Option<usize>, String),
     InsertEvent(Option<usize>, i64),
+    DeleteEvent(usize),
     Cut(Vec<usize>),
     Copy(Vec<usize>),
     /// Pastes over some Words the clipboard's passage, or plain text when it holds none or
@@ -71,6 +72,7 @@ fn step() -> impl Strategy<Value = Step> {
         (prop::option::of(any::<usize>()), word_text()).prop_map(|(w, t)| Step::Insert(w, t)),
         (prop::option::of(any::<usize>()), -2000i64..2000)
             .prop_map(|(w, offset)| Step::InsertEvent(w, offset)),
+        any::<usize>().prop_map(Step::DeleteEvent),
         prop::collection::vec(any::<usize>(), 1..4).prop_map(Step::Cut),
         prop::collection::vec(any::<usize>(), 1..4).prop_map(Step::Copy),
         (
@@ -89,6 +91,12 @@ fn step() -> impl Strategy<Value = Step> {
 }
 
 fn resolve(step: &Step, state: &SessionState) -> Option<Edit> {
+    if let Step::DeleteEvent(e) = step {
+        let events = &state.named_events;
+        return (!events.is_empty()).then(|| Edit::DeleteEvent {
+            event: events[e % events.len()].event.id.clone(),
+        });
+    }
     let ids: Vec<&str> = state.words.iter().map(|w| w.word.id.as_str()).collect();
     let pick = |n: &usize| ids[n % ids.len()].to_string();
     if ids.is_empty() {
@@ -134,7 +142,12 @@ fn resolve(step: &Step, state: &SessionState) -> Option<Edit> {
         Step::Timing(gesture, w, by) | Step::Drag(_, gesture, w, by) => {
             timing_edit(*gesture, pick(w), *by)
         }
-        Step::Cut(_) | Step::Copy(_) | Step::Paste(..) | Step::Undo | Step::Redo => return None,
+        Step::DeleteEvent(_)
+        | Step::Cut(_)
+        | Step::Copy(_)
+        | Step::Paste(..)
+        | Step::Undo
+        | Step::Redo => return None,
     })
 }
 
@@ -245,9 +258,13 @@ fn run(
         }
         _ => {
             let edit = resolve(step, &state);
-            let inserts_event = matches!(edit, Some(Edit::InsertEvent { .. }));
+            let added = match edit {
+                Some(Edit::InsertEvent { .. }) => 1,
+                Some(Edit::DeleteEvent { .. }) => -1,
+                _ => 0,
+            };
             let applied = edit.is_some_and(|edit| session.edit(edit).is_ok());
-            return (Outcome::Events(isize::from(inserts_event && applied)), none);
+            return (Outcome::Events(if applied { added } else { 0 }), none);
         }
     }
     (Outcome::Restored, none)

@@ -18,6 +18,8 @@ pub struct EditorReport {
     pub retimable: bool,
     pub listenable: bool,
     pub locked: bool,
+    /// An existing Named Event is open in the Inspector.
+    pub event_selected: bool,
     pub clock: Option<ClockState>,
     pub inspector_shown: bool,
     pub timeline_shown: bool,
@@ -126,6 +128,7 @@ fn editor_enables(command: MenuCommand, editor: EditorReport) -> bool {
         ReRecordSelection => editor.selection && !editor.recording,
         Retime => editor.retimable && editable,
         AddNamedEvent | PlayFromCursor => editable,
+        DeleteNamedEvent => editor.event_selected && editable,
         Listen => editor.listenable,
         PlayPause => matches!(
             editor.clock,
@@ -186,6 +189,7 @@ fn label(command: MenuCommand, context: &MenuContext) -> &'static str {
         Record => "Record",
         ReRecordSelection => "Re-record Selection",
         AddNamedEvent => "Add Named Event (⌘E)",
+        DeleteNamedEvent => "Delete Named Event (⌘⌫)",
         Retime => "Retime…",
         Listen => "Listen",
         Perform => "Perform",

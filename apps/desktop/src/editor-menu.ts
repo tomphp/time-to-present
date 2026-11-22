@@ -8,6 +8,7 @@ export interface EditorMenuState {
   target: RecordingTarget;
   selected: string[];
   listenable: boolean;
+  eventSelected: boolean;
   inspectorShown: boolean;
   timelineShown: boolean;
 }
@@ -16,7 +17,7 @@ export interface EditorMenuState {
 export interface EditorParts {
   recordingBar: { toggle(): void; reRecord(): void };
   pane: { addEventAtCaret(): void };
-  inspector: { retime(): void; toggle(): void };
+  inspector: { retime(): void; toggle(): void; deleteEvent(): void };
   timelineDock: { toggle(): void };
   preview: { listen(): void; playFromCursor(): void };
   clock: { playPause(): void; restart(): void };
@@ -29,6 +30,7 @@ const commandsOf = (parts: EditorParts): Partial<Record<MenuCommand, () => void>
   record: () => parts.recordingBar.toggle(),
   reRecordSelection: () => parts.recordingBar.reRecord(),
   addNamedEvent: () => parts.pane.addEventAtCaret(),
+  deleteNamedEvent: () => parts.inspector.deleteEvent(),
   retime: () => parts.inspector.retime(),
   toggleInspector: () => parts.inspector.toggle(),
   toggleTimeline: () => parts.timelineDock.toggle(),
@@ -41,13 +43,23 @@ const commandsOf = (parts: EditorParts): Partial<Record<MenuCommand, () => void>
   restart: () => parts.clock.restart(),
 });
 
-const editorReport = ({ session, clock, target, selected, listenable, inspectorShown, timelineShown }: EditorMenuState): WindowReport => ({
+const editorReport = ({
+  session,
+  clock,
+  target,
+  selected,
+  listenable,
+  eventSelected,
+  inspectorShown,
+  timelineShown,
+}: EditorMenuState): WindowReport => ({
   window: "editor",
   recording: session?.recordingBar?.recording ?? false,
   selection: "reRecord" in target,
   retimable: selected.length > 0,
   listenable,
   locked: session?.locked ?? false,
+  eventSelected,
   clock,
   inspectorShown,
   timelineShown,

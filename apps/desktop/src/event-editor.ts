@@ -13,6 +13,7 @@ export function mountEventEditor(form: HTMLFormElement, commands: EventEditorCom
   const data = form.querySelector<HTMLTextAreaElement>("[name=data]")!;
   const names = form.querySelector<HTMLDataListElement>("datalist")!;
   const error = form.querySelector<HTMLElement>("[role=alert]")!;
+  const deleteButton = form.querySelector<HTMLButtonElement>("[data-delete]")!;
   let draft: EventDraft | null = null;
 
   function open(next: EventDraft) {
@@ -22,6 +23,7 @@ export function mountEventEditor(form: HTMLFormElement, commands: EventEditorCom
     data.value = event?.data === undefined ? "" : JSON.stringify(event.data, null, 2);
     names.replaceChildren(...commands.names().map((value) => new Option(value)));
     showError(null);
+    deleteButton.hidden = !event;
     form.hidden = false;
     name.focus();
     name.select();
@@ -32,6 +34,14 @@ export function mountEventEditor(form: HTMLFormElement, commands: EventEditorCom
     draft = null;
     form.hidden = true;
     commands.closed();
+  }
+
+  const openEventId = () => (draft?.kind === "existing" ? draft.event.id : null);
+
+  async function deleteOpen() {
+    const event = openEventId();
+    if (!event) return;
+    await commands.edit({ kind: "deleteEvent", event }).then(close, (reason) => showError(String(reason)));
   }
 
   function showError(message: string | null) {
@@ -58,10 +68,15 @@ export function mountEventEditor(form: HTMLFormElement, commands: EventEditorCom
 
   form.addEventListener("keydown", (event) => {
     if (event.key === "Escape") close();
+    if (event.key === "Backspace" && (event.metaKey || event.ctrlKey) && openEventId()) {
+      event.preventDefault();
+      void deleteOpen();
+    }
     if (event.key === "Enter" && event.target === data && (event.metaKey || event.ctrlKey)) form.requestSubmit();
   });
 
   form.querySelector("[data-cancel]")!.addEventListener("click", close);
+  deleteButton.addEventListener("click", deleteOpen);
 
-  return { open, close };
+  return { open, close, deleteOpen, openEventId };
 }

@@ -123,6 +123,8 @@ export function mountInspector(card: HTMLElement, commands: InspectorCommands, i
     render,
     openEvent,
     closeEvent: eventEditor.close,
+    deleteEvent: eventEditor.deleteOpen,
+    eventSelected: () => eventEditor.openEventId() !== null,
     retime,
     toggle,
     shown: () => shown,

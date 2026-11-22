@@ -108,6 +108,84 @@ describe("the event editor", () => {
     expect(edits).toEqual([{ kind: "setEvent", event: "e1", name: "zoom", data: { index: 1 } }]);
   });
 
+  const existing = { id: "e1", name: "slide", data: { index: 1 }, anchor: "scriptStart", offset: 0, time: 0 };
+  const deleteButton = () => field<HTMLButtonElement>("[data-delete]");
+  const press = (key: string, modifiers: KeyboardEventInit = {}) =>
+    field("[name=name]").dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...modifiers }));
+
+  it("offers Delete for an existing event but not for a new draft", () => {
+    const editor = mountEditor();
+    editor.open({ kind: "new", at: { anchor: "w2", offset: 0 } });
+    expect(deleteButton().hidden).toBe(true);
+    expect(editor.openEventId()).toBeNull();
+
+    editor.open({ kind: "existing", event: existing });
+    expect(deleteButton().hidden).toBe(false);
+    expect(editor.openEventId()).toBe("e1");
+  });
+
+  it("deletes the event and closes when Delete is clicked", async () => {
+    mountEditor().open({ kind: "existing", event: existing });
+
+    deleteButton().click();
+    await settle();
+
+    expect(edits).toEqual([{ kind: "deleteEvent", event: "e1" }]);
+    expect([form.hidden, closed]).toEqual([true, 1]);
+  });
+
+  it("deletes the event and closes on ⌘⌫ or Ctrl+⌫", async () => {
+    const editor = mountEditor();
+    editor.open({ kind: "existing", event: existing });
+    press("Backspace", { metaKey: true });
+    await settle();
+    editor.open({ kind: "existing", event: existing });
+    press("Backspace", { ctrlKey: true });
+    await settle();
+
+    expect(edits).toEqual([
+      { kind: "deleteEvent", event: "e1" },
+      { kind: "deleteEvent", event: "e1" },
+    ]);
+    expect([form.hidden, closed]).toEqual([true, 2]);
+  });
+
+  it("deletes the open event when asked from outside the form, as the menu does", async () => {
+    const editor = mountEditor();
+    editor.open({ kind: "existing", event: existing });
+
+    editor.deleteOpen();
+    await settle();
+
+    expect(edits).toEqual([{ kind: "deleteEvent", event: "e1" }]);
+    expect(editor.openEventId()).toBeNull();
+  });
+
+  it("leaves plain ⌫ and Delete to the Name field, and deletes nothing for a new draft", async () => {
+    const editor = mountEditor();
+    editor.open({ kind: "existing", event: existing });
+    press("Backspace");
+    press("Delete");
+    editor.open({ kind: "new", at: { anchor: "w2", offset: 0 } });
+    press("Backspace", { metaKey: true });
+    editor.deleteOpen();
+    await settle();
+
+    expect(edits).toEqual([]);
+    expect(form.hidden).toBe(false);
+  });
+
+  it("keeps the editor open with the reason when the delete is refused", async () => {
+    mountEditor([], "no Named Event with id e1").open({ kind: "existing", event: existing });
+
+    deleteButton().click();
+    await settle();
+
+    expect(form.hidden).toBe(false);
+    expect(closed).toBe(0);
+    expect(field("[role=alert]").textContent).toBe("no Named Event with id e1");
+  });
+
   it("closes without an edit on Escape", () => {
     mountEditor().open({ kind: "new", at: { anchor: "w2", offset: 0 } });
 

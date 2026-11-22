@@ -26,6 +26,7 @@ const idle: EditorMenuState = {
   target: { insertAt: { before: null } },
   selected: [],
   listenable: false,
+  eventSelected: false,
   inspectorShown: true,
   timelineShown: true,
 };
@@ -44,7 +45,11 @@ function editorParts(ran: string[]): EditorParts {
   return {
     recordingBar: { toggle: runs("recording toggle"), reRecord: runs("recording start unless recording") },
     pane: { addEventAtCaret: runs("event at caret") },
-    inspector: { retime: runs("Retime field"), toggle: runs("Inspector card button") },
+    inspector: {
+      retime: runs("Retime field"),
+      toggle: runs("Inspector card button"),
+      deleteEvent: runs("Named Event Delete button"),
+    },
     timelineDock: { toggle: runs("Timeline card button") },
     preview: { listen: runs("listen"), playFromCursor: runs("play from cursor") },
     clock: { playPause: runs("play/pause button"), restart: runs("restart button") },
@@ -82,6 +87,7 @@ describe("the Editor's report to the menu bar", () => {
         retimable: false,
         listenable: false,
         locked: false,
+        eventSelected: false,
         clock: "ready",
         inspectorShown: true,
         timelineShown: true,
@@ -137,6 +143,13 @@ describe("the Editor's report to the menu bar", () => {
     expect(reports).toHaveLength(2);
   });
 
+  it("reports a Named Event open in the Inspector", () => {
+    const { reports, change } = reporting(idle);
+    change({ eventSelected: true });
+
+    expect(reports.at(-1)).toMatchObject({ eventSelected: true });
+  });
+
   it("reports a hidden Inspector", () => {
     const { reports, change } = reporting(idle);
     change({ inspectorShown: false });
@@ -170,6 +183,7 @@ describe("a menu command reaching the Editor", () => {
     expect(run("record")).toEqual(["recording toggle"]);
     expect(run("reRecordSelection")).toEqual(["recording start unless recording"]);
     expect(run("addNamedEvent")).toEqual(["event at caret"]);
+    expect(run("deleteNamedEvent")).toEqual(["Named Event Delete button"]);
     expect(run("retime")).toEqual(["Retime field"]);
     expect(run("listen")).toEqual(["listen"]);
     expect(run("playPause")).toEqual(["play/pause button"]);
