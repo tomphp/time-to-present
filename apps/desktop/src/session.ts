@@ -1,3 +1,5 @@
+import type { DisplayAction } from "./display-options";
+
 export type BreakAfter = "line" | "paragraph";
 
 export interface ScriptWord {
@@ -214,3 +216,37 @@ export interface ForwardedKey {
   shift: boolean;
   repeat: boolean;
 }
+
+/** A menu bar item the shell hands to the focused window, which runs it as its button or key would. */
+export type MenuCommand =
+  | "removeUnusedRecordings"
+  | "record"
+  | "reRecordSelection"
+  | "addNamedEvent"
+  | "retime"
+  | "listen"
+  | "layoutTwoWindows"
+  | "layoutCombined"
+  | "layoutTeleprompterOnly"
+  | "playPause"
+  | "playFromCursor"
+  | "restart"
+  | "toggleInspector"
+  | "toggleTimeline"
+  | "newPresentation"
+  | DisplayAction;
+
+/** What a window tells the menu bar about itself after each relevant change. */
+export type WindowReport =
+  | {
+      window: "editor";
+      recording: boolean;
+      selection: boolean;
+      retimable: boolean;
+      listenable: boolean;
+      locked: boolean;
+      clock: ClockState | null;
+      inspectorShown: boolean;
+      timelineShown: boolean;
+    }
+  | { window: "teleprompter"; blanked: boolean; markers: boolean; mirrored: boolean; flipped: boolean };

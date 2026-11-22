@@ -1,105 +1,51 @@
+use std::collections::HashMap;
 use std::sync::Mutex;
 
-use tauri::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
-use tauri::{App, AppHandle, Manager, Wry};
-use ttp_core::perform::{FocusedWindow, KeyWindow, fullscreen_menu_item};
+use tauri::menu::MenuItem;
+use tauri::{App, AppHandle, Manager, WebviewWindow};
+use ttp_core::menu::{FocusedWindow, KeyWindow, MenuContext, WindowReport, menu_item};
 
 use crate::fullscreen::Fullscreen;
-use crate::macos;
-use crate::perform::{self, PERFORMANCE_WINDOWS};
+use crate::perform::PRESENTATION_WINDOW;
+use crate::{App as AppState, EDITOR_WINDOW, TELEPROMPTER_WINDOW, macos};
+use layout::Items;
 
-const TOGGLE_FULLSCREEN: &str = "toggle-fullscreen";
+mod layout;
+mod route;
 
-/// View > Enter / Exit Full Screen, for the focused Performance window.
-struct FullscreenItem(MenuItem<Wry>);
+pub use route::on_menu_event;
 
-/// The standard App, Edit and Window menus, with a View menu that switches Performance windows in
-/// place of the native Full Screen item.
+pub const MENU_COMMAND: &str = "menu-command";
+const OPEN_RECENT: &str = "open-recent:";
+
+/// What each window last reported, by label.
+#[derive(Default)]
+struct Reports(Mutex<HashMap<String, WindowReport>>);
+
+/// The menu bar: the app's commands, each with its shortcut, around the standard Edit and Window
+/// menus, with View > Full Screen switching Performance windows in place of the native item.
 pub fn install(app: &App) -> tauri::Result<()> {
     macos::leave_full_screen_out_of_the_menu();
-    let offered = fullscreen_menu_item(FocusedWindow::None);
-    let fullscreen = MenuItem::with_id(
-        app,
-        TOGGLE_FULLSCREEN,
-        offered.label,
-        offered.enabled,
-        Some("Ctrl+Cmd+F"),
-    )?;
-    let menu = Menu::with_items(
-        app,
-        &[
-            &app_menu(app)?,
-            &edit_menu(app)?,
-            &Submenu::with_items(app, "View", true, &[&fullscreen])?,
-            &window_menu(app)?,
-        ],
-    )?;
+    let (menu, items) = layout::menu_bar(app)?;
     app.set_menu(menu)?;
-    app.manage(FullscreenItem(fullscreen));
+    app.manage(items);
     app.manage(Mutex::new(KeyWindow::default()));
+    app.manage(Reports::default());
+    refresh(app.handle());
+    recent_changed(app.handle());
     Ok(())
 }
 
-fn app_menu(app: &App) -> tauri::Result<Submenu<Wry>> {
-    let separator = || PredefinedMenuItem::separator(app);
-    Submenu::with_items(
-        app,
-        &app.package_info().name,
-        true,
-        &[
-            &PredefinedMenuItem::about(app, None, None)?,
-            &separator()?,
-            &PredefinedMenuItem::services(app, None)?,
-            &separator()?,
-            &PredefinedMenuItem::hide(app, None)?,
-            &PredefinedMenuItem::hide_others(app, None)?,
-            &separator()?,
-            &PredefinedMenuItem::quit(app, None)?,
-        ],
-    )
-}
-
-/// macOS routes the editor's copy, paste and undo shortcuts through these items.
-fn edit_menu(app: &App) -> tauri::Result<Submenu<Wry>> {
-    Submenu::with_items(
-        app,
-        "Edit",
-        true,
-        &[
-            &PredefinedMenuItem::undo(app, None)?,
-            &PredefinedMenuItem::redo(app, None)?,
-            &PredefinedMenuItem::separator(app)?,
-            &PredefinedMenuItem::cut(app, None)?,
-            &PredefinedMenuItem::copy(app, None)?,
-            &PredefinedMenuItem::paste(app, None)?,
-            &PredefinedMenuItem::select_all(app, None)?,
-        ],
-    )
-}
-
-fn window_menu(app: &App) -> tauri::Result<Submenu<Wry>> {
-    Submenu::with_items(
-        app,
-        "Window",
-        true,
-        &[
-            &PredefinedMenuItem::minimize(app, None)?,
-            &PredefinedMenuItem::maximize(app, None)?,
-            &PredefinedMenuItem::separator(app)?,
-            &PredefinedMenuItem::close_window(app, None)?,
-        ],
-    )
-}
-
-pub fn on_menu_event(app: &AppHandle, event: MenuEvent) {
-    if event.id() != TOGGLE_FULLSCREEN {
-        return;
-    }
-    if let Some(window) = key_window(app).and_then(|label| app.get_webview_window(&label))
-        && let Err(error) = perform::toggle_fullscreen(app.clone(), window)
-    {
-        eprintln!("toggling full screen failed: {error}");
-    }
+/// Keeps what a window reported for the menu and shows it while that window has focus.
+#[tauri::command]
+pub fn report_menu_state(app: AppHandle, window: WebviewWindow, report: WindowReport) {
+    let reports = app.state::<Reports>();
+    reports
+        .0
+        .lock()
+        .unwrap()
+        .insert(window.label().to_string(), report);
+    refresh(&app);
 }
 
 pub fn focus_changed(app: &AppHandle, label: &str, focused: bool) {
@@ -110,25 +56,107 @@ pub fn focus_changed(app: &AppHandle, label: &str, focused: bool) {
     refresh(app);
 }
 
-/// Shows what the item offers for the window with focus now.
+pub fn window_destroyed(app: &AppHandle, label: &str) {
+    app.state::<Reports>().0.lock().unwrap().remove(label);
+    focus_changed(app, label, false);
+}
+
+/// Shows what each item offers for the window with focus now. Updates run in turn on the main
+/// thread, so a late one never shows an older state.
 pub fn refresh(app: &AppHandle) {
-    let focused = match key_window(app) {
-        None => FocusedWindow::None,
-        Some(label) if PERFORMANCE_WINDOWS.contains(&label.as_str()) => {
-            FocusedWindow::Performance {
-                fullscreen: app.state::<Fullscreen>().contains(&label),
-            }
-        }
-        Some(_) => FocusedWindow::Other,
-    };
-    let offered = fullscreen_menu_item(focused);
-    let item = &app.state::<FullscreenItem>().0;
-    if let Err(error) = item
-        .set_enabled(offered.enabled)
-        .and_then(|()| item.set_text(offered.label))
-    {
-        eprintln!("updating the Full Screen item failed: {error}");
+    on_main_thread(app, show_offered);
+}
+
+/// Lists the Recent Presentations under File > Open Recent.
+pub fn recent_changed(app: &AppHandle) {
+    on_main_thread(app, list_recent);
+}
+
+fn on_main_thread(app: &AppHandle, update: fn(&AppHandle)) {
+    let handle = app.clone();
+    if let Err(error) = app.run_on_main_thread(move || update(&handle)) {
+        eprintln!("updating the menu failed: {error}");
     }
+}
+
+fn show_offered(app: &AppHandle) {
+    let context = context(app);
+    for (command, item) in &app.state::<Items>().commands {
+        if let Err(error) = item.show(menu_item(*command, &context)) {
+            eprintln!("updating the {} item failed: {error}", command.id());
+        }
+    }
+}
+
+fn list_recent(app: &AppHandle) {
+    let folders = app
+        .state::<AppState>()
+        .settings
+        .lock()
+        .unwrap()
+        .recent()
+        .to_vec();
+    let submenu = &app.state::<Items>().open_recent;
+    let listed = (|| {
+        while submenu.remove_at(0)?.is_some() {}
+        for folder in &folders {
+            let id = format!("{OPEN_RECENT}{}", folder.display());
+            let name = folder.file_name().unwrap_or(folder.as_os_str());
+            submenu.append(&MenuItem::with_id(
+                app,
+                id,
+                name.to_string_lossy(),
+                true,
+                None::<&str>,
+            )?)?;
+        }
+        submenu.set_enabled(!folders.is_empty())
+    })();
+    if let Err(error) = listed {
+        eprintln!("updating Open Recent failed: {error}");
+    }
+}
+
+fn context(app: &AppHandle) -> MenuContext {
+    let state = app.state::<AppState>();
+    let presentation_open = state.session.lock().unwrap().is_some();
+    let layout = state.settings.lock().unwrap().performance().layout;
+    MenuContext {
+        focused: focused(app),
+        presentation_open,
+        layout,
+    }
+}
+
+fn focused(app: &AppHandle) -> FocusedWindow {
+    let Some(label) = key_window(app) else {
+        return FocusedWindow::None;
+    };
+    let report = app
+        .state::<Reports>()
+        .0
+        .lock()
+        .unwrap()
+        .get(&label)
+        .copied();
+    let fullscreen = app.state::<Fullscreen>().contains(&label);
+    match (label.as_str(), report) {
+        (EDITOR_WINDOW, Some(WindowReport::Editor(report))) => FocusedWindow::Editor(Some(report)),
+        (EDITOR_WINDOW, _) => FocusedWindow::Editor(None),
+        (TELEPROMPTER_WINDOW, report) => FocusedWindow::Teleprompter {
+            fullscreen,
+            report: match report {
+                Some(WindowReport::Teleprompter(report)) => Some(report),
+                _ => None,
+            },
+        },
+        (PRESENTATION_WINDOW, _) => FocusedWindow::Presentation { fullscreen },
+        _ => FocusedWindow::Other,
+    }
+}
+
+fn focused_window(app: &AppHandle) -> Option<WebviewWindow> {
+    key_window(app).and_then(|label| app.get_webview_window(&label))
 }
 
 fn key_window(app: &AppHandle) -> Option<String> {

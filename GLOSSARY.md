@@ -10,6 +10,10 @@ A desktop app for the whole presenting workflow: record a talk, edit its timing,
 One talk and everything that belongs to it: its Script, its Recordings, its Presentation Size, and the Presentation App built for it. One Presentation is open at a time.
 _Avoid_: Project, deck, document
 
+**Start Window**:
+The window shown when no Presentation is open, with New Presentation, Open Folder…, Check microphone and the Recent list.
+_Avoid_: Welcome window
+
 **Script**:
 The ordered Words of a Presentation, with the Gaps between them and the Named Events anchored to them. It is the single timed text that every Performance plays.
 _Avoid_: Transcript, timeline
@@ -46,6 +50,9 @@ Positions within a Recording's audio. It is immutable: editing the Script never 
 **Live Transcript**:
 The rough, provisional text shown while recording, revising itself as the presenter speaks. It never becomes part of the Script.
 _Avoid_: Draft, captions
+
+**Recording Bar**:
+The panel shown in the Editor while recording, with the Live Transcript, elapsed time and Stop.
 
 **Transcription**:
 The accurate pass over a finished Recording that turns it into timed Words for the Script.
@@ -84,7 +91,10 @@ Scaling the durations and Gaps of a selection of Words by a percentage.
 Playing one Word's own Recording with a second of audio either side. It never touches the Performance clock.
 
 **Preview**:
-Playing the Script from the cursor on the shared clock, with highlight and sound. It sounds the Script as Audio Runs and always follows Script Time. Trim start inside a Run changes a Word's edges, not the sound. Only a clock the editor started sounds, so a Performance started elsewhere plays silently in the editor.
+The Performance clock playing because the Editor started it, so the Editor plays its sound, with highlight. It is started by Play (from where the clock stands) or Play from Cursor. It sounds the Script as Audio Runs and always follows Script Time. Trim start inside a Run changes a Word's edges, not the sound. A Performance started elsewhere plays silently in the Editor. It is no longer a button label.
+
+**Play from Cursor**:
+Starting a Preview from the cursor: the first selected Word, or the Word after the caret, or the start when the caret is at the end.
 
 **Audio Run**:
 A stretch of consecutive spoken Words whose audio follows on unbroken in one Recording, so Preview sounds it as one piece. Every edit that puts a seam in the audio ends one Run and starts the next.
@@ -92,6 +102,9 @@ _Avoid_: segment, chunk
 
 **Moved badge**:
 A temporary mark on a Named Event that the app re-anchored automatically (after a delete, merge, cut or Re-record), so you can review it. It lasts for the session and is never saved.
+
+**Inspector**:
+The Editor's sidebar showing what is selected: a Word's or selection's timing (Gap, duration, Retime), or a Named Event's name, data and offset, with a hint when nothing is selected.
 
 **Edit lock**:
 The editor is read-only while the Performance clock is playing, whoever started it, and while a Recording is being captured: every Script command is refused until the clock pauses or ends and the Recording stops. Unlike a Pending Passage, it covers the whole Script.

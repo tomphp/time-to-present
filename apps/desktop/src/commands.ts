@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { ApproachCueSettings } from "./approach-cue";
 import type { Clip } from "./audio-schedule";
 import type { RecordingTarget } from "./recording-target";
@@ -9,6 +10,7 @@ import type {
   ForwardedKey,
   InputChoice,
   InsertionPoint,
+  MenuCommand,
   Meter,
   PerformanceSettings,
   PresentationSize,
@@ -19,6 +21,7 @@ import type {
   Snapshot,
   StreamEvent,
   Waveform,
+  WindowReport,
 } from "./session";
 import { connectStream } from "./stream";
 
@@ -27,8 +30,14 @@ export const newPresentation = (parent: string, title: string) =>
 
 export const openFolder = (folder: string) => invoke<SessionState>("open_folder", { folder });
 
+export interface RecentPresentation {
+  folder: string;
+  /** Null when the folder's presentation.json could not be read. */
+  title: string | null;
+}
+
 export interface Recent {
-  folders: string[];
+  presentations: RecentPresentation[];
   dropped: string[];
 }
 
@@ -159,3 +168,10 @@ export const onStreamEvent = (render: (event: StreamEvent) => void) =>
   connectStream({ listen: (onEvent) => listen<StreamEvent>("session-event", (event) => onEvent(event.payload)), snapshot }, render);
 
 export const openInBrowser = () => invoke<void>("open_in_browser");
+
+export const reportMenuState = (report: WindowReport) => invoke<void>("report_menu_state", { report });
+
+/** Menu commands go to the focused window alone, so this window hears only its own. */
+export function onMenuCommand(handle: (command: MenuCommand) => void) {
+  void getCurrentWebviewWindow().listen<MenuCommand>("menu-command", (event) => handle(event.payload));
+}

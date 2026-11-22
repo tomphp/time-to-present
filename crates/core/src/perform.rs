@@ -85,52 +85,6 @@ pub enum PerformanceWindow {
     Presentation,
 }
 
-/// The window that has focus, as the View menu's Full Screen item sees it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FocusedWindow {
-    None,
-    Other,
-    Performance { fullscreen: bool },
-}
-
-/// The window with focus, by label, followed whichever order the platform reports the change in.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct KeyWindow(Option<String>);
-
-impl KeyWindow {
-    pub fn label(&self) -> Option<&str> {
-        self.0.as_deref()
-    }
-
-    pub fn focus_changed(&mut self, label: &str, focused: bool) {
-        if focused {
-            self.0 = Some(label.to_string());
-        } else if self.label() == Some(label) {
-            self.0 = None;
-        }
-    }
-}
-
-/// What the View menu's Full Screen item offers.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FullscreenMenuItem {
-    pub enabled: bool,
-    pub label: &'static str,
-}
-
-/// The item switches the focused Performance window, and only that.
-pub fn fullscreen_menu_item(focused: FocusedWindow) -> FullscreenMenuItem {
-    let fullscreen = matches!(focused, FocusedWindow::Performance { fullscreen: true });
-    FullscreenMenuItem {
-        enabled: matches!(focused, FocusedWindow::Performance { .. }),
-        label: if fullscreen {
-            "Exit Full Screen"
-        } else {
-            "Enter Full Screen"
-        },
-    }
-}
-
 /// A connected display, known by the name macOS gives it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Display {

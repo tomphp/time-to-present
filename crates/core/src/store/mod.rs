@@ -51,6 +51,19 @@ pub enum StoreError {
 }
 
 pub fn open(folder: &Path) -> Result<Presentation, StoreError> {
+    let parsed = read(folder)?;
+    if parsed.migrated {
+        save(folder, &parsed.presentation)?;
+    }
+    Ok(parsed.presentation)
+}
+
+/// The Presentation's title, read without migrating or saving it.
+pub fn title(folder: &Path) -> Result<String, StoreError> {
+    Ok(read(folder)?.presentation.title)
+}
+
+fn read(folder: &Path) -> Result<format::Parsed, StoreError> {
     let json =
         std::fs::read_to_string(folder.join(PRESENTATION_FILE)).map_err(|error| {
             match error.kind() {
@@ -58,11 +71,7 @@ pub fn open(folder: &Path) -> Result<Presentation, StoreError> {
                 _ => error.into(),
             }
         })?;
-    let parsed = format::parse(&json)?;
-    if parsed.migrated {
-        save(folder, &parsed.presentation)?;
-    }
-    Ok(parsed.presentation)
+    format::parse(&json)
 }
 
 pub fn create(parent: &Path, title: &str) -> Result<PathBuf, StoreError> {

@@ -30,6 +30,19 @@ export type DisplayAction =
   | "readingLineUp"
   | "readingLineDown";
 
+const ACTIONS: Record<DisplayAction, true> = {
+  blank: true,
+  markers: true,
+  mirror: true,
+  flip: true,
+  fontLarger: true,
+  fontSmaller: true,
+  readingLineUp: true,
+  readingLineDown: true,
+};
+
+export const isDisplayAction = (command: string): command is DisplayAction => Object.hasOwn(ACTIONS, command);
+
 interface Keys {
   key: string;
   metaKey: boolean;

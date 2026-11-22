@@ -3,19 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <title>Settings</title>
-    <link rel="stylesheet" href="/src/app.css" />
+    <link rel="stylesheet" href="/src/styles/settings.css" />
   </head>
   <body class="settings">
-    <h1>Speech models</h1>
-    <p id="no-models" hidden>No speech models are downloaded yet. They download the first time you record.</p>
-    <ul id="models"></ul>
-    <p id="progress" role="status" hidden></p>
-    <p id="error" role="alert" hidden></p>
-    <h1>Teleprompter</h1>
-    <form id="approach-cue">
-      <label><input type="checkbox" name="enabled" /> Show the Approach Cue</label>
-      <label>Count down Gaps from <input type="number" name="longGap" min="0.1" step="0.1" required /> s</label>
-    </form>
+    <section class="card">
+      <h1>Speech models</h1>
+      <p id="no-models" hidden>No speech models are downloaded yet. They download the first time you record.</p>
+      <ul id="models"></ul>
+      <p id="progress" role="status" hidden></p>
+      <p id="error" role="alert" hidden></p>
+    </section>
+    <section class="card">
+      <h1>Teleprompter</h1>
+      <form id="approach-cue">
+        <label><input type="checkbox" name="enabled" /> Show the Approach Cue</label>
+        <label>Count down Gaps from <input type="number" name="longGap" min="0.1" step="0.1" required /> s</label>
+      </form>
+    </section>
     <script type="module" src="/src/settings.ts"></script>
     <script type="module" src="/src/approach-cue-settings.ts"></script>
   </body>

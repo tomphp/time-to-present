@@ -19,7 +19,7 @@ use crate::{
     App, CommandResult, TELEPROMPTER_WINDOW, bring_up_window, message, reveal, with_session,
 };
 
-const PRESENTATION_WINDOW: &str = "presentation";
+pub const PRESENTATION_WINDOW: &str = "presentation";
 const APPROACH_CUE: &str = "approach-cue";
 const PERFORMANCE_KEY: &str = "performance-key";
 const PERFORMANCE_SETTINGS: &str = "performance-settings";
@@ -93,6 +93,7 @@ pub fn set_performance_settings(
         .unwrap()
         .set_performance(performance.clone())
         .map_err(message)?;
+    menu::refresh(&app);
     app.emit(PERFORMANCE_SETTINGS, performance).map_err(message)
 }
 
@@ -234,7 +235,7 @@ pub fn on_window_event(window: &Window, event: &WindowEvent) {
         WindowEvent::Destroyed => {
             window.state::<Fullscreen>().remove(window.label());
             tell_teleprompter_of_focus(window, false);
-            menu::focus_changed(window.app_handle(), window.label(), false);
+            menu::window_destroyed(window.app_handle(), window.label());
             if window.label() == TELEPROMPTER_WINDOW {
                 pause_unseen_performance(window);
             }

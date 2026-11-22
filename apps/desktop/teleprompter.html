@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <title>Teleprompter</title>
-    <link rel="stylesheet" href="/src/app.css" />
+    <link rel="stylesheet" href="/src/styles/teleprompter.css" />
   </head>
   <body class="teleprompter">
     <main id="pane">
@@ -19,21 +19,23 @@
         </div>
       </div>
       <footer id="bar">
+        <div id="bar-card" class="card">
         <p id="bar-warning" hidden></p>
         <div id="bar-main">
           <span id="bar-state"></span>
-          <span id="bar-elapsed"></span>
-          <span id="bar-remaining"></span>
+          <span id="bar-elapsed" class="time"></span>
+          <span id="bar-remaining" class="time"></span>
           <div id="bar-progress"><div id="bar-fill"></div></div>
           <span id="bar-speed"></span>
           <span id="bar-ended" hidden></span>
           <span id="bar-url"></span>
-          <button id="bar-copy" type="button">Copy</button>
-          <button id="bar-open" type="button">Open in browser</button>
-          <button id="bar-swap" type="button" hidden>Swap sides</button>
+          <button id="bar-copy" class="btn" type="button">Copy</button>
+          <button id="bar-open" class="btn" type="button">Open in browser</button>
+          <button id="bar-swap" class="btn" type="button" hidden>Swap sides</button>
           <span id="bar-apps"></span>
         </div>
         <p id="bar-notice" hidden></p>
+        </div>
       </footer>
     </main>
     <p id="fullscreen-hint" role="status" hidden>Press Esc or ⌃⌘F to leave full screen</p>

@@ -1,0 +1,38 @@
+@import "./tokens.css";
+@import "./components.css";
+
+body.settings {
+  display: grid;
+  gap: var(--gap);
+  padding: var(--pad);
+}
+
+body.settings h1 {
+  margin: 0 0 var(--gap);
+  font-size: var(--text-heading);
+  font-weight: var(--weight-strong);
+}
+
+#models {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#models li {
+  display: flex;
+  gap: var(--gap);
+  align-items: center;
+}
+
+#approach-cue {
+  display: grid;
+  gap: var(--gap);
+  justify-items: start;
+}
+
+#approach-cue input[type="number"] {
+  width: var(--field-narrow-w);
+}

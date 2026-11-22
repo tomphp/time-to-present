@@ -1,21 +1,11 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import page from "../editor.html?raw";
 import { mountEventEditor } from "./event-editor";
 import type { Edit, SessionState } from "./session";
 import { mountTextPane } from "./text-pane";
 import { placeCaret } from "./dom-caret";
 import { scriptWord } from "./test-words";
-
-const FORM = `
-  <form id="event-editor" hidden>
-    <input name="name" list="event-names" />
-    <datalist id="event-names"></datalist>
-    <textarea name="data"></textarea>
-    <p role="alert" hidden></p>
-    <button type="submit">Save</button>
-    <button type="button" data-cancel>Cancel</button>
-  </form>
-  <article id="script"></article>`;
 
 const settle = () => new Promise((resolve) => setTimeout(resolve));
 
@@ -45,7 +35,7 @@ function type(text: string) {
 }
 
 beforeEach(() => {
-  document.body.innerHTML = FORM;
+  document.documentElement.innerHTML = page.replace(/^<!doctype html>/i, "");
   form = document.querySelector<HTMLFormElement>("#event-editor")!;
   edits = [];
   closed = 0;
@@ -147,7 +137,7 @@ describe("the text pane's event keys", () => {
     const root = document.querySelector<HTMLElement>("#script")!;
     const pane = mountTextPane(root, commands, hooks, vi.fn());
     pane.render(state);
-    return { root, hooks };
+    return { root, hooks, pane };
   }
 
   it("⌘E asks for a new event anchored at the caret", async () => {
@@ -158,6 +148,27 @@ describe("the text pane's event keys", () => {
     await settle();
 
     expect(hooks.insertEventAt).toHaveBeenCalledWith({ anchor: "w2", offset: 0 });
+  });
+
+  it("Add Named Event from the menu asks for a new event at the caret, as ⌘E does", async () => {
+    const { root, hooks, pane } = mountPane();
+    placeCaret(root, { word: "w1", offset: 3 });
+
+    pane.addEventAtCaret();
+    root.dispatchEvent(new KeyboardEvent("keydown", { key: "e", metaKey: true, bubbles: true }));
+    await settle();
+
+    expect(hooks.insertEventAt.mock.calls).toEqual([[{ anchor: "w2", offset: 0 }], [{ anchor: "w2", offset: 0 }]]);
+  });
+
+  it("Add Named Event from the menu puts the event at the Script's end when there is no caret", async () => {
+    const { hooks, pane } = mountPane();
+    window.getSelection()!.removeAllRanges();
+
+    pane.addEventAtCaret();
+    await settle();
+
+    expect(hooks.insertEventAt).toHaveBeenCalledWith({ anchor: "w2", offset: 450 });
   });
 
   it("clicking a chip selects its event", () => {

@@ -1,0 +1,87 @@
+#inspector {
+  position: sticky;
+  top: var(--gutter);
+  flex: none;
+  box-sizing: border-box;
+  width: var(--inspector-w);
+}
+
+#inspector:has([data-body][hidden]) {
+  width: auto;
+  padding: var(--space-4);
+  border-radius: var(--radius-pill);
+}
+
+#inspector [hidden] {
+  display: none;
+}
+
+#inspector header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+
+#inspector h2 {
+  margin: 0;
+  font-size: var(--text-ui);
+  font-weight: var(--weight-strong);
+}
+
+#inspector h3 {
+  margin: 0;
+  font-size: var(--text-small);
+  font-weight: var(--weight-strong);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: var(--caps-tracking);
+}
+
+#inspector [data-hint] {
+  margin: var(--gap) 0 0;
+}
+
+#inspector form {
+  display: grid;
+  gap: var(--gap);
+  margin-top: var(--gap);
+}
+
+#inspector label {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--muted);
+}
+
+#inspector input,
+#inspector textarea {
+  width: 100%;
+  color: var(--text);
+}
+
+#inspector input[inputmode] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+#timing button[type="submit"] {
+  justify-self: start;
+}
+
+#inspector [role="alert"] {
+  margin: 0;
+}
+
+#inspector .actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--gap);
+}
+
+#inspector [data-toggle][data-tooltip]::after {
+  right: 0;
+  left: auto;
+  transform: none;
+  white-space: nowrap;
+}

@@ -56,6 +56,7 @@ commands.allow = [
   "size_presets",
   "leave_fullscreen",
   "toggle_fullscreen",
+  "report_menu_state",
 ]
 
 [[permission]]

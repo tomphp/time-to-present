@@ -3,6 +3,7 @@ import {
   applyAction,
   DEFAULT_OPTIONS,
   displayAction,
+  isDisplayAction,
   isRepeatable,
   loadOptions,
   markerPlacements,
@@ -112,5 +113,12 @@ describe("marker placement", () => {
     ]);
     expect(placed.map(({ before }) => before)).toEqual([0, 2, 3]);
     expect(placed.map(({ name }) => name)).toEqual(["intro", "mid", "end"]);
+  });
+});
+
+describe("display commands", () => {
+  it("tells the Teleprompter's display actions from other menu commands", () => {
+    expect(["blank", "mirror", "readingLineDown"].every(isDisplayAction)).toBe(true);
+    expect(isDisplayAction("playPause")).toBe(false);
   });
 });

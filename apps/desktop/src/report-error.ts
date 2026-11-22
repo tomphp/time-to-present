@@ -1,12 +1,13 @@
-const error = document.querySelector<HTMLParagraphElement>("#error")!;
+const error = () => document.querySelector<HTMLParagraphElement>("#error")!;
 
 export function showError(reason: unknown) {
-  error.textContent = String(reason);
-  error.hidden = false;
+  const line = error();
+  line.textContent = String(reason);
+  line.hidden = false;
 }
 
 /** Wraps a command so its failure shows in the editor's error line and a retry clears it. */
 export const act = (command: () => Promise<void>) => () => {
-  error.hidden = true;
+  error().hidden = true;
   command().catch(showError);
 };

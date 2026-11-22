@@ -1,3 +1,4 @@
+import type { IconButtonOptions } from "./icon-button";
 import type { ClockState, StreamEvent } from "./session";
 
 export interface CurrentWord {
@@ -44,7 +45,11 @@ export function clockAction(state: ClockState | null): ClockAction | null {
   return null;
 }
 
-export const ACTION_LABELS: Record<ClockAction, string> = { play: "Play", pause: "Pause", reset: "Restart" };
+export const ACTION_BUTTONS: Record<ClockAction, IconButtonOptions> = {
+  play: { icon: "play", label: "Play from where the clock stands" },
+  pause: { icon: "pause", label: "Pause" },
+  reset: { icon: "restart", label: "Restart" },
+};
 
 /** Where the clock is `elapsed` ms after it was last reported: running on while playing, never past Script End. */
 export function clockPosition({ state, scriptTime, speed }: ClockPanel, elapsed: number, scriptEnd: number): number {

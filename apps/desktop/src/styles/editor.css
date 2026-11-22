@@ -1,0 +1,142 @@
+@import "./tokens.css";
+@import "./components.css";
+@import "./toolbar.css";
+@import "./recording-bar.css";
+@import "./inspector.css";
+@import "./timeline.css";
+
+body.editor {
+  max-width: var(--editor-max-w);
+  margin: 0 auto;
+  padding: var(--gutter);
+}
+
+.banner {
+  margin: var(--gutter) 0 0;
+  padding: var(--space-3) var(--pad);
+  border-radius: var(--radius-sm);
+  overflow-wrap: anywhere;
+}
+
+#server-notice {
+  background: var(--warn-soft);
+}
+
+#error {
+  background: var(--danger-soft);
+}
+
+.banner[hidden] {
+  display: none;
+}
+
+.hint {
+  margin: var(--gutter) var(--pad) 0;
+  color: var(--muted);
+}
+
+.hint[hidden] {
+  display: none;
+}
+
+.workspace {
+  display: flex;
+  gap: var(--gutter);
+  align-items: flex-start;
+  margin-top: var(--gutter);
+}
+
+#script {
+  flex: 1;
+  min-width: 0;
+  min-height: 3em;
+  font: var(--script-weight) var(--text-script) / var(--script-leading) var(--font-script);
+  outline: none;
+  white-space: pre-wrap;
+}
+
+#script.locked {
+  opacity: var(--locked-opacity);
+  cursor: default;
+}
+
+#script .word.current {
+  color: var(--current-text);
+  background: var(--current);
+  border-radius: var(--radius-xs);
+}
+
+#script .low-confidence {
+  text-decoration: underline wavy var(--warn);
+  text-underline-offset: var(--underline-offset);
+}
+
+#script .re-recorded {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+#script .event-chip {
+  display: inline-block;
+  margin-right: var(--chip-gap);
+  padding: 0 var(--chip-pad-x);
+  font: var(--weight-strong) var(--chip-text) / var(--chip-leading) var(--font-ui);
+  vertical-align: var(--chip-lift);
+  border-radius: var(--radius-sm);
+  color: var(--event);
+  background: var(--event-soft);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#script .event-chip.selected {
+  color: var(--surface);
+  background: var(--event);
+}
+
+#script .event-chip.moved::after {
+  content: "Moved";
+  margin-left: var(--chip-gap);
+  padding: 0 var(--chip-gap);
+  border-radius: var(--radius-xs);
+  color: var(--warn-text);
+  background: var(--warn);
+}
+
+#script .event-chip.dragging {
+  opacity: var(--disabled-opacity);
+  cursor: grabbing;
+}
+
+#script .pending-passage {
+  display: inline-block;
+  padding: 0 var(--chip-pad-x);
+  font: var(--text-ui) / var(--ui-leading) var(--font-ui);
+  color: var(--muted);
+  background: var(--warn-soft);
+  border: var(--hairline) dashed var(--warn);
+  border-radius: var(--radius-sm);
+  user-select: none;
+}
+
+#script .pending-passage.failed {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+#script .pending-passage button {
+  font-size: var(--text-small);
+}
+
+#script .live-transcript {
+  color: var(--muted);
+  font-style: italic;
+  user-select: none;
+}
+
+#script .live-transcript .live-failure {
+  color: var(--danger);
+  font-style: normal;
+  font-size: var(--text-small);
+}
