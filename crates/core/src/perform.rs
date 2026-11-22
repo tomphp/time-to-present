@@ -87,6 +87,24 @@ pub enum FocusedWindow {
     Performance { fullscreen: bool },
 }
 
+/// The window with focus, by label, followed whichever order the platform reports the change in.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct KeyWindow(Option<String>);
+
+impl KeyWindow {
+    pub fn label(&self) -> Option<&str> {
+        self.0.as_deref()
+    }
+
+    pub fn focus_changed(&mut self, label: &str, focused: bool) {
+        if focused {
+            self.0 = Some(label.to_string());
+        } else if self.label() == Some(label) {
+            self.0 = None;
+        }
+    }
+}
+
 /// What the View menu's Full Screen item offers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FullscreenMenuItem {

@@ -1,5 +1,5 @@
 use ttp_core::perform::{
-    Display, FocusedWindow, FullscreenMenuItem, KeyTarget, PageKey, PageKeyAction,
+    Display, FocusedWindow, FullscreenMenuItem, KeyTarget, KeyWindow, PageKey, PageKeyAction,
     PerformanceWindow, PresentationSize, classify, display_for, fullscreen_menu_item,
 };
 
@@ -208,6 +208,35 @@ fn a_windowed_performance_window_offers_to_enter_full_screen() {
             label: "Enter Full Screen"
         }
     );
+}
+
+#[test]
+fn the_key_window_is_the_one_that_last_gained_focus() {
+    let mut key_window = KeyWindow::default();
+    key_window.focus_changed("editor", true);
+    key_window.focus_changed("editor", false);
+    key_window.focus_changed("teleprompter", true);
+
+    assert_eq!(key_window.label(), Some("teleprompter"));
+}
+
+#[test]
+fn focus_lost_after_another_window_gained_it_leaves_that_window_key() {
+    let mut key_window = KeyWindow::default();
+    key_window.focus_changed("editor", true);
+    key_window.focus_changed("teleprompter", true);
+    key_window.focus_changed("editor", false);
+
+    assert_eq!(key_window.label(), Some("teleprompter"));
+}
+
+#[test]
+fn no_window_is_key_once_the_key_window_loses_focus() {
+    let mut key_window = KeyWindow::default();
+    key_window.focus_changed("editor", true);
+    key_window.focus_changed("editor", false);
+
+    assert_eq!(key_window.label(), None);
 }
 
 fn displays() -> Vec<Display> {
