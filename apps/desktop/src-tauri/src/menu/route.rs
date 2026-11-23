@@ -36,7 +36,7 @@ fn run(app: &AppHandle, command: MenuCommand) -> CommandResult<()> {
     use MenuCommand::*;
     match command {
         Settings => {
-            off_main_thread(app, |app| async move { open_settings(app).await });
+            off_main_thread(app, open_settings(app.clone()));
             Ok(())
         }
         NewPresentation => show_start_window(app),
@@ -45,8 +45,9 @@ fn run(app: &AppHandle, command: MenuCommand) -> CommandResult<()> {
             Ok(())
         }
         Perform => {
-            off_main_thread(app, |app| async move {
-                perform::perform(app.clone(), app.state()).await
+            let handle = app.clone();
+            off_main_thread(app, async move {
+                perform::perform(handle.clone(), handle.state()).await
             });
             Ok(())
         }
@@ -58,13 +59,12 @@ fn run(app: &AppHandle, command: MenuCommand) -> CommandResult<()> {
     }
 }
 
-/// Builds windows off the main thread, as their commands do, since that deadlocks on Windows.
-fn off_main_thread<F>(app: &AppHandle, run: impl FnOnce(AppHandle) -> F)
-where
-    F: Future<Output = CommandResult<()>> + Send + 'static,
-{
+/// Runs a window-building command off the main thread, where building a window deadlocks on Windows.
+fn off_main_thread(
+    app: &AppHandle,
+    task: impl Future<Output = CommandResult<()>> + Send + 'static,
+) {
     let handle = app.clone();
-    let task = run(app.clone());
     tauri::async_runtime::spawn(async move {
         if let Err(error) = task.await {
             report_failure(&handle, &error);
