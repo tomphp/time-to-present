@@ -33,15 +33,17 @@ jobs:
       - name: Build the app to run the smoke test, without the transcription sidecar
         run: >-
           npm run tauri -w @time-to-present/desktop -- build --debug --no-bundle --features smoke-test
-          --config '{"bundle":{"externalBin":[]},"build":{"beforeBuildCommand":"npm run build"}}'
+          --config src-tauri/tauri.smoke-test.conf.json
       - name: Perform, then check the Teleprompter answers and closes
+        id: smoke-test
         timeout-minutes: 3
         run: ./target/debug/time-to-present.exe
-      - if: failure()
+      - if: failure() && steps.smoke-test.conclusion == 'failure'
         uses: actions/upload-artifact@v7
         with:
           name: windows-smoke-test-log
           path: ~/AppData/Local/dev.timetopresent.desktop/logs/
+          if-no-files-found: error
 
   commits:
     runs-on: ubuntu-latest
