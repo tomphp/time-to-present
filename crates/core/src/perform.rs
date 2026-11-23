@@ -113,6 +113,24 @@ pub fn display_for(
     remembered.and_then(named).or(default)
 }
 
+/// How a Performance window fills its display.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FullscreenMechanism {
+    /// macOS simple fullscreen, which stays in the current Space and needs no animation.
+    Simple,
+    /// The platform's own fullscreen, as simple fullscreen exists only on macOS.
+    Native,
+}
+
+/// The fullscreen a Performance window uses on the given `std::env::consts::OS`.
+pub fn fullscreen_mechanism(os: &str) -> FullscreenMechanism {
+    if os == "macos" {
+        FullscreenMechanism::Simple
+    } else {
+        FullscreenMechanism::Native
+    }
+}
+
 /// Which windows Perform opens.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -1,12 +1,12 @@
 use std::ops::Deref;
 
 use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, Monitor, WebviewWindow};
-use ttp_core::perform::DisplayArea;
+use ttp_core::perform::{DisplayArea, FullscreenMechanism, fullscreen_mechanism};
 
 use crate::window_set::WindowSet;
 use crate::{CommandResult, message};
 
-/// The windows that are simple-fullscreen, as macOS offers no way to ask.
+/// The Performance windows that are fullscreen, as simple fullscreen offers no way to ask.
 #[derive(Default)]
 pub struct Fullscreen(WindowSet);
 
@@ -52,7 +52,7 @@ pub fn place(
         .map_err(message)
 }
 
-/// Simple fullscreen fills whichever display the window is on, so it is moved there first.
+/// Fullscreen fills whichever display the window is on, so it is moved there first.
 pub fn enter(
     app: &AppHandle,
     window: &WebviewWindow,
@@ -66,14 +66,22 @@ pub fn enter(
 
 /// Fills the display the window is on now, remembering its frame for when it leaves.
 pub fn enter_in_place(app: &AppHandle, window: &WebviewWindow) -> CommandResult<()> {
-    window.set_simple_fullscreen(true).map_err(message)?;
+    set_fullscreen(window, true)?;
     app.state::<Fullscreen>().insert(window.label());
     Ok(())
 }
 
-/// Leaves simple fullscreen, keeping the window open at the size it was placed at.
+/// Leaves fullscreen, keeping the window open at the size it was placed at.
 pub fn leave(app: &AppHandle, window: &WebviewWindow) -> CommandResult<()> {
-    window.set_simple_fullscreen(false).map_err(message)?;
+    set_fullscreen(window, false)?;
     app.state::<Fullscreen>().remove(window.label());
     Ok(())
+}
+
+fn set_fullscreen(window: &WebviewWindow, fullscreen: bool) -> CommandResult<()> {
+    match fullscreen_mechanism(std::env::consts::OS) {
+        FullscreenMechanism::Simple => window.set_simple_fullscreen(fullscreen),
+        FullscreenMechanism::Native => window.set_fullscreen(fullscreen),
+    }
+    .map_err(message)
 }
