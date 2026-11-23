@@ -54,7 +54,7 @@ impl Deref for FocusedPerformanceWindows {
     }
 }
 
-/// Opens the remembered Performance Layout, the Teleprompter simple-fullscreen on its display and the
+/// Opens the remembered Performance Layout, the Teleprompter Fullscreen on its display and the
 /// Presentation Window at the open Presentation's Presentation Size.
 #[tauri::command]
 pub async fn perform(app: AppHandle, state: State<'_, App>) -> CommandResult<()> {

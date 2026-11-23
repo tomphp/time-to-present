@@ -81,7 +81,7 @@ pub fn leave(app: &AppHandle, window: &WebviewWindow) -> CommandResult<()> {
 fn set_fullscreen(window: &WebviewWindow, fullscreen: bool) -> CommandResult<()> {
     match fullscreen_mechanism(std::env::consts::OS) {
         FullscreenMechanism::Simple => window.set_simple_fullscreen(fullscreen),
-        FullscreenMechanism::Native => window.set_fullscreen(fullscreen),
+        FullscreenMechanism::Regular => window.set_fullscreen(fullscreen),
     }
     .map_err(message)
 }

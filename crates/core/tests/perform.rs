@@ -441,6 +441,9 @@ fn macos_keeps_simple_fullscreen() {
 
 #[test]
 fn other_platforms_use_their_real_fullscreen() {
-    assert_eq!(fullscreen_mechanism("windows"), FullscreenMechanism::Native);
-    assert_eq!(fullscreen_mechanism("linux"), FullscreenMechanism::Native);
+    assert_eq!(
+        fullscreen_mechanism("windows"),
+        FullscreenMechanism::Regular
+    );
+    assert_eq!(fullscreen_mechanism("linux"), FullscreenMechanism::Regular);
 }
