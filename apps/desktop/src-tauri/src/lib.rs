@@ -29,6 +29,8 @@ mod menu;
 mod perform;
 mod platform;
 mod recording;
+#[cfg(feature = "smoke-test")]
+mod smoke_test;
 mod window_set;
 
 const POLL_INTERVAL: Duration = Duration::from_millis(TICK_INTERVAL as u64);
@@ -477,6 +479,8 @@ pub fn run() {
             let handle = app.handle().clone();
             std::thread::spawn(move || poll_session(handle));
             tauri::async_runtime::spawn(watch_server(app.handle().clone()));
+            #[cfg(feature = "smoke-test")]
+            smoke_test::start(app.handle());
             Ok(())
         })
         .on_window_event(perform::on_window_event)

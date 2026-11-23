@@ -16,6 +16,10 @@ name = "time-to-present"
 path = "src/main.rs"
 test = false
 
+# Runs Perform on launch and exits with whether the Teleprompter stayed responsive, for CI.
+[features]
+smoke-test = []
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
