@@ -57,7 +57,7 @@ impl Deref for FocusedPerformanceWindows {
 /// Opens the remembered Performance Layout, the Teleprompter simple-fullscreen on its display and the
 /// Presentation Window at the open Presentation's Presentation Size.
 #[tauri::command]
-pub fn perform(app: AppHandle, state: State<'_, App>) -> CommandResult<()> {
+pub async fn perform(app: AppHandle, state: State<'_, App>) -> CommandResult<()> {
     let size = with_session(&state, |session| {
         Ok::<_, String>(session.presentation_size())
     })?;

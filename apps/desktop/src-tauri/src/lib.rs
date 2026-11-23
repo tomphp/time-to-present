@@ -191,7 +191,7 @@ fn remove_model(state: State<'_, App>, name: String) -> CommandResult<()> {
 }
 
 #[tauri::command]
-fn open_settings(app: AppHandle) -> CommandResult<()> {
+async fn open_settings(app: AppHandle) -> CommandResult<()> {
     bring_up_window(&app, SETTINGS_WINDOW, "Settings", (480.0, 360.0))?
         .set_focus()
         .map_err(message)
@@ -203,6 +203,7 @@ fn reveal(window: &WebviewWindow) -> CommandResult<()> {
     window.show().map_err(message)
 }
 
+/// Never call on the main thread: building a window there deadlocks on Windows.
 fn bring_up_window(
     app: &AppHandle,
     label: &str,
