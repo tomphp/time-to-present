@@ -1,7 +1,8 @@
 use std::panic::Location;
 
 use ttp_core::diagnostics::{
-    PerformStep, command_failed, display_chosen, panicked, step_failed, step_started,
+    PerformStep, command_failed, display_chosen, fullscreen_switched, panicked, step_failed,
+    step_started,
 };
 use ttp_core::perform::PerformanceWindow::{Presentation, Teleprompter};
 
@@ -67,6 +68,14 @@ fn each_perform_step_says_what_it_is_doing() {
             PerformStep::Focus(Teleprompter),
             "focusing the Teleprompter Window",
         ),
+        (
+            PerformStep::ShowWindow(Presentation),
+            "showing the Presentation Window",
+        ),
+        (
+            PerformStep::CloseWindow(Presentation),
+            "closing the Presentation Window",
+        ),
     ];
     for (step, expected) in steps {
         assert_eq!(step.to_string(), expected);
@@ -102,5 +111,17 @@ fn no_connected_display_is_reported() {
     assert_eq!(
         display_chosen(Presentation, None),
         "Perform: no display is connected for the Presentation Window"
+    );
+}
+
+#[test]
+fn switching_fullscreen_names_the_window_and_where_it_went() {
+    assert_eq!(
+        fullscreen_switched("presentation", true),
+        "the presentation window goes fullscreen"
+    );
+    assert_eq!(
+        fullscreen_switched("teleprompter", false),
+        "the teleprompter window goes windowed"
     );
 }

@@ -6,9 +6,12 @@ use tauri::{
     WebviewWindowBuilder, Window, WindowEvent,
 };
 use ttp_core::diagnostics::PerformStep::{
-    BringUpWindow, ChooseDisplay, EnterFullscreen, Focus, LeaveFullscreen, PlaceWindow,
+    BringUpWindow, ChooseDisplay, CloseWindow, EnterFullscreen, Focus, LeaveFullscreen,
+    PlaceWindow, ShowWindow,
 };
-use ttp_core::diagnostics::{PerformStep, display_chosen, step_failed, step_started};
+use ttp_core::diagnostics::{
+    PerformStep, display_chosen, fullscreen_switched, step_failed, step_started,
+};
 use ttp_core::perform::PerformanceWindow::{Presentation, Teleprompter};
 use ttp_core::perform::{
     PageKey, PageKeyAction, PerformanceLayout, PerformanceSettings, PerformanceWindow,
@@ -76,7 +79,9 @@ pub fn perform(app: AppHandle, state: State<'_, App>) -> CommandResult<()> {
         }
         PerformanceLayout::Combined | PerformanceLayout::TeleprompterOnly => {
             if let Some(presentation) = app.get_webview_window(PRESENTATION_WINDOW) {
-                presentation.close().map_err(message)?;
+                step(CloseWindow(Presentation), || {
+                    presentation.close().map_err(message)
+                })?;
             }
         }
     }
@@ -221,11 +226,7 @@ fn set_fullscreen(app: &AppHandle, window: &WebviewWindow, fullscreen: bool) -> 
     if unchanged || !PERFORMANCE_WINDOWS.contains(&window.label()) {
         return Ok(());
     }
-    log::info!(
-        "{} goes {}",
-        window.label(),
-        if fullscreen { "fullscreen" } else { "windowed" }
-    );
+    log::info!("{}", fullscreen_switched(window.label(), fullscreen));
     if fullscreen {
         set_title_bar(window, false)?;
         fullscreen::enter_in_place(app, window)?;
@@ -358,9 +359,9 @@ fn show_presentation(
             place(&presentation, &monitor, window.points)
         })?;
     }
-    fullscreen_changed(&presentation, fullscreen)?;
-    log::info!("Perform: the Presentation Window is shown");
-    Ok(())
+    step(ShowWindow(Presentation), || {
+        fullscreen_changed(&presentation, fullscreen)
+    })
 }
 
 /// The window showing the Presentation App, never mirrored, its keys forwarded.

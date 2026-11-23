@@ -443,11 +443,11 @@ fn set_editor_title(app: &AppHandle, title: &str) {
 }
 
 pub fn run() {
+    logging::log_panics();
     tauri::Builder::default()
         .plugin(logging::plugin())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            logging::log_panics();
             log::info!("Time to Present {} started", app.package_info().version);
             let settings = Settings::load(app.path().app_config_dir()?.join("settings.json"));
             let session = SharedSession::default();

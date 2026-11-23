@@ -37,6 +37,8 @@ pub enum PerformStep {
     LeaveFullscreen(PerformanceWindow),
     PlaceWindow(PerformanceWindow),
     Focus(PerformanceWindow),
+    ShowWindow(PerformanceWindow),
+    CloseWindow(PerformanceWindow),
 }
 
 impl fmt::Display for PerformStep {
@@ -52,6 +54,8 @@ impl fmt::Display for PerformStep {
             }
             Self::PlaceWindow(window) => write!(f, "placing the {}", name(*window)),
             Self::Focus(window) => write!(f, "focusing the {}", name(*window)),
+            Self::ShowWindow(window) => write!(f, "showing the {}", name(*window)),
+            Self::CloseWindow(window) => write!(f, "closing the {}", name(*window)),
         }
     }
 }
@@ -69,6 +73,11 @@ pub fn display_chosen(window: PerformanceWindow, display: Option<&str>) -> Strin
         Some(display) => format!("Perform: the {} goes on {display}", name(window)),
         None => format!("Perform: no display is connected for the {}", name(window)),
     }
+}
+
+pub fn fullscreen_switched(window: &str, fullscreen: bool) -> String {
+    let now = if fullscreen { "fullscreen" } else { "windowed" };
+    format!("the {window} window goes {now}")
 }
 
 fn name(window: PerformanceWindow) -> &'static str {
