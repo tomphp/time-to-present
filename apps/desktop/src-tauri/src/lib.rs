@@ -18,14 +18,19 @@ use ttp_core::transcription::{SidecarLiveTranscriber, SidecarTranscriber};
 use ttp_core::waveform::{self, Waveform};
 use ttp_server::{Server, ServerStatus, SharedSession};
 
+use logging::CommandError;
+
 mod audio;
 mod clock;
 mod displays;
 mod fullscreen;
+mod logging;
 mod menu;
 mod perform;
 mod platform;
 mod recording;
+#[cfg(feature = "smoke-test")]
+mod smoke_test;
 mod window_set;
 
 const POLL_INTERVAL: Duration = Duration::from_millis(TICK_INTERVAL as u64);
@@ -70,10 +75,10 @@ impl RecentPresentation {
     }
 }
 
-type CommandResult<T> = Result<T, String>;
+type CommandResult<T> = Result<T, CommandError>;
 
-fn message(error: impl std::fmt::Display) -> String {
-    error.to_string()
+fn message(error: impl std::fmt::Display) -> CommandError {
+    CommandError::from(error)
 }
 
 #[tauri::command]
@@ -100,13 +105,13 @@ fn open_presentation(app: &AppHandle, state: &App, folder: &Path) -> CommandResu
     let session = Session::open(folder, state.platform.clone()).map_err(|error| {
         if !folder.is_dir() {
             if let Err(error) = state.settings.lock().unwrap().forget_recent(folder) {
-                eprintln!("could not update the Recent list: {error}");
+                log::warn!("could not update the Recent list: {error}");
             }
             menu::recent_changed(app);
-            return format!(
+            return message(format!(
                 "{} no longer exists, so it was removed from Recent",
                 folder.display()
-            );
+            ));
         }
         message(error)
     })?;
@@ -188,7 +193,7 @@ fn remove_model(state: State<'_, App>, name: String) -> CommandResult<()> {
 }
 
 #[tauri::command]
-fn open_settings(app: AppHandle) -> CommandResult<()> {
+async fn open_settings(app: AppHandle) -> CommandResult<()> {
     bring_up_window(&app, SETTINGS_WINDOW, "Settings", (480.0, 360.0))?
         .set_focus()
         .map_err(message)
@@ -200,6 +205,7 @@ fn reveal(window: &WebviewWindow) -> CommandResult<()> {
     window.show().map_err(message)
 }
 
+/// Never call on the main thread: building a window there deadlocks on Windows.
 fn bring_up_window(
     app: &AppHandle,
     label: &str,
@@ -364,7 +370,7 @@ fn save_open_session(
     if let Some(session) = app.state::<App>().session.lock().unwrap().as_mut()
         && let Err(error) = save(session)
     {
-        eprintln!("{what} failed: {error}");
+        log::error!("{what} failed: {error}");
     }
 }
 
@@ -410,10 +416,10 @@ fn show(app: &AppHandle, state: &App, mut session: Session) -> CommandResult<Ses
     });
     let opened = session.state();
     if let Err(error) = state.settings.lock().unwrap().add_recent(&opened.folder) {
-        eprintln!("could not update the Recent list: {error}");
+        log::warn!("could not update the Recent list: {error}");
     }
     if let Err(error) = state.server.open(session) {
-        eprintln!("saving the previous Presentation failed: {error}");
+        log::error!("saving the previous Presentation failed: {error}");
     }
     emit_server_status(app);
     menu::recent_changed(app);
@@ -440,9 +446,12 @@ fn set_editor_title(app: &AppHandle, title: &str) {
 }
 
 pub fn run() {
+    logging::log_panics();
     tauri::Builder::default()
+        .plugin(logging::plugin())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            log::info!("Time to Present {} started", app.package_info().version);
             let settings = Settings::load(app.path().app_config_dir()?.join("settings.json"));
             let session = SharedSession::default();
             let server =
@@ -470,6 +479,8 @@ pub fn run() {
             let handle = app.handle().clone();
             std::thread::spawn(move || poll_session(handle));
             tauri::async_runtime::spawn(watch_server(app.handle().clone()));
+            #[cfg(feature = "smoke-test")]
+            smoke_test::start(app.handle());
             Ok(())
         })
         .on_window_event(perform::on_window_event)
@@ -536,7 +547,7 @@ pub fn run() {
             if let tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit = event
                 && let Err(error) = app.state::<App>().server.close()
             {
-                eprintln!("saving on exit failed: {error}");
+                log::error!("saving on exit failed: {error}");
             }
         });
 }

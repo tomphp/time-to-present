@@ -1,6 +1,7 @@
 use ttp_core::perform::{
-    Display, DisplayArea, KeyTarget, PageKey, PageKeyAction, PerformanceWindow, PixelSize,
-    PresentationSize, SIZE_PRESETS, Shape, classify, display_for, fit,
+    Display, DisplayArea, FullscreenMechanism, KeyTarget, PageKey, PageKeyAction,
+    PerformanceWindow, PixelSize, PresentationSize, SIZE_PRESETS, Shape, classify, display_for,
+    fit, fullscreen_mechanism,
 };
 
 fn press(key: &str) -> PageKey {
@@ -431,4 +432,18 @@ fn a_preset_is_offered_as_its_pixels_and_shape() {
         serde_json::to_value(SIZE_PRESETS[5]).unwrap(),
         serde_json::json!({"width": 1080, "height": 1920, "shape": "vertical"})
     );
+}
+
+#[test]
+fn macos_keeps_simple_fullscreen() {
+    assert_eq!(fullscreen_mechanism("macos"), FullscreenMechanism::Simple);
+}
+
+#[test]
+fn other_platforms_use_their_real_fullscreen() {
+    assert_eq!(
+        fullscreen_mechanism("windows"),
+        FullscreenMechanism::Regular
+    );
+    assert_eq!(fullscreen_mechanism("linux"), FullscreenMechanism::Regular);
 }

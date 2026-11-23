@@ -16,14 +16,20 @@ name = "time-to-present"
 path = "src/main.rs"
 test = false
 
+# Runs Perform on launch and exits with whether the Teleprompter stayed responsive, for CI.
+[features]
+smoke-test = []
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
 cpal = "0.18"
+log = "0.4.35"
 serde.workspace = true
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
+tauri-plugin-log = "2"
 ttp-core = { path = "../../../crates/core" }
 ttp-server = { path = "../../../crates/server" }
 

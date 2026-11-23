@@ -21,6 +21,30 @@ jobs:
       - run: cargo build --workspace
       - run: cargo test --workspace
 
+  windows-smoke-test:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/desktop-toolchain
+      - name: Build the app to run the smoke test, without the transcription sidecar
+        run: >-
+          npm run tauri -w @time-to-present/desktop -- build --debug --no-bundle --features smoke-test
+          --config src-tauri/tauri.smoke-test.conf.json
+      - name: Perform, then check the Teleprompter answers and closes
+        id: smoke-test
+        timeout-minutes: 3
+        run: ./target/debug/time-to-present.exe
+      - if: failure() && steps.smoke-test.conclusion == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-smoke-test-log
+          path: ~/AppData/Local/dev.timetopresent.desktop/logs/
+          if-no-files-found: error
+
   commits:
     runs-on: ubuntu-latest
     steps:

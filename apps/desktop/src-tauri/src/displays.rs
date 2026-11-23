@@ -36,7 +36,7 @@ fn display(monitor: &Monitor, primary: Option<&Monitor>) -> Display {
     }
 }
 
-fn display_name(monitor: &Monitor) -> String {
+pub fn display_name(monitor: &Monitor) -> String {
     monitor.name().cloned().unwrap_or_else(|| {
         let position = monitor.position();
         format!("Display at {},{}", position.x, position.y)

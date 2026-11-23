@@ -75,7 +75,7 @@ pub fn recent_changed(app: &AppHandle) {
 fn on_main_thread(app: &AppHandle, update: fn(&AppHandle)) {
     let handle = app.clone();
     if let Err(error) = app.run_on_main_thread(move || update(&handle)) {
-        eprintln!("updating the menu failed: {error}");
+        log::error!("updating the menu failed: {error}");
     }
 }
 
@@ -83,7 +83,7 @@ fn show_offered(app: &AppHandle) {
     let context = context(app);
     for (command, item) in &app.state::<Items>().commands {
         if let Err(error) = item.show(menu_item(*command, &context)) {
-            eprintln!("updating the {} item failed: {error}", command.id());
+            log::error!("updating the {} item failed: {error}", command.id());
         }
     }
 }
@@ -113,7 +113,7 @@ fn list_recent(app: &AppHandle) {
         submenu.set_enabled(!folders.is_empty())
     })();
     if let Err(error) = listed {
-        eprintln!("updating Open Recent failed: {error}");
+        log::error!("updating Open Recent failed: {error}");
     }
 }
 

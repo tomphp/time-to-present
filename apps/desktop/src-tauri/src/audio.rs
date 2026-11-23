@@ -70,7 +70,7 @@ impl AudioSource for CpalSource {
             .build_input_stream::<f32, _, _>(
                 config.into(),
                 move |frames, _| on_audio(frames),
-                |error| eprintln!("audio input failed: {error}"),
+                |error| log::error!("audio input failed: {error}"),
                 None,
             )
             .map_err(failed)?;

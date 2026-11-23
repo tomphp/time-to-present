@@ -35,19 +35,41 @@ pub fn on_menu_event(app: &AppHandle, event: MenuEvent) {
 fn run(app: &AppHandle, command: MenuCommand) -> CommandResult<()> {
     use MenuCommand::*;
     match command {
-        Settings => open_settings(app.clone()),
+        Settings => {
+            off_main_thread(app, open_settings(app.clone()));
+            Ok(())
+        }
         NewPresentation => show_start_window(app),
         OpenFolder => {
             pick_folder(app);
             Ok(())
         }
-        Perform => perform::perform(app.clone(), app.state()),
+        Perform => {
+            let handle = app.clone();
+            off_main_thread(app, async move {
+                perform::perform(handle.clone(), handle.state()).await
+            });
+            Ok(())
+        }
         ToggleFullscreen => match focused_window(app) {
             Some(window) => perform::toggle_fullscreen(app.clone(), window),
             None => Ok(()),
         },
         _ => Ok(()),
     }
+}
+
+/// Runs a window-building command off the main thread, where building a window deadlocks on Windows.
+fn off_main_thread(
+    app: &AppHandle,
+    task: impl Future<Output = CommandResult<()>> + Send + 'static,
+) {
+    let handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        if let Err(error) = task.await {
+            report_failure(&handle, &error);
+        }
+    });
 }
 
 fn pick_folder(app: &AppHandle) {
@@ -75,6 +97,7 @@ fn open(app: &AppHandle, folder: PathBuf) {
 }
 
 fn report_failure(app: &AppHandle, error: &str) {
+    log::error!("{error}");
     app.dialog()
         .message(error)
         .kind(MessageDialogKind::Error)
