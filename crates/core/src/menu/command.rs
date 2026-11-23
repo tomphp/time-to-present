@@ -136,10 +136,14 @@ impl MenuCommand {
     /// with its window, so the Editor keeps its caret keys, and ⌘E and ⌘⌫ stay with the Editor.
     pub fn accelerator(self) -> Option<&'static str> {
         match self {
-            Self::Settings => Some("Cmd+,"),
-            Self::Record => Some("Cmd+R"),
-            Self::Perform => Some("Shift+Cmd+P"),
-            Self::ToggleFullscreen => Some("Ctrl+Cmd+F"),
+            Self::Settings => Some("CmdOrCtrl+,"),
+            Self::Record => Some("CmdOrCtrl+R"),
+            Self::Perform => Some("Shift+CmdOrCtrl+P"),
+            Self::ToggleFullscreen => Some(if cfg!(target_os = "macos") {
+                "Ctrl+Cmd+F"
+            } else {
+                "F11"
+            }),
             _ => None,
         }
     }

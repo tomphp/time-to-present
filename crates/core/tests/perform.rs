@@ -67,6 +67,22 @@ fn control_command_f_toggles_fullscreen() {
 }
 
 #[test]
+fn f11_toggles_fullscreen_once_per_press_and_only_unmodified() {
+    let held = PageKey {
+        repeat: true,
+        ..press("F11")
+    };
+    let shifted = PageKey {
+        shift: true,
+        ..press("F11")
+    };
+
+    assert_eq!(classify(&press("F11")), PageKeyAction::ToggleFullscreen);
+    assert_eq!(classify(&held), PageKeyAction::StayWithPage);
+    assert_ne!(classify(&shifted), PageKeyAction::ToggleFullscreen);
+}
+
+#[test]
 fn control_command_f_toggles_fullscreen_even_in_a_text_input() {
     let in_a_field = PageKey {
         target: input("text"),

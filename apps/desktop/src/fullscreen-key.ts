@@ -4,6 +4,8 @@ type Keys = Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "altKey" | "shif
 export function fullscreenKey({ key, metaKey, ctrlKey, altKey, shiftKey, isComposing }: Keys): "leave" | "toggle" | null {
   if (isComposing) return null;
   if (key === "Escape") return "leave";
-  if (key.toLowerCase() === "f" && ctrlKey && metaKey && !altKey && !shiftKey) return "toggle";
+  if (altKey || shiftKey) return null;
+  if (key.toLowerCase() === "f" && ctrlKey && metaKey) return "toggle";
+  if (key === "F11" && !ctrlKey && !metaKey) return "toggle";
   return null;
 }

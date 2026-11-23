@@ -475,12 +475,20 @@ fn the_teleprompter_display_keys_are_in_their_titles_and_not_accelerators() {
 
 #[test]
 fn the_global_shortcuts_are_menu_accelerators() {
-    assert_eq!(MenuCommand::Settings.accelerator(), Some("Cmd+,"));
-    assert_eq!(MenuCommand::Record.accelerator(), Some("Cmd+R"));
-    assert_eq!(MenuCommand::Perform.accelerator(), Some("Shift+Cmd+P"));
+    assert_eq!(MenuCommand::Settings.accelerator(), Some("CmdOrCtrl+,"));
+    assert_eq!(MenuCommand::Record.accelerator(), Some("CmdOrCtrl+R"));
+    assert_eq!(
+        MenuCommand::Perform.accelerator(),
+        Some("Shift+CmdOrCtrl+P")
+    );
+    let fullscreen = if cfg!(target_os = "macos") {
+        "Ctrl+Cmd+F"
+    } else {
+        "F11"
+    };
     assert_eq!(
         MenuCommand::ToggleFullscreen.accelerator(),
-        Some("Ctrl+Cmd+F")
+        Some(fullscreen)
     );
 }
 

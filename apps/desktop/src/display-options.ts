@@ -83,8 +83,8 @@ const COMMAND_KEYS: Record<string, DisplayAction> = {
 };
 
 export function displayAction({ key, metaKey, ctrlKey, altKey, shiftKey }: Keys): DisplayAction | null {
-  if (ctrlKey || altKey) return null;
-  if (metaKey) return COMMAND_KEYS[key] ?? null;
+  if (altKey || (ctrlKey && metaKey)) return null;
+  if (ctrlKey || metaKey) return COMMAND_KEYS[key] ?? null;
   if (shiftKey && key.toLowerCase() === "m") return "flip";
   return shiftKey ? null : (PLAIN_KEYS[key.toLowerCase()] ?? null);
 }

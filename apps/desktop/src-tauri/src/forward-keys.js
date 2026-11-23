@@ -9,12 +9,11 @@
       ? window.parent.postMessage({ forwardedKey: key }, "*")
       : window.__TAURI_INTERNALS__.invoke("forward_key", { key }).catch(console.error);
   const togglesFullscreen = (event) =>
-    event.key?.toLowerCase() === "f" &&
-    event.ctrlKey &&
-    event.metaKey &&
     !event.altKey &&
     !event.shiftKey &&
-    !event.isComposing;
+    !event.isComposing &&
+    ((event.key?.toLowerCase() === "f" && event.ctrlKey && event.metaKey) ||
+      (event.key === "F11" && !event.ctrlKey && !event.metaKey));
 
   window.addEventListener(
     "keydown",

@@ -43,14 +43,14 @@ pub enum PageKeyAction {
     StayWithPage,
 }
 
-/// ⌃⌘F toggles Fullscreen wherever focus is, once per press. Otherwise the page keeps
-/// ⌘-combinations and anything typed into a focused text input, and Esc leaves Fullscreen.
+/// ⌃⌘F, or F11 on Windows, toggles Fullscreen wherever focus is, once per press. Otherwise the
+/// page keeps ⌘- and Ctrl-combinations and anything typed into a focused text input, and Esc leaves Fullscreen.
 pub fn classify(key: &PageKey) -> PageKeyAction {
     if key.composing || key.toggles_fullscreen() && key.repeat {
         PageKeyAction::StayWithPage
     } else if key.toggles_fullscreen() {
         PageKeyAction::ToggleFullscreen
-    } else if key.meta || key.target.takes_text() {
+    } else if key.meta || key.ctrl || key.target.takes_text() {
         PageKeyAction::StayWithPage
     } else if key.key == "Escape" {
         PageKeyAction::LeaveFullscreen
@@ -61,7 +61,11 @@ pub fn classify(key: &PageKey) -> PageKeyAction {
 
 impl PageKey {
     fn toggles_fullscreen(&self) -> bool {
-        self.key.eq_ignore_ascii_case("f") && self.ctrl && self.meta && !self.alt && !self.shift
+        let unmodified = !self.alt && !self.shift;
+        let control_command_f =
+            self.key.eq_ignore_ascii_case("f") && self.ctrl && self.meta && unmodified;
+        let f11 = self.key == "F11" && !self.ctrl && !self.meta && unmodified;
+        control_command_f || f11
     }
 }
 
