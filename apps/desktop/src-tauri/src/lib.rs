@@ -18,10 +18,13 @@ use ttp_core::transcription::{SidecarLiveTranscriber, SidecarTranscriber};
 use ttp_core::waveform::{self, Waveform};
 use ttp_server::{Server, ServerStatus, SharedSession};
 
+use logging::CommandError;
+
 mod audio;
 mod clock;
 mod displays;
 mod fullscreen;
+mod logging;
 mod menu;
 mod perform;
 mod platform;
@@ -70,10 +73,10 @@ impl RecentPresentation {
     }
 }
 
-type CommandResult<T> = Result<T, String>;
+type CommandResult<T> = Result<T, CommandError>;
 
-fn message(error: impl std::fmt::Display) -> String {
-    error.to_string()
+fn message(error: impl std::fmt::Display) -> CommandError {
+    CommandError::from(error)
 }
 
 #[tauri::command]
@@ -100,13 +103,13 @@ fn open_presentation(app: &AppHandle, state: &App, folder: &Path) -> CommandResu
     let session = Session::open(folder, state.platform.clone()).map_err(|error| {
         if !folder.is_dir() {
             if let Err(error) = state.settings.lock().unwrap().forget_recent(folder) {
-                eprintln!("could not update the Recent list: {error}");
+                log::warn!("could not update the Recent list: {error}");
             }
             menu::recent_changed(app);
-            return format!(
+            return message(format!(
                 "{} no longer exists, so it was removed from Recent",
                 folder.display()
-            );
+            ));
         }
         message(error)
     })?;
@@ -364,7 +367,7 @@ fn save_open_session(
     if let Some(session) = app.state::<App>().session.lock().unwrap().as_mut()
         && let Err(error) = save(session)
     {
-        eprintln!("{what} failed: {error}");
+        log::error!("{what} failed: {error}");
     }
 }
 
@@ -410,10 +413,10 @@ fn show(app: &AppHandle, state: &App, mut session: Session) -> CommandResult<Ses
     });
     let opened = session.state();
     if let Err(error) = state.settings.lock().unwrap().add_recent(&opened.folder) {
-        eprintln!("could not update the Recent list: {error}");
+        log::warn!("could not update the Recent list: {error}");
     }
     if let Err(error) = state.server.open(session) {
-        eprintln!("saving the previous Presentation failed: {error}");
+        log::error!("saving the previous Presentation failed: {error}");
     }
     emit_server_status(app);
     menu::recent_changed(app);
@@ -441,8 +444,11 @@ fn set_editor_title(app: &AppHandle, title: &str) {
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(logging::plugin())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            logging::log_panics();
+            log::info!("Time to Present {} started", app.package_info().version);
             let settings = Settings::load(app.path().app_config_dir()?.join("settings.json"));
             let session = SharedSession::default();
             let server =
@@ -536,7 +542,7 @@ pub fn run() {
             if let tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit = event
                 && let Err(error) = app.state::<App>().server.close()
             {
-                eprintln!("saving on exit failed: {error}");
+                log::error!("saving on exit failed: {error}");
             }
         });
 }

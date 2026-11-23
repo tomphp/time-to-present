@@ -75,6 +75,7 @@ fn open(app: &AppHandle, folder: PathBuf) {
 }
 
 fn report_failure(app: &AppHandle, error: &str) {
+    log::error!("{error}");
     app.dialog()
         .message(error)
         .kind(MessageDialogKind::Error)
